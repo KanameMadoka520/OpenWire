@@ -47,6 +47,9 @@ public partial class AppRowVM : ObservableObject
         }
     }
 
+    /// <summary>ISO country code of the most-contacted host, for the flag icon.</summary>
+    public string HostCountry => Usage.PrimaryHostCountry;
+
     public ObservableCollection<ProcRowVM> Processes { get; }
     public bool HasChildren => Processes.Count > 0;
 

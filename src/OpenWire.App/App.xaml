@@ -24,6 +24,7 @@
             <util:DayGroupConverter x:Key="DayGroup" />
             <util:FractionWidthConverter x:Key="FracW" />
             <util:IconLoader x:Key="AppIcon" />
+            <util:CountryFlagConverter x:Key="Flag" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>

@@ -102,7 +102,11 @@
                                     <ToggleButton Grid.Column="2" Style="{StaticResource Pill}" IsChecked="{Binding BlockIn, Mode=TwoWay}" Command="{Binding ToggleInCommand}" VerticalAlignment="Center" />
                                     <ToggleButton Grid.Column="3" Style="{StaticResource Pill}" IsChecked="{Binding BlockOut, Mode=TwoWay}" Command="{Binding ToggleOutCommand}" VerticalAlignment="Center" />
                                     <TextBlock Grid.Column="4" Text="{Binding Version}" Foreground="{StaticResource TextSecondary}" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                                    <TextBlock Grid.Column="5" Text="{Binding HostText}" Foreground="{StaticResource TextSecondary}" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                    <StackPanel Grid.Column="5" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Image Width="16" Height="11" Margin="0,0,7,0" VerticalAlignment="Center"
+                                               Source="{Binding HostCountry, Converter={StaticResource Flag}}" />
+                                        <TextBlock Text="{Binding HostText}" Foreground="{StaticResource TextSecondary}" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
                                     <TextBlock Grid.Column="6" Style="{StaticResource Mono}" FontSize="12" Foreground="{StaticResource InLine}" Text="{Binding DownText}" VerticalAlignment="Center" />
                                     <TextBlock Grid.Column="7" Style="{StaticResource Mono}" FontSize="12" Foreground="{StaticResource OutLine}" Text="{Binding UpText}" VerticalAlignment="Center" />
                                 </Grid>

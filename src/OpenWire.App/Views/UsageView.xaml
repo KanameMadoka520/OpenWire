@@ -55,7 +55,11 @@
                         <DataTemplate>
                             <Grid Margin="14,7">
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                                <TextBlock Text="{Binding Host}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="170" />
+                                <StackPanel Orientation="Horizontal">
+                                    <Image Width="16" Height="11" Margin="0,0,7,0" VerticalAlignment="Center"
+                                           Source="{Binding Geo.CountryCode, Converter={StaticResource Flag}}" />
+                                    <TextBlock Text="{Binding Host}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="150" />
+                                </StackPanel>
                                 <TextBlock Grid.Column="1" Style="{StaticResource Mono}" FontSize="12" Foreground="{StaticResource TextSecondary}"
                                            Text="{Binding Total, Converter={StaticResource Bytes}}" VerticalAlignment="Center" />
                             </Grid>
@@ -99,11 +103,13 @@
                                 <Grid>
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                                     <StackPanel Orientation="Horizontal">
+                                        <Image Width="16" Height="11" Margin="0,0,8,0" VerticalAlignment="Center"
+                                               Source="{Binding CountryCode, Converter={StaticResource Flag}}" />
                                         <Border Background="{StaticResource BgSubtle}" CornerRadius="3" Padding="5,1" Margin="0,0,8,0"
                                                 Visibility="{Binding CountryCode.Length, Converter={StaticResource ZeroVis}}">
                                             <TextBlock Text="{Binding CountryCode}" FontSize="10" Foreground="{StaticResource TextSecondary}" />
                                         </Border>
-                                        <TextBlock Text="{Binding CountryName}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="120" />
+                                        <TextBlock Text="{Binding CountryName}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="110" />
                                     </StackPanel>
                                     <TextBlock Grid.Column="1" Style="{StaticResource Mono}" FontSize="12" Foreground="{StaticResource TextSecondary}"
                                                Text="{Binding Total, Converter={StaticResource Bytes}}" VerticalAlignment="Center" />

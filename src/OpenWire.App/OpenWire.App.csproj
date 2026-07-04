@@ -8,6 +8,12 @@
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
   </ItemGroup>
 
+  <!-- Public-domain country flags (famfamfam), compiled in so the UI works offline. -->
+  <ItemGroup>
+    <Resource Include="Assets\Flags\*.png" />
+    <None Include="Assets\Flags\NOTICE.md" />
+  </ItemGroup>
+
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net9.0-windows</TargetFramework>
