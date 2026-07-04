@@ -1,0 +1,69 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenWire.Core", "src\OpenWire.Core\OpenWire.Core.csproj", "{0825018D-145A-426E-A845-30A9CA0B8C0A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenWire.Service", "src\OpenWire.Service\OpenWire.Service.csproj", "{6A9B68AD-F11B-4087-A308-736F64B5EE50}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenWire.App", "src\OpenWire.App\OpenWire.App.csproj", "{0A46130D-80A9-4341-909F-CC738AD66780}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|Any CPU = Release|Any CPU
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{0825018D-145A-426E-A845-30A9CA0B8C0A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0825018D-145A-426E-A845-30A9CA0B8C0A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0825018D-145A-426E-A845-30A9CA0B8C0A}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{0825018D-145A-426E-A845-30A9CA0B8C0A}.Debug|x64.Build.0 = Debug|Any CPU
+		{0825018D-145A-426E-A845-30A9CA0B8C0A}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{0825018D-145A-426E-A845-30A9CA0B8C0A}.Debug|x86.Build.0 = Debug|Any CPU
+		{0825018D-145A-426E-A845-30A9CA0B8C0A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0825018D-145A-426E-A845-30A9CA0B8C0A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0825018D-145A-426E-A845-30A9CA0B8C0A}.Release|x64.ActiveCfg = Release|Any CPU
+		{0825018D-145A-426E-A845-30A9CA0B8C0A}.Release|x64.Build.0 = Release|Any CPU
+		{0825018D-145A-426E-A845-30A9CA0B8C0A}.Release|x86.ActiveCfg = Release|Any CPU
+		{0825018D-145A-426E-A845-30A9CA0B8C0A}.Release|x86.Build.0 = Release|Any CPU
+		{6A9B68AD-F11B-4087-A308-736F64B5EE50}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6A9B68AD-F11B-4087-A308-736F64B5EE50}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6A9B68AD-F11B-4087-A308-736F64B5EE50}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{6A9B68AD-F11B-4087-A308-736F64B5EE50}.Debug|x64.Build.0 = Debug|Any CPU
+		{6A9B68AD-F11B-4087-A308-736F64B5EE50}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{6A9B68AD-F11B-4087-A308-736F64B5EE50}.Debug|x86.Build.0 = Debug|Any CPU
+		{6A9B68AD-F11B-4087-A308-736F64B5EE50}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6A9B68AD-F11B-4087-A308-736F64B5EE50}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6A9B68AD-F11B-4087-A308-736F64B5EE50}.Release|x64.ActiveCfg = Release|Any CPU
+		{6A9B68AD-F11B-4087-A308-736F64B5EE50}.Release|x64.Build.0 = Release|Any CPU
+		{6A9B68AD-F11B-4087-A308-736F64B5EE50}.Release|x86.ActiveCfg = Release|Any CPU
+		{6A9B68AD-F11B-4087-A308-736F64B5EE50}.Release|x86.Build.0 = Release|Any CPU
+		{0A46130D-80A9-4341-909F-CC738AD66780}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0A46130D-80A9-4341-909F-CC738AD66780}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0A46130D-80A9-4341-909F-CC738AD66780}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{0A46130D-80A9-4341-909F-CC738AD66780}.Debug|x64.Build.0 = Debug|Any CPU
+		{0A46130D-80A9-4341-909F-CC738AD66780}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{0A46130D-80A9-4341-909F-CC738AD66780}.Debug|x86.Build.0 = Debug|Any CPU
+		{0A46130D-80A9-4341-909F-CC738AD66780}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0A46130D-80A9-4341-909F-CC738AD66780}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0A46130D-80A9-4341-909F-CC738AD66780}.Release|x64.ActiveCfg = Release|Any CPU
+		{0A46130D-80A9-4341-909F-CC738AD66780}.Release|x64.Build.0 = Release|Any CPU
+		{0A46130D-80A9-4341-909F-CC738AD66780}.Release|x86.ActiveCfg = Release|Any CPU
+		{0A46130D-80A9-4341-909F-CC738AD66780}.Release|x86.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{0825018D-145A-426E-A845-30A9CA0B8C0A} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{6A9B68AD-F11B-4087-A308-736F64B5EE50} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{0A46130D-80A9-4341-909F-CC738AD66780} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+	EndGlobalSection
+EndGlobal

@@ -1,0 +1,16 @@
+<Project>
+  <!-- Shared build settings for every OpenWire project -->
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Company>OpenWire</Company>
+    <Product>OpenWire</Product>
+    <Authors>OpenWire contributors</Authors>
+    <Version>0.1.0</Version>
+    <Copyright>Copyright (c) OpenWire contributors</Copyright>
+    <NeutralLanguage>en</NeutralLanguage>
+    <!-- Clean-room open-source re-implementation. Not affiliated with GlassWire / SecureMix. -->
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+</Project>
