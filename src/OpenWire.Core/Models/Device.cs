@@ -16,6 +16,12 @@ public sealed class Device
     /// <summary>Hardware vendor resolved from the MAC OUI prefix.</summary>
     public string Vendor { get; set; } = string.Empty;
 
+    /// <summary>Free-text description (model / vendor / role).</summary>
+    public string Description { get; set; } = string.Empty;
+
+    /// <summary>Best-effort operating-system guess.</summary>
+    public string OperatingSystem { get; set; } = string.Empty;
+
     public DeviceKind Kind { get; set; } = DeviceKind.Unknown;
 
     public bool IsOnline { get; set; }

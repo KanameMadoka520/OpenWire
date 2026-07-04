@@ -35,6 +35,16 @@ public sealed class AppInfo
     public static AppInfo Unknown { get; } = new() { Id = "unknown", Name = "Unknown", Description = "Unidentified process" };
 }
 
+/// <summary>A single OS process belonging to an application (for the firewall tree).</summary>
+public sealed class AppProcess
+{
+    public int Pid { get; set; }
+    public double DownRate { get; set; }
+    public double UpRate { get; set; }
+    public long BytesIn { get; set; }
+    public long BytesOut { get; set; }
+}
+
 /// <summary>
 /// Aggregated network usage for a single application over some window,
 /// plus its current firewall status and live activity.
@@ -46,6 +56,10 @@ public sealed class AppUsage
     public long BytesIn { get; set; }
     public long BytesOut { get; set; }
     public long Total => BytesIn + BytesOut;
+
+    /// <summary>Instantaneous throughput, bytes/sec.</summary>
+    public double DownRate { get; set; }
+    public double UpRate { get; set; }
 
     public DateTimeOffset FirstSeen { get; set; }
     public DateTimeOffset LastSeen { get; set; }
@@ -60,4 +74,11 @@ public sealed class AppUsage
 
     /// <summary>Distinct remote hosts contacted in the window.</summary>
     public int HostCount { get; set; }
+
+    /// <summary>The most-contacted remote host (resolved name or IP) + its country.</summary>
+    public string PrimaryHost { get; set; } = string.Empty;
+    public string PrimaryHostCountry { get; set; } = string.Empty;
+
+    /// <summary>Child processes (PIDs) of this app, for the expandable firewall row.</summary>
+    public List<AppProcess> Processes { get; set; } = new();
 }
