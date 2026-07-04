@@ -146,7 +146,10 @@ public sealed class IpcServer : IAsyncDisposable
                     return new OkResponse();
 
                 case GetDevicesRequest d:
-                    if (d.Rescan) await _engine.RescanDevicesAsync(ct).ConfigureAwait(false);
+                    // A rescan can take many seconds; run it in the background and let
+                    // discovered devices stream back as DeviceChanged events. Return the
+                    // currently-known devices immediately so the request never blocks.
+                    if (d.Rescan) _ = _engine.RescanDevicesAsync(ct);
                     return new DevicesResponse { Devices = _engine.GetDevices() };
 
                 case RenameDeviceRequest rn:

@@ -95,20 +95,28 @@ public sealed class DeviceScanner
 
         await PingSweepAsync(targets, ct).ConfigureAwait(false);
 
-        // Read the freshly-populated ARP table.
-        var arp = ArpInterop.GetArpTable();
+        // Read the freshly-populated ARP table and de-duplicate by MAC.
         var now = DateTimeOffset.UtcNow;
-        var devices = new List<Device>();
         var seenMacs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var entry in arp)
+        var entries = new List<ArpInterop.ArpEntry>();
+        foreach (var entry in ArpInterop.GetArpTable())
         {
             string ip = entry.Address.ToString();
             if (ip == "0.0.0.0" || ip.EndsWith(".255")) continue;
             if (!seenMacs.Add(entry.Mac)) continue;
+            entries.Add(entry);
+        }
 
+        // Resolve host names for all devices concurrently (each has its own timeout).
+        var hosts = await Task.WhenAll(entries.Select(e => TryResolveHostAsync(e.Address.ToString(), ct))).ConfigureAwait(false);
+
+        var devices = new List<Device>();
+        for (int i = 0; i < entries.Count; i++)
+        {
+            var entry = entries[i];
+            string ip = entry.Address.ToString();
+            string host = hosts[i];
             string vendor = _oui.Lookup(entry.Mac);
-            string host = await TryResolveHostAsync(ip, ct).ConfigureAwait(false);
             bool isGateway = gateways.Contains(ip);
 
             var kind = isGateway ? DeviceKind.Router : _oui.GuessKind(vendor, host);

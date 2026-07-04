@@ -52,6 +52,7 @@ public sealed class MonitorEngine : IAsyncDisposable
     private DateTimeOffset _lastDeviceScan = DateTimeOffset.MinValue;
     private bool _etwActive;
     private long _tick;
+    private int _scanning;
 
     public event Action<IpcMessage>? Events;
 
@@ -188,12 +189,7 @@ public sealed class MonitorEngine : IAsyncDisposable
             var app = _processes.Resolve(pid);
             if (app.Id is "system") continue;
 
-            var usage = _appStore.GetOrAdd(app.Id, _ =>
-            {
-                _store.UpsertAppMeta(app);
-                RaiseNewApp(app);
-                return new AppUsage { App = app, FirstSeen = now };
-            });
+            var usage = GetOrCreateApp(app, now);
             usage.BytesIn += di;
             usage.BytesOut += dono;
             usage.LastSeen = now;
@@ -259,12 +255,26 @@ public sealed class MonitorEngine : IAsyncDisposable
             }
             _connectionsSnapshot = list;
 
-            // per-app live connection counts
-            var counts = list.Where(ConnectionEnumerator.HasRemotePeer)
-                             .GroupBy(c => c.AppId)
-                             .ToDictionary(g => g.Key, g => g.Count());
+            // Ensure every network-active app appears (even without ETW byte
+            // attribution) and refresh its live connection count.
+            var now = DateTimeOffset.UtcNow;
+            var activeCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            foreach (var grp in list.Where(ConnectionEnumerator.HasRemotePeer).GroupBy(c => c.AppId))
+            {
+                if (string.IsNullOrEmpty(grp.Key) || grp.Key is "system") continue;
+                activeCounts[grp.Key] = grp.Count();
+                if (!_appStore.ContainsKey(grp.Key))
+                {
+                    var app = _processes.Resolve(grp.First().ProcessId);
+                    if (app.Id is not ("system" or "unknown"))
+                    {
+                        var u = GetOrCreateApp(app, now);
+                        u.LastSeen = now;
+                    }
+                }
+            }
             foreach (var u in _appStore.Values)
-                u.ActiveConnections = counts.TryGetValue(u.App.Id, out var n) ? n : 0;
+                u.ActiveConnections = activeCounts.TryGetValue(u.App.Id, out var n) ? n : 0;
 
             if (_settings.MonitorRdp)
                 foreach (var a in _alerts.CheckRdp(list)) Persist(a);
@@ -294,6 +304,14 @@ public sealed class MonitorEngine : IAsyncDisposable
     }
 
     // ---------------- alerts / firewall ----------------
+
+    private AppUsage GetOrCreateApp(AppInfo app, DateTimeOffset now)
+        => _appStore.GetOrAdd(app.Id, _ =>
+        {
+            _store.UpsertAppMeta(app);
+            RaiseNewApp(app);
+            return new AppUsage { App = app, FirstSeen = now };
+        });
 
     private void RaiseNewApp(AppInfo app)
     {
@@ -582,24 +600,33 @@ public sealed class MonitorEngine : IAsyncDisposable
 
     public async Task RescanDevicesAsync(CancellationToken ct)
     {
-        _lastDeviceScan = DateTimeOffset.UtcNow;
-        List<Device> found;
-        try { found = await _scanner.ScanAsync(ct).ConfigureAwait(false); }
-        catch (Exception ex) { Console.Error.WriteLine($"[Engine] device scan: {ex.Message}"); return; }
+        // Guard against overlapping scans (multiple clients, scheduled + manual).
+        if (Interlocked.Exchange(ref _scanning, 1) == 1) return;
+        try
+        {
+            _lastDeviceScan = DateTimeOffset.UtcNow;
+            List<Device> found;
+            try { found = await _scanner.ScanAsync(ct).ConfigureAwait(false); }
+            catch (Exception ex) { Console.Error.WriteLine($"[Engine] device scan: {ex.Message}"); return; }
 
-        foreach (var d in found) _store.UpsertDevice(d);
-        _store.MarkDevicesOffline(found.Select(d => d.Id));
+            foreach (var d in found) _store.UpsertDevice(d);
+            _store.MarkDevicesOffline(found.Select(d => d.Id));
 
-        if (_settings.MonitorNewDevices)
-            foreach (var a in _alerts.CheckDevices(found))
-                Persist(a);
+            if (_settings.MonitorNewDevices)
+                foreach (var a in _alerts.CheckDevices(found))
+                    Persist(a);
 
-        foreach (var d in found)
-            Events?.Invoke(new DeviceChangedEvent { Device = d });
+            foreach (var d in found)
+                Events?.Invoke(new DeviceChangedEvent { Device = d });
 
-        var status = _status;
-        status.OnlineDeviceCount = found.Count(d => d.IsOnline);
-        _status = status;
+            var status = _status;
+            status.OnlineDeviceCount = found.Count(d => d.IsOnline);
+            _status = status;
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _scanning, 0);
+        }
     }
 
     public void RenameDevice(string id, string name) => _store.RenameDevice(id, name);
