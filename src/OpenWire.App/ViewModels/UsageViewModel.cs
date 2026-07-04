@@ -17,6 +17,7 @@ public partial class UsageViewModel : ObservableObject
     [ObservableProperty] private ObservableCollection<AppUsage> _apps = new();
     [ObservableProperty] private ObservableCollection<HostUsage> _hosts = new();
     [ObservableProperty] private ObservableCollection<TrafficTypeUsage> _types = new();
+    [ObservableProperty] private ObservableCollection<CountryUsage> _countries = new();
     [ObservableProperty] private string _totalText = "";
 
     public UsageViewModel(EngineClient client) => _client = client;
@@ -24,9 +25,10 @@ public partial class UsageViewModel : ObservableObject
     public async Task LoadAsync()
     {
         var u = await _client.GetUsageAsync(Range, GroupBy);
-        Apps = new ObservableCollection<AppUsage>(u.Apps);
-        Hosts = new ObservableCollection<HostUsage>(u.Hosts);
+        Apps = new ObservableCollection<AppUsage>(u.Apps.Take(60));
+        Hosts = new ObservableCollection<HostUsage>(u.Hosts.Take(60));
         Types = new ObservableCollection<TrafficTypeUsage>(u.Types);
+        Countries = new ObservableCollection<CountryUsage>(u.Countries.Take(40));
         TotalText = $"{ByteFormatter.Bytes(u.TotalBytesIn + u.TotalBytesOut)} · " +
                     $"down {ByteFormatter.Bytes(u.TotalBytesIn)} · up {ByteFormatter.Bytes(u.TotalBytesOut)}";
     }

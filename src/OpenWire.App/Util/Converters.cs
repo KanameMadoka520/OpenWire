@@ -113,9 +113,36 @@ public sealed class EnumVisibilityConverter : IValueConverter
     public object ConvertBack(object? v, Type t, object? p, CultureInfo c) => Binding.DoNothing;
 }
 
+/// <summary>Multiplies a 0..1 fraction by the numeric parameter to get a bar width.</summary>
+public sealed class FractionWidthConverter : IValueConverter
+{
+    public object Convert(object? value, Type t, object? p, CultureInfo c)
+    {
+        double f = value is double d ? d : 0;
+        double max = p is string s && double.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out var m) ? m : 100;
+        return Math.Max(0, Math.Min(1, f)) * max;
+    }
+    public object ConvertBack(object? v, Type t, object? p, CultureInfo c) => Binding.DoNothing;
+}
+
 public sealed class LocalTimeConverter : IValueConverter
 {
     public object Convert(object? value, Type t, object? p, CultureInfo c)
         => value is DateTimeOffset dto ? dto.ToLocalTime().ToString(p as string ?? "MMM d  HH:mm") : "";
+    public object ConvertBack(object? v, Type t, object? p, CultureInfo c) => Binding.DoNothing;
+}
+
+/// <summary>Buckets a timestamp into Today / Yesterday / Earlier for alert grouping.</summary>
+public sealed class DayGroupConverter : IValueConverter
+{
+    public object Convert(object? value, Type t, object? p, CultureInfo c)
+    {
+        if (value is not DateTimeOffset dto) return "Earlier";
+        var day = dto.ToLocalTime().Date;
+        var today = DateTime.Now.Date;
+        if (day == today) return "Today";
+        if (day == today.AddDays(-1)) return "Yesterday";
+        return day.ToString("MMMM d");
+    }
     public object ConvertBack(object? v, Type t, object? p, CultureInfo c) => Binding.DoNothing;
 }

@@ -7,7 +7,7 @@ using OpenWire.Core.Util;
 
 namespace OpenWire.App.ViewModels;
 
-/// <summary>One application row on the Firewall screen.</summary>
+/// <summary>One application row on the Firewall screen (separate In/Out control).</summary>
 public partial class AppRowVM : ObservableObject
 {
     private readonly FirewallViewModel _parent;
@@ -16,29 +16,27 @@ public partial class AppRowVM : ObservableObject
     public string AppId => Usage.App.Id;
     public string Name => Usage.App.Name;
     public string Path => Usage.App.ExecutablePath;
-    public string Publisher => string.IsNullOrEmpty(Usage.App.Publisher) ? "Unsigned" : Usage.App.Publisher;
+    public string Version => string.IsNullOrEmpty(Usage.App.Version) ? "—" : Usage.App.Version;
     public string DownText => ByteFormatter.Bytes(Usage.BytesIn);
     public string UpText => ByteFormatter.Bytes(Usage.BytesOut);
-    public int Connections => Usage.ActiveConnections;
+    public string HostText => Usage.HostCount > 0 ? $"{Usage.HostCount} host(s)" : $"{Usage.ActiveConnections} conn.";
 
-    [ObservableProperty] private AppFirewallStatus _status;
+    [ObservableProperty] private bool _blockIn;
+    [ObservableProperty] private bool _blockOut;
 
-    public bool IsBlocked => Status == AppFirewallStatus.Blocked;
-
-    public AppRowVM(AppUsage usage, FirewallViewModel parent)
+    public AppRowVM(AppUsage usage, FirewallViewModel parent, AppFirewallRule? rule)
     {
         Usage = usage;
         _parent = parent;
-        _status = usage.FirewallStatus;
+        _blockIn = rule?.BlockIncoming ?? false;
+        _blockOut = rule?.BlockOutgoing ?? false;
     }
 
-    partial void OnStatusChanged(AppFirewallStatus value) => OnPropertyChanged(nameof(IsBlocked));
-
-    [RelayCommand]
-    private Task ToggleBlock() => _parent.ToggleBlockAsync(this);
+    [RelayCommand] private Task ToggleIn() => _parent.ApplyAsync(this);
+    [RelayCommand] private Task ToggleOut() => _parent.ApplyAsync(this);
 }
 
-/// <summary>Firewall screen: mode selector + the per-app allow/block table.</summary>
+/// <summary>Firewall screen: mode selector + per-app allow/block table.</summary>
 public partial class FirewallViewModel : ObservableObject
 {
     private readonly EngineClient _client;
@@ -47,7 +45,6 @@ public partial class FirewallViewModel : ObservableObject
     [ObservableProperty] private ObservableCollection<AppRowVM> _apps = new();
     [ObservableProperty] private string _statusText = "";
     [ObservableProperty] private bool _canEnforce;
-    [ObservableProperty] private string _search = "";
 
     public FirewallViewModel(EngineClient client) => _client = client;
 
@@ -56,21 +53,22 @@ public partial class FirewallViewModel : ObservableObject
         var fw = await _client.GetFirewallAsync();
         Mode = fw.Status.Mode;
         CanEnforce = fw.Status.CanEnforce;
+        var rules = fw.Rules.ToDictionary(r => r.AppId, StringComparer.OrdinalIgnoreCase);
 
         var usage = await _client.GetUsageAsync(GraphRange.Day, UsageGroupBy.Apps);
-        Apps = new ObservableCollection<AppRowVM>(usage.Apps.Select(a => new AppRowVM(a, this)));
+        Apps = new ObservableCollection<AppRowVM>(
+            usage.Apps.Select(a => new AppRowVM(a, this, rules.GetValueOrDefault(a.App.Id))));
 
         StatusText = CanEnforce
             ? $"{fw.Status.BlockedAppCount} blocked · {Apps.Count} apps"
             : "Run the engine as administrator to enforce blocks";
     }
 
-    public async Task ToggleBlockAsync(AppRowVM row)
+    /// <summary>Push a row's current In/Out block state to the firewall.</summary>
+    public async Task ApplyAsync(AppRowVM row)
     {
         if (!CanEnforce) return;
-        bool block = !row.IsBlocked;
-        await _client.SetAppBlockedAsync(row.AppId, row.Path, block, block);
-        row.Status = block ? AppFirewallStatus.Blocked : AppFirewallStatus.Allowed;
+        await _client.SetAppBlockedAsync(row.AppId, row.Path, row.BlockIn, row.BlockOut);
     }
 
     [RelayCommand]

@@ -42,12 +42,12 @@ public sealed class TrafficGraph : FrameworkElement
         Color outC = ResColor("OutFillColor", Color.FromRgb(0xE8, 0xA1, 0x3A));
         Color outL = ResColor("OutLineColor", Color.FromRgb(0xFF, 0xC4, 0x6B));
 
-        _inFill = VerticalFade(inC, 0.55, 0.04);
-        _outFill = VerticalFade(outC, 0.45, 0.03);
-        _inPen = new Pen(new SolidColorBrush(inL), 1.6); _inPen.Freeze();
-        _outPen = new Pen(new SolidColorBrush(outL), 1.6); _outPen.Freeze();
-        _gridPen = new Pen(new SolidColorBrush(Color.FromArgb(0x30, 0x3A, 0x44, 0x53)), 1); _gridPen.Freeze();
-        _gridText = new SolidColorBrush(Color.FromRgb(0x5E, 0x6B, 0x7A)); _gridText.Freeze();
+        _inFill = VerticalFade(inC, 0.72, 0.10);
+        _outFill = VerticalFade(outC, 0.68, 0.08);
+        _inPen = new Pen(new SolidColorBrush(inL), 1.4); _inPen.Freeze();
+        _outPen = new Pen(new SolidColorBrush(outL), 1.4); _outPen.Freeze();
+        _gridPen = new Pen(new SolidColorBrush(Color.FromRgb(0xEC, 0xEF, 0xF3)), 1); _gridPen.Freeze();
+        _gridText = new SolidColorBrush(Color.FromRgb(0x98, 0xA2, 0xB3)); _gridText.Freeze();
 
         Loaded += (_, _) => CompositionTarget.Rendering += OnFrame;
         Unloaded += (_, _) => CompositionTarget.Rendering -= OnFrame;

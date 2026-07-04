@@ -122,7 +122,9 @@
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
                     <Border x:Name="b" Background="{TemplateBinding Background}">
-                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        <TextBlock Text="{TemplateBinding Content}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                   FontSize="{TemplateBinding FontSize}" Foreground="{TemplateBinding Foreground}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
@@ -173,6 +175,40 @@
                             <Setter TargetName="b" Property="Background" Value="{StaticResource BgElevated}" />
                             <Setter TargetName="glyph" Property="Foreground" Value="{StaticResource Accent}" />
                             <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
+                            <Setter Property="FontWeight" Value="SemiBold" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ============ Top tab (GlassWire top nav) ============ -->
+    <Style x:Key="TopTab" TargetType="RadioButton">
+        <Setter Property="Foreground" Value="{StaticResource TextSecondary}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RadioButton">
+                    <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="10" Padding="16,7" Margin="3,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock x:Name="glyph" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="19"
+                                       Foreground="{TemplateBinding Foreground}" Text="{TemplateBinding Tag}" VerticalAlignment="Center" />
+                            <ContentPresenter VerticalAlignment="Center" Margin="10,0,0,0" />
+                        </StackPanel>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="b" Property="Background" Value="{StaticResource BgSubtle}" />
+                            <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="b" Property="Background" Value="{StaticResource AccentSoft}" />
+                            <Setter TargetName="glyph" Property="Foreground" Value="{StaticResource Accent}" />
+                            <Setter Property="Foreground" Value="{StaticResource Accent}" />
                             <Setter Property="FontWeight" Value="SemiBold" />
                         </Trigger>
                     </ControlTemplate.Triggers>
@@ -242,6 +278,38 @@
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsHighlighted" Value="True">
                             <Setter TargetName="b" Property="Background" Value="{StaticResource BgApp}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ============ Allow/Block pill (ToggleButton) ============ -->
+    <Style x:Key="Pill" TargetType="ToggleButton">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="HorizontalAlignment" Value="Left" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="b" CornerRadius="13" Padding="12,5" Background="{StaticResource AllowBg}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock x:Name="t" Text="Allowed" Foreground="{StaticResource AllowText}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <TextBlock Text="&#xE70D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="8" Margin="8,1,0,0"
+                                       Foreground="{StaticResource AllowText}" x:Name="chev" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="b" Property="Background" Value="{StaticResource BlockBg}" />
+                            <Setter TargetName="t" Property="Text" Value="Blocked" />
+                            <Setter TargetName="t" Property="Foreground" Value="{StaticResource BlockText}" />
+                            <Setter TargetName="chev" Property="Foreground" Value="{StaticResource BlockText}" />
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="b" Property="Opacity" Value="0.82" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

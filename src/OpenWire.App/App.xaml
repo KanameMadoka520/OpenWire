@@ -21,6 +21,8 @@
             <util:SeverityBrushConverter x:Key="SevBrush" />
             <util:DeviceKindGlyphConverter x:Key="DevGlyph" />
             <util:LocalTimeConverter x:Key="LocalTime" />
+            <util:DayGroupConverter x:Key="DayGroup" />
+            <util:FractionWidthConverter x:Key="FracW" />
             <util:IconLoader x:Key="AppIcon" />
         </ResourceDictionary>
     </Application.Resources>

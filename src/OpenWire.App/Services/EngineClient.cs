@@ -131,6 +131,7 @@ public sealed class EngineClient : IDisposable
     public Task<GraphResponse> GetGraphAsync(GraphRange range) => RequestAsync<GraphResponse>(new GetGraphRequest { Range = range });
     public Task<UsageResponse> GetUsageAsync(GraphRange range, UsageGroupBy groupBy) => RequestAsync<UsageResponse>(new GetUsageRequest { Range = range, GroupBy = groupBy });
     public Task<ConnectionsResponse> GetConnectionsAsync() => RequestAsync<ConnectionsResponse>(new GetConnectionsRequest());
+    public Task<HardwareResponse> GetHardwareAsync() => RequestAsync<HardwareResponse>(new GetHardwareRequest());
     public Task<FirewallResponse> GetFirewallAsync() => RequestAsync<FirewallResponse>(new GetFirewallRequest());
     public Task<OkResponse> SetFirewallModeAsync(FirewallMode mode) => RequestAsync<OkResponse>(new SetFirewallModeRequest { Mode = mode });
     public Task<OkResponse> SetAppBlockedAsync(string appId, string path, bool blockIn, bool blockOut)

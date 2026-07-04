@@ -91,10 +91,10 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="b" Property="Background" Value="{StaticResource BgPanel}" />
+                            <Setter TargetName="b" Property="Background" Value="{StaticResource BgSubtle}" />
                         </Trigger>
                         <Trigger Property="IsSelected" Value="True">
-                            <Setter TargetName="b" Property="Background" Value="{StaticResource BgElevated}" />
+                            <Setter TargetName="b" Property="Background" Value="{StaticResource AccentSoft}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -116,10 +116,10 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="b" Property="Background" Value="{StaticResource BgPanel}" />
+                            <Setter TargetName="b" Property="Background" Value="{StaticResource BgSubtle}" />
                         </Trigger>
                         <Trigger Property="IsSelected" Value="True">
-                            <Setter TargetName="b" Property="Background" Value="{StaticResource BgElevated}" />
+                            <Setter TargetName="b" Property="Background" Value="{StaticResource AccentSoft}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
