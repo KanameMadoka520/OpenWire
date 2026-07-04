@@ -69,7 +69,7 @@ public sealed class IpcServer : IAsyncDisposable
                 var request = await channel.ReceiveAsync(ct).ConfigureAwait(false);
                 if (request is null) break;
 
-                IpcMessage? response = await DispatchAsync(request, client, ct).ConfigureAwait(false);
+                IpcMessage? response = Dispatch(request, client, ct);
                 if (response is not null)
                 {
                     response.CorrelationId = request.CorrelationId;
@@ -89,7 +89,7 @@ public sealed class IpcServer : IAsyncDisposable
         }
     }
 
-    private async Task<IpcMessage?> DispatchAsync(IpcMessage request, Client client, CancellationToken ct)
+    private IpcMessage? Dispatch(IpcMessage request, Client client, CancellationToken ct)
     {
         try
         {
