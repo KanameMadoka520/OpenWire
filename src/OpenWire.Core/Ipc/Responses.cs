@@ -29,6 +29,7 @@ public sealed class UsageResponse : IpcMessage
     public List<AppUsage> Apps { get; set; } = new();
     public List<HostUsage> Hosts { get; set; } = new();
     public List<TrafficTypeUsage> Types { get; set; } = new();
+    public List<CountryUsage> Countries { get; set; } = new();
     public long TotalBytesIn { get; set; }
     public long TotalBytesOut { get; set; }
 }
@@ -36,6 +37,11 @@ public sealed class UsageResponse : IpcMessage
 public sealed class ConnectionsResponse : IpcMessage
 {
     public List<ConnectionInfo> Connections { get; set; } = new();
+}
+
+public sealed class HardwareResponse : IpcMessage
+{
+    public HardwareSnapshot Hardware { get; set; } = new();
 }
 
 public sealed class FirewallResponse : IpcMessage

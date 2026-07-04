@@ -35,6 +35,9 @@ public sealed class GetUsageRequest : IpcMessage
 /// <summary>Fetch the current live connection table.</summary>
 public sealed class GetConnectionsRequest : IpcMessage { }
 
+/// <summary>Fetch current hardware telemetry + recent history.</summary>
+public sealed class GetHardwareRequest : IpcMessage { }
+
 /// <summary>Fetch firewall status, per-app rules and profiles.</summary>
 public sealed class GetFirewallRequest : IpcMessage { }
 

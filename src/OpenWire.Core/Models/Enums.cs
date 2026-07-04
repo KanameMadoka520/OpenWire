@@ -60,6 +60,7 @@ public enum UsageGroupBy
     Apps = 0,
     Hosts = 1,
     TrafficType = 2,
+    Country = 3,
 }
 
 /// <summary>Kinds of alerts OpenWire can raise (mirrors GlassWire's alert catalogue).</summary>

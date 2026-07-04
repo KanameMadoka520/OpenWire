@@ -23,6 +23,12 @@ public sealed class EngineStatus
     /// <summary>Total bytes sent since monitoring began (all history).</summary>
     public long TotalBytesOut { get; set; }
 
+    /// <summary>Total bytes to/from the internet (WAN) this session.</summary>
+    public long TotalWanBytes { get; set; }
+
+    /// <summary>Total bytes to/from the local network (LAN) this session.</summary>
+    public long TotalLanBytes { get; set; }
+
     public int ActiveAppCount { get; set; }
     public int ActiveConnectionCount { get; set; }
     public int OnlineDeviceCount { get; set; }

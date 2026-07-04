@@ -23,6 +23,20 @@ public sealed class HostUsage
     public int AppCount { get; set; }
 }
 
+/// <summary>Aggregated usage grouped by destination country.</summary>
+public sealed class CountryUsage
+{
+    public string CountryCode { get; set; } = string.Empty;
+    public string CountryName { get; set; } = string.Empty;
+
+    public long BytesIn { get; set; }
+    public long BytesOut { get; set; }
+    public long Total => BytesIn + BytesOut;
+
+    public double Fraction { get; set; }
+    public bool IsLocal { get; set; }
+}
+
 /// <summary>Aggregated usage grouped by traffic type (application / protocol bucket).</summary>
 public sealed class TrafficTypeUsage
 {
