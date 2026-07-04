@@ -28,6 +28,7 @@ public sealed class TrafficGraph : FrameworkElement
     private readonly Brush _inFill, _outFill;
     private readonly Pen _inPen, _outPen, _gridPen;
     private readonly Brush _gridText;
+    private readonly Brush _idleFill;
     private readonly Typeface _mono = new("Cascadia Mono, Consolas");
 
     private DateTime _lastFrame = DateTime.MinValue;
@@ -48,6 +49,7 @@ public sealed class TrafficGraph : FrameworkElement
         _outPen = new Pen(new SolidColorBrush(outL), 1.4); _outPen.Freeze();
         _gridPen = new Pen(new SolidColorBrush(Color.FromRgb(0xEC, 0xEF, 0xF3)), 1); _gridPen.Freeze();
         _gridText = new SolidColorBrush(Color.FromRgb(0x98, 0xA2, 0xB3)); _gridText.Freeze();
+        _idleFill = new SolidColorBrush(Color.FromArgb(0x16, 0x94, 0x9E, 0xAD)); _idleFill.Freeze();
 
         Loaded += (_, _) => CompositionTarget.Rendering += OnFrame;
         Unloaded += (_, _) => CompositionTarget.Rendering -= OnFrame;
@@ -117,6 +119,10 @@ public sealed class TrafficGraph : FrameworkElement
 
         DrawGridlines(dc, w, h, peak, padTop, plotH);
 
+        // Idle shading: on historical ranges, wash the spans where nothing was
+        // recorded (PC asleep / no activity) — GlassWire's grey "no-data" bands.
+        if (!LiveScroll) DrawIdleBands(dc, X, padTop, plotH, fromSec, peak);
+
         DrawArea(dc, X, Y, h - padBottom, p => p.Out, _outFill, _outPen, fromSec);
         DrawArea(dc, X, Y, h - padBottom, p => p.In, _inFill, _inPen, fromSec);
 
@@ -140,6 +146,31 @@ public sealed class TrafficGraph : FrameworkElement
             var ft = new FormattedText(s, CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
                 _mono, 10, _gridText, VisualTreeHelper.GetDpi(this).PixelsPerDip);
             dc.DrawText(ft, new Point(w - ft.Width - 6, y + 1));
+        }
+    }
+
+    /// <summary>Shade contiguous idle spans (combined throughput below a small floor).</summary>
+    private void DrawIdleBands(DrawingContext dc, Func<double, double> X, double top, double plotH, double fromSec, double peak)
+    {
+        var vis = new List<Pt>(_points.Count);
+        foreach (var p in _points) if (p.TimeSec >= fromSec - 5) vis.Add(p);
+        if (vis.Count < 2) return;
+
+        double floor = Math.Max(64, peak * 0.02);
+        int i = 0;
+        while (i < vis.Count)
+        {
+            if (vis[i].In + vis[i].Out <= floor)
+            {
+                int j = i;
+                while (j + 1 < vis.Count && vis[j + 1].In + vis[j + 1].Out <= floor) j++;
+                double x0 = X(vis[i].TimeSec);
+                double x1 = X(vis[Math.Min(j + 1, vis.Count - 1)].TimeSec);
+                if (x1 - x0 >= 2)
+                    dc.DrawRectangle(_idleFill, null, new Rect(x0, top, x1 - x0, plotH));
+                i = j + 1;
+            }
+            else i++;
         }
     }
 
