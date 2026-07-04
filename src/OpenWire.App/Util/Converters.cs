@@ -80,6 +80,20 @@ public sealed class SeverityBrushConverter : IValueConverter
     private static Brush Res(string k) => (Brush)Application.Current.Resources[k];
 }
 
+/// <summary>Colours the VirusTotal reputation cell: red when flagged, green when
+/// clean, muted otherwise.</summary>
+public sealed class ReputationBrushConverter : IValueConverter
+{
+    public object Convert(object? value, Type t, object? p, CultureInfo c) => value switch
+    {
+        ReputationState.Flagged => Res("Danger"),
+        ReputationState.Clean => Res("Success"),
+        _ => Res("TextMuted"),
+    };
+    public object ConvertBack(object? v, Type t, object? p, CultureInfo c) => Binding.DoNothing;
+    private static Brush Res(string k) => (Brush)Application.Current.Resources[k];
+}
+
 /// <summary>Maps a device kind to a Segoe Fluent / MDL2 icon glyph (by code point).</summary>
 public sealed class DeviceKindGlyphConverter : IValueConverter
 {

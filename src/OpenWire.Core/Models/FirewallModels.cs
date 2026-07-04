@@ -8,6 +8,12 @@ public sealed class FirewallStatus
     /// <summary>Name of the active firewall profile.</summary>
     public string ActiveProfile { get; set; } = "Default";
 
+    /// <summary>Friendly name of the currently connected network (SSID / adapter).</summary>
+    public string NetworkName { get; set; } = string.Empty;
+
+    /// <summary>Opaque fingerprint of the current network, for binding a profile to it.</summary>
+    public string NetworkFingerprint { get; set; } = string.Empty;
+
     public int BlockedAppCount { get; set; }
     public int PendingAppCount { get; set; }
 
@@ -40,10 +46,17 @@ public sealed class FirewallProfile
 {
     public string Name { get; set; } = "Default";
 
-    /// <summary>Optional network (SSID / gateway MAC) that auto-activates this profile.</summary>
+    /// <summary>Opaque fingerprint of the network (SSID or gateway MAC) that
+    /// auto-activates this profile. Empty = never auto-activate.</summary>
     public string AutoActivateOnNetwork { get; set; } = string.Empty;
 
+    /// <summary>Friendly label of the network captured when the profile was created.</summary>
+    public string NetworkLabel { get; set; } = string.Empty;
+
     public FirewallMode Mode { get; set; } = FirewallMode.Off;
+
+    /// <summary>App ids blocked while this profile is active (scoped rule set).</summary>
+    public List<string> BlockedAppIds { get; set; } = new();
 
     public bool IsActive { get; set; }
 }

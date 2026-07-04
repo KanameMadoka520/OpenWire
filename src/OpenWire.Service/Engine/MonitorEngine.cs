@@ -17,6 +17,7 @@ namespace OpenWire.Service.Engine;
 public sealed class MonitorEngine : IAsyncDisposable
 {
     private const int RingCapacitySeconds = 3 * 60 * 60; // 3h of 1s samples
+    private const int SparkHistorySeconds = 60;           // per-app sparkline window
 
     private readonly ProcessResolver _processes = new();
     private readonly ConnectionEnumerator _connections;
@@ -28,6 +29,7 @@ public sealed class MonitorEngine : IAsyncDisposable
     private readonly DeviceScanner _scanner;
     private readonly FirewallManager _firewall = new();
     private readonly AlertEngine _alerts = new();
+    private readonly ReputationService _reputation = new();
     private readonly HistoryStore _store;
 
     private readonly object _ringLock = new();
@@ -49,6 +51,7 @@ public sealed class MonitorEngine : IAsyncDisposable
     private List<ConnectionInfo> _connectionsSnapshot = new();
     private volatile EngineStatus _status = new();
     private AppSettings _settings = new();
+    private NetworkInfo _network = NetworkInfo.None;
     private DateTimeOffset _monitoringSince;
     private DateTimeOffset _lastDeviceScan = DateTimeOffset.MinValue;
     private bool _etwActive;
@@ -73,6 +76,9 @@ public sealed class MonitorEngine : IAsyncDisposable
     {
         _settings = _store.LoadSettings();
         _dns.Enabled = _settings.ResolveHostNames;
+        _reputation.SetApiKey(_settings.VirusTotalApiKey);
+        EnsureProfiles();
+        _network = NetworkIdentity.Current();
         _monitoringSince = DateTimeOffset.UtcNow;
         _currentBucket = MinuteBucket(_monitoringSince);
 
@@ -221,6 +227,19 @@ public sealed class MonitorEngine : IAsyncDisposable
         // Decay the "active" flag for apps that didn't move this tick.
         foreach (var u in _appStore.Values)
             if (u.LastSeen < now - TimeSpan.FromSeconds(3)) u.IsActive = false;
+
+        // Append this tick's combined rate to each app's sparkline ring. Rebuild the
+        // list (copy-on-write) so the IPC thread can read a stable snapshot lock-free.
+        foreach (var u in _appStore.Values)
+        {
+            int rate = (int)Math.Clamp(u.DownRate + u.UpRate, 0, int.MaxValue);
+            var prev = u.RateHistory;
+            int keep = Math.Min(prev.Count, SparkHistorySeconds - 1);
+            var next = new List<int>(keep + 1);
+            for (int k = prev.Count - keep; k < prev.Count; k++) next.Add(prev[k]);
+            next.Add(rate);
+            u.RateHistory = next;
+        }
     }
 
     private void AttributePerHost()
@@ -329,7 +348,30 @@ public sealed class MonitorEngine : IAsyncDisposable
             if (a is not null) Persist(a);
         }
 
+        RefreshNetwork();
         RefreshFirewallCache();
+    }
+
+    /// <summary>Re-detect the active network and auto-activate a matching profile.</summary>
+    private void RefreshNetwork()
+    {
+        try
+        {
+            _network = NetworkIdentity.Current();
+            if (string.IsNullOrEmpty(_network.Fingerprint)) return;
+
+            // Already on a profile bound to this network → leave the user's choice alone.
+            var active = ActiveProfileObj();
+            if (active is not null && active.AutoActivateOnNetwork.Equals(_network.Fingerprint, StringComparison.OrdinalIgnoreCase))
+                return;
+
+            var match = _settings.FirewallProfiles.FirstOrDefault(
+                p => !string.IsNullOrEmpty(p.AutoActivateOnNetwork) &&
+                     p.AutoActivateOnNetwork.Equals(_network.Fingerprint, StringComparison.OrdinalIgnoreCase));
+            if (match is not null && !match.Name.Equals(_settings.ActiveProfile, StringComparison.OrdinalIgnoreCase))
+                ActivateProfile(match.Name);
+        }
+        catch (Exception ex) { Console.Error.WriteLine($"[Engine] network refresh: {ex.Message}"); }
     }
 
     // ---------------- alerts / firewall ----------------
@@ -494,9 +536,13 @@ public sealed class MonitorEngine : IAsyncDisposable
             a.PrimaryHostCountry = live.PrimaryHostCountry;
             a.HostCount = live.HostCount;
             a.Processes = live.Processes;
+            a.RateHistory = live.RateHistory; // stable snapshot ref (copy-on-write)
         }
         foreach (var a in apps)
+        {
             a.FirewallStatus = FirewallStatusFor(a.App.Id);
+            a.Reputation = _reputation.Get(a.App.ExecutablePath);
+        }
         resp.Apps = apps.OrderByDescending(a => a.Total).ToList();
 
         // Hosts, traffic types and countries all derive from the host rollup.
@@ -588,16 +634,93 @@ public sealed class MonitorEngine : IAsyncDisposable
         var status = new FirewallStatus
         {
             Mode = _settings.FirewallMode,
-            ActiveProfile = "Default",
+            ActiveProfile = _settings.ActiveProfile,
+            NetworkName = _network.Name,
+            NetworkFingerprint = _network.Fingerprint,
             BlockedAppCount = _firewallCache.Count,
             PendingAppCount = _pendingApps.Count,
             CanEnforce = CanEnforceFirewall,
         };
-        var profiles = new List<FirewallProfile>
+        var profiles = _settings.FirewallProfiles;
+        foreach (var p in profiles)
+            p.IsActive = p.Name.Equals(_settings.ActiveProfile, StringComparison.OrdinalIgnoreCase);
+        return (status, _firewallCache.Values.ToList(), profiles.ToList());
+    }
+
+    // ---------------- firewall profiles ----------------
+
+    /// <summary>Guarantee a "Default" profile exists and an active profile is set.</summary>
+    private void EnsureProfiles()
+    {
+        bool changed = false;
+        if (_settings.FirewallProfiles.Count == 0)
         {
-            new() { Name = "Default", Mode = _settings.FirewallMode, IsActive = true },
-        };
-        return (status, _firewallCache.Values.ToList(), profiles);
+            _settings.FirewallProfiles.Add(new FirewallProfile { Name = "Default", Mode = _settings.FirewallMode });
+            changed = true;
+        }
+        if (string.IsNullOrEmpty(_settings.ActiveProfile) ||
+            !_settings.FirewallProfiles.Any(p => p.Name.Equals(_settings.ActiveProfile, StringComparison.OrdinalIgnoreCase)))
+        {
+            _settings.ActiveProfile = _settings.FirewallProfiles[0].Name;
+            changed = true;
+        }
+        if (changed) _store.SaveSettings(_settings);
+    }
+
+    private FirewallProfile? ActiveProfileObj() =>
+        _settings.FirewallProfiles.FirstOrDefault(p => p.Name.Equals(_settings.ActiveProfile, StringComparison.OrdinalIgnoreCase));
+
+    public void SaveProfile(FirewallProfile profile)
+    {
+        if (string.IsNullOrWhiteSpace(profile.Name)) return;
+        var list = _settings.FirewallProfiles;
+        int idx = list.FindIndex(p => p.Name.Equals(profile.Name, StringComparison.OrdinalIgnoreCase));
+        if (idx >= 0) list[idx] = profile; else list.Add(profile);
+        _store.SaveSettings(_settings);
+    }
+
+    public void DeleteProfile(string name)
+    {
+        if (string.IsNullOrEmpty(name) || name.Equals("Default", StringComparison.OrdinalIgnoreCase)) return;
+        _settings.FirewallProfiles.RemoveAll(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+        if (_settings.ActiveProfile.Equals(name, StringComparison.OrdinalIgnoreCase))
+            ActivateProfile("Default");
+        else
+            _store.SaveSettings(_settings);
+    }
+
+    public void ActivateProfile(string name)
+    {
+        var prof = _settings.FirewallProfiles.FirstOrDefault(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+        if (prof is null) return;
+
+        _settings.ActiveProfile = prof.Name;
+        _settings.FirewallMode = prof.Mode;
+        ApplyProfileBlocks(prof);
+        _store.SaveSettings(_settings);
+
+        _status = BuildStatus(DateTimeOffset.UtcNow, 0, 0);
+        Events?.Invoke(new StatusChangedEvent { Status = _status });
+    }
+
+    /// <summary>Reconcile enforced blocks so exactly the profile's app set is blocked.</summary>
+    private void ApplyProfileBlocks(FirewallProfile prof)
+    {
+        if (!CanEnforceFirewall) return;
+        var desired = new HashSet<string>(prof.BlockedAppIds, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var appId in _firewallCache.Keys.ToList())
+            if (!desired.Contains(appId)) _firewall.UnblockApp(appId);
+
+        foreach (var appId in desired)
+        {
+            if (_firewallCache.ContainsKey(appId)) continue;
+            string exe = _appStore.TryGetValue(appId, out var u) ? u.App.ExecutablePath : appId;
+            string nm = _appStore.TryGetValue(appId, out var au) ? au.App.Name : Path.GetFileNameWithoutExtension(exe);
+            if (!string.IsNullOrEmpty(exe))
+                try { _firewall.SetAppBlocked(exe, appId, nm, blockIn: true, blockOut: true); } catch { }
+        }
+        RefreshFirewallCache();
     }
 
     private AppFirewallStatus FirewallStatusFor(string appId)
@@ -611,6 +734,8 @@ public sealed class MonitorEngine : IAsyncDisposable
     {
         var old = _settings.FirewallMode;
         _settings.FirewallMode = mode;
+        var active = ActiveProfileObj();
+        if (active is not null) active.Mode = mode;
         _store.SaveSettings(_settings);
 
         if (CanEnforceFirewall)
@@ -636,6 +761,16 @@ public sealed class MonitorEngine : IAsyncDisposable
 
         _pendingApps.TryRemove(appId, out _);
         RefreshFirewallCache();
+
+        // Record the decision in the active profile so it survives restarts and
+        // profile switches.
+        var prof = ActiveProfileObj();
+        if (prof is not null)
+        {
+            prof.BlockedAppIds.RemoveAll(a => a.Equals(appId, StringComparison.OrdinalIgnoreCase));
+            if (blockIn || blockOut) prof.BlockedAppIds.Add(appId);
+            _store.SaveSettings(_settings);
+        }
     }
 
     public void ResolveAppDecision(string appId, bool allow)
@@ -696,6 +831,7 @@ public sealed class MonitorEngine : IAsyncDisposable
     {
         _settings = settings;
         _dns.Enabled = settings.ResolveHostNames;
+        _reputation.SetApiKey(settings.VirusTotalApiKey);
         _store.SaveSettings(settings);
         SetFirewallMode(settings.FirewallMode);
     }
@@ -723,6 +859,7 @@ public sealed class MonitorEngine : IAsyncDisposable
     {
         try { FlushMinute(_currentBucket); } catch { }
         _etw.Dispose();
+        _reputation.Dispose();
         _hardware.Dispose();
         _geo.Dispose();
         _store.Dispose();

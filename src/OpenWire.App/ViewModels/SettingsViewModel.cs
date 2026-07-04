@@ -20,6 +20,7 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool _dataPlanEnabled;
     [ObservableProperty] private double _dataLimitGb = 100;
     [ObservableProperty] private int _billingDay = 1;
+    [ObservableProperty] private string _virusTotalApiKey = "";
     [ObservableProperty] private string _engineInfo = "";
     [ObservableProperty] private string _savedText = "";
 
@@ -38,6 +39,7 @@ public partial class SettingsViewModel : ObservableObject
         DataPlanEnabled = s.DataPlan.Enabled;
         DataLimitGb = s.DataPlan.LimitBytes > 0 ? s.DataPlan.LimitBytes / (1024.0 * 1024 * 1024) : 100;
         BillingDay = s.DataPlan.BillingCycleStartDay;
+        VirusTotalApiKey = s.VirusTotalApiKey;
 
         var hello = await _client.HelloAsync();
         EngineInfo = $"Engine {hello.EngineVersion} · {hello.MachineName} · " +
@@ -57,6 +59,7 @@ public partial class SettingsViewModel : ObservableObject
         _settings.DataPlan.Enabled = DataPlanEnabled;
         _settings.DataPlan.LimitBytes = (long)(DataLimitGb * 1024 * 1024 * 1024);
         _settings.DataPlan.BillingCycleStartDay = Math.Clamp(BillingDay, 1, 28);
+        _settings.VirusTotalApiKey = (VirusTotalApiKey ?? "").Trim();
 
         await _client.SetSettingsAsync(_settings);
         SavedText = "Saved ✓";

@@ -56,6 +56,24 @@ public sealed class SetAppBlockedRequest : IpcMessage
     public bool BlockOutgoing { get; set; }
 }
 
+/// <summary>Create or update a firewall profile (matched by name).</summary>
+public sealed class SaveFirewallProfileRequest : IpcMessage
+{
+    public FirewallProfile Profile { get; set; } = new();
+}
+
+/// <summary>Delete a firewall profile by name (the Default profile cannot be deleted).</summary>
+public sealed class DeleteFirewallProfileRequest : IpcMessage
+{
+    public string Name { get; set; } = string.Empty;
+}
+
+/// <summary>Switch the active firewall profile, applying its mode and blocked apps.</summary>
+public sealed class ActivateFirewallProfileRequest : IpcMessage
+{
+    public string Name { get; set; } = string.Empty;
+}
+
 /// <summary>Answer an Ask-to-Connect prompt for a pending app.</summary>
 public sealed class ResolveAppDecisionRequest : IpcMessage
 {

@@ -25,6 +25,7 @@
             <util:FractionWidthConverter x:Key="FracW" />
             <util:IconLoader x:Key="AppIcon" />
             <util:CountryFlagConverter x:Key="Flag" />
+            <util:ReputationBrushConverter x:Key="RepBrush" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>

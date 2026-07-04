@@ -163,6 +163,18 @@ public sealed class IpcServer : IAsyncDisposable
                     _engine.ResolveAppDecision(rd.AppId, rd.Allow);
                     return new OkResponse();
 
+                case SaveFirewallProfileRequest sp:
+                    _engine.SaveProfile(sp.Profile);
+                    return new OkResponse();
+
+                case DeleteFirewallProfileRequest dp:
+                    _engine.DeleteProfile(dp.Name);
+                    return new OkResponse();
+
+                case ActivateFirewallProfileRequest ap:
+                    _engine.ActivateProfile(ap.Name);
+                    return new OkResponse();
+
                 case GetAlertsRequest a:
                     return new AlertsResponse { Alerts = _engine.GetAlerts(a.Limit) };
 

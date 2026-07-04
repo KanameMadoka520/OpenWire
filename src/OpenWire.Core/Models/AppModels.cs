@@ -81,4 +81,14 @@ public sealed class AppUsage
 
     /// <summary>Child processes (PIDs) of this app, for the expandable firewall row.</summary>
     public List<AppProcess> Processes { get; set; } = new();
+
+    /// <summary>
+    /// Rolling per-second throughput history (bytes/sec, combined down+up, oldest→newest,
+    /// last ~60 s) that drives the per-app sparkline. Replaced wholesale each tick
+    /// (copy-on-write) so readers on the IPC thread never see a mutating list.
+    /// </summary>
+    public List<int> RateHistory { get; set; } = new();
+
+    /// <summary>Optional VirusTotal file-reputation verdict for the app's binary.</summary>
+    public AppReputation? Reputation { get; set; }
 }

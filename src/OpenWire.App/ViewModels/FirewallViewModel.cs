@@ -50,6 +50,32 @@ public partial class AppRowVM : ObservableObject
     /// <summary>ISO country code of the most-contacted host, for the flag icon.</summary>
     public string HostCountry => Usage.PrimaryHostCountry;
 
+    /// <summary>Recent per-second throughput history driving the row's sparkline.</summary>
+    public IReadOnlyList<int> Spark => Usage.RateHistory;
+
+    // ---- VirusTotal reputation (optional; empty when no API key is configured) ----
+    public ReputationState RepState => Usage.Reputation?.State ?? ReputationState.Unknown;
+
+    public string ReputationText => Usage.Reputation is not { } r ? "" : r.State switch
+    {
+        ReputationState.Scanning => "···",
+        ReputationState.Clean => "clean",
+        ReputationState.Flagged => $"{r.Malicious}/{r.Total}",
+        ReputationState.NotFound => "unlisted",
+        ReputationState.Error => "n/a",
+        _ => "",
+    };
+
+    public string ReputationTip => Usage.Reputation is not { } r ? "" : r.State switch
+    {
+        ReputationState.Scanning => "Checking VirusTotal…",
+        ReputationState.Clean => $"VirusTotal: clean · {r.Total} engines\n{r.Sha256}",
+        ReputationState.Flagged => $"VirusTotal: {r.Malicious} of {r.Total} engines flagged this file\n{r.Sha256}",
+        ReputationState.NotFound => "Not present in VirusTotal's dataset",
+        ReputationState.Error => $"VirusTotal: {r.Detail}",
+        _ => "",
+    };
+
     public ObservableCollection<ProcRowVM> Processes { get; }
     public bool HasChildren => Processes.Count > 0;
 
@@ -81,6 +107,13 @@ public partial class FirewallViewModel : ObservableObject
     [ObservableProperty] private string _statusText = "";
     [ObservableProperty] private bool _canEnforce;
 
+    // Profiles + active network.
+    [ObservableProperty] private ObservableCollection<FirewallProfile> _profiles = new();
+    [ObservableProperty] private FirewallProfile? _selectedProfile;
+    [ObservableProperty] private string _networkName = "";
+    private string _networkFingerprint = "";
+    private bool _suppressProfileSwitch;
+
     public FirewallViewModel(EngineClient client) => _client = client;
 
     public async Task LoadAsync()
@@ -88,15 +121,64 @@ public partial class FirewallViewModel : ObservableObject
         var fw = await _client.GetFirewallAsync();
         Mode = fw.Status.Mode;
         CanEnforce = fw.Status.CanEnforce;
+        NetworkName = fw.Status.NetworkName;
+        _networkFingerprint = fw.Status.NetworkFingerprint;
         var rules = fw.Rules.ToDictionary(r => r.AppId, StringComparer.OrdinalIgnoreCase);
+
+        _suppressProfileSwitch = true;
+        Profiles = new ObservableCollection<FirewallProfile>(fw.Profiles);
+        SelectedProfile = Profiles.FirstOrDefault(p => p.Name.Equals(fw.Status.ActiveProfile, StringComparison.OrdinalIgnoreCase))
+                          ?? Profiles.FirstOrDefault();
+        _suppressProfileSwitch = false;
 
         var usage = await _client.GetUsageAsync(GraphRange.Day, UsageGroupBy.Apps);
         Apps = new ObservableCollection<AppRowVM>(
             usage.Apps.Select(a => new AppRowVM(a, this, rules.GetValueOrDefault(a.App.Id))));
 
         StatusText = CanEnforce
-            ? $"{fw.Status.BlockedAppCount} blocked · {Apps.Count} active applications"
+            ? $"{fw.Status.BlockedAppCount} blocked · {Apps.Count} active applications · profile “{fw.Status.ActiveProfile}”"
             : "Run the engine as administrator to enforce blocks and show per-app rates";
+    }
+
+    partial void OnSelectedProfileChanged(FirewallProfile? value)
+    {
+        if (_suppressProfileSwitch || value is null) return;
+        _ = ActivateAsync(value.Name);
+    }
+
+    private async Task ActivateAsync(string name)
+    {
+        await _client.ActivateFirewallProfileAsync(name);
+        await LoadAsync();
+    }
+
+    [RelayCommand]
+    private async Task NewProfile()
+    {
+        var taken = new HashSet<string>(Profiles.Select(p => p.Name), StringComparer.OrdinalIgnoreCase);
+        string name = "Profile";
+        for (int i = 2; taken.Contains(name); i++) name = $"Profile {i}";
+
+        var prof = new FirewallProfile
+        {
+            Name = name,
+            Mode = Mode,
+            NetworkLabel = NetworkName,
+            AutoActivateOnNetwork = _networkFingerprint, // bind to the current network
+            BlockedAppIds = Apps.Where(a => a.BlockIn || a.BlockOut).Select(a => a.AppId).ToList(),
+        };
+        await _client.SaveFirewallProfileAsync(prof);
+        await _client.ActivateFirewallProfileAsync(name);
+        await LoadAsync();
+    }
+
+    [RelayCommand]
+    private async Task DeleteProfile()
+    {
+        var name = SelectedProfile?.Name;
+        if (string.IsNullOrEmpty(name) || name.Equals("Default", StringComparison.OrdinalIgnoreCase)) return;
+        await _client.DeleteFirewallProfileAsync(name);
+        await LoadAsync();
     }
 
     public async Task ApplyAsync(AppRowVM row)
