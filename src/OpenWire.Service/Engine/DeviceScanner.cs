@@ -123,10 +123,12 @@ public sealed class DeviceScanner
             devices.Add(new Device
             {
                 Id = entry.Mac,
-                Name = host.Length > 0 ? host : (vendor.Length > 0 ? vendor : "Unknown device"),
+                Name = host.Length > 0 ? host : (vendor.Length > 0 ? vendor : "Generic device"),
                 IpAddress = ip,
                 MacAddress = entry.Mac,
                 Vendor = vendor,
+                Description = vendor.Length > 0 ? vendor : "Generic device",
+                OperatingSystem = GuessOs(vendor, host, kind),
                 Kind = kind,
                 IsOnline = true,
                 IsGateway = isGateway,
@@ -145,6 +147,8 @@ public sealed class DeviceScanner
             IpAddress = selfIp,
             MacAddress = selfMac,
             Vendor = _oui.Lookup(selfMac),
+            Description = "This computer",
+            OperatingSystem = "Windows",
             Kind = DeviceKind.ThisComputer,
             IsOnline = true,
             IsThisDevice = true,
@@ -153,6 +157,18 @@ public sealed class DeviceScanner
         });
 
         return devices;
+    }
+
+    private static string GuessOs(string vendor, string host, DeviceKind kind)
+    {
+        string v = vendor.ToLowerInvariant();
+        string h = host.ToLowerInvariant();
+        if (v.Contains("raspberry") || v.Contains("synology") || v.Contains("qnap") || v.Contains("espressif")) return "Linux";
+        if (v.Contains("apple")) return "macOS / iOS";
+        if (h.Contains("android") || v.Contains("xiaomi") || v.Contains("huawei") || v.Contains("oneplus")) return "Android";
+        if (kind is DeviceKind.Computer && (v.Contains("dell") || v.Contains("hewlett") || v.Contains("lenovo") || v.Contains("intel") || v.Contains("micro-star") || v.Contains("asustek"))) return "Windows";
+        if (kind is DeviceKind.Router) return "Router OS";
+        return string.Empty;
     }
 
     private static async Task PingSweepAsync(HashSet<string> targets, CancellationToken ct)

@@ -25,6 +25,7 @@ public sealed class EtwNetworkMonitor : IDisposable
 
     private readonly ConcurrentDictionary<int, ProcCounter> _perPid = new();
     private readonly ConcurrentDictionary<EndpointKey, ProcCounter> _perEndpoint = new();
+    private readonly ConcurrentDictionary<string, ProcCounter> _perPortClass = new();
 
     private long _globalIn;
     private long _globalOut;
@@ -49,14 +50,14 @@ public sealed class EtwNetworkMonitor : IDisposable
             _session.EnableKernelProvider(KernelTraceEventParser.Keywords.NetworkTCPIP);
 
             var kernel = _session.Source.Kernel;
-            kernel.TcpIpRecv += d => Record(d.ProcessID, d.size, incoming: true, d.saddr);
-            kernel.TcpIpSend += d => Record(d.ProcessID, d.size, incoming: false, d.daddr);
-            kernel.TcpIpRecvIPV6 += d => Record(d.ProcessID, d.size, incoming: true, d.saddr);
-            kernel.TcpIpSendIPV6 += d => Record(d.ProcessID, d.size, incoming: false, d.daddr);
-            kernel.UdpIpRecv += d => Record(d.ProcessID, d.size, incoming: true, d.saddr);
-            kernel.UdpIpSend += d => Record(d.ProcessID, d.size, incoming: false, d.daddr);
-            kernel.UdpIpRecvIPV6 += d => Record(d.ProcessID, d.size, incoming: true, d.saddr);
-            kernel.UdpIpSendIPV6 += d => Record(d.ProcessID, d.size, incoming: false, d.daddr);
+            kernel.TcpIpRecv += d => Record(d.ProcessID, d.size, incoming: true, d.saddr, d.sport);
+            kernel.TcpIpSend += d => Record(d.ProcessID, d.size, incoming: false, d.daddr, d.dport);
+            kernel.TcpIpRecvIPV6 += d => Record(d.ProcessID, d.size, incoming: true, d.saddr, d.sport);
+            kernel.TcpIpSendIPV6 += d => Record(d.ProcessID, d.size, incoming: false, d.daddr, d.dport);
+            kernel.UdpIpRecv += d => Record(d.ProcessID, d.size, incoming: true, d.saddr, d.sport);
+            kernel.UdpIpSend += d => Record(d.ProcessID, d.size, incoming: false, d.daddr, d.dport);
+            kernel.UdpIpRecvIPV6 += d => Record(d.ProcessID, d.size, incoming: true, d.saddr, d.sport);
+            kernel.UdpIpSendIPV6 += d => Record(d.ProcessID, d.size, incoming: false, d.daddr, d.dport);
 
             _running = true;
             _pump = new Thread(PumpLoop)
@@ -94,17 +95,25 @@ public sealed class EtwNetworkMonitor : IDisposable
         }
     }
 
-    private void Record(int pid, int size, bool incoming, IPAddress remote)
+    private void Record(int pid, int size, bool incoming, IPAddress remote, int remotePort)
     {
         if (size <= 0) return;
 
         if (incoming) Interlocked.Add(ref _globalIn, size);
         else Interlocked.Add(ref _globalOut, size);
 
+        bool local = remote is not null && ConnectionEnumerator.IsLocalAddress(remote);
         if (remote is not null)
         {
-            if (ConnectionEnumerator.IsLocalAddress(remote)) Interlocked.Add(ref _lanBytes, size);
+            if (local) Interlocked.Add(ref _lanBytes, size);
             else Interlocked.Add(ref _wanBytes, size);
+        }
+
+        if (!local && remotePort > 0)
+        {
+            var pc = _perPortClass.GetOrAdd(TrafficClassifier.Classify(remotePort), static _ => new ProcCounter());
+            if (incoming) Interlocked.Add(ref pc.In, size);
+            else Interlocked.Add(ref pc.Out, size);
         }
 
         if (pid > 0)
@@ -138,6 +147,14 @@ public sealed class EtwNetworkMonitor : IDisposable
 
     public (long Wan, long Lan) ReadWanLan()
         => (Interlocked.Read(ref _wanBytes), Interlocked.Read(ref _lanBytes));
+
+    public List<(string Name, long In, long Out)> SnapshotPortClasses()
+    {
+        var result = new List<(string, long, long)>(_perPortClass.Count);
+        foreach (var kv in _perPortClass)
+            result.Add((kv.Key, Interlocked.Read(ref kv.Value.In), Interlocked.Read(ref kv.Value.Out)));
+        return result;
+    }
 
     public Dictionary<int, (long In, long Out)> SnapshotPerPid()
     {

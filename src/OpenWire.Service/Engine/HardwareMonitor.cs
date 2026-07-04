@@ -21,9 +21,10 @@ public sealed class HardwareMonitor : IDisposable
     private PerformanceCounter? _diskRead;
     private PerformanceCounter? _diskWrite;
     private readonly List<PerformanceCounter> _gpu = new();
+    private readonly List<PerformanceCounter> _gpuMem = new();
 
     private double _cpuV, _memPct, _diskR, _diskW, _gpuV;
-    private long _memUsed, _memTotal;
+    private long _memUsed, _memTotal, _gpuMemV;
     private Timer? _timer;
 
     public HardwareMonitor()
@@ -32,6 +33,7 @@ public sealed class HardwareMonitor : IDisposable
         TryInit(ref _diskRead, "PhysicalDisk", "Disk Read Bytes/sec", "_Total");
         TryInit(ref _diskWrite, "PhysicalDisk", "Disk Write Bytes/sec", "_Total");
         InitGpu();
+        InitGpuMemory();
     }
 
     public void Start() => _timer = new Timer(_ => Sample(), null, 500, 1000);
@@ -62,6 +64,25 @@ public sealed class HardwareMonitor : IDisposable
         catch { /* no GPU counters */ }
     }
 
+    private void InitGpuMemory()
+    {
+        try
+        {
+            var cat = new PerformanceCounterCategory("GPU Adapter Memory");
+            foreach (var inst in cat.GetInstanceNames())
+            {
+                try
+                {
+                    var c = new PerformanceCounter("GPU Adapter Memory", "Dedicated Usage", inst);
+                    c.NextValue();
+                    _gpuMem.Add(c);
+                }
+                catch { /* skip */ }
+            }
+        }
+        catch { /* no GPU memory counters */ }
+    }
+
     private void Sample()
     {
         try
@@ -71,13 +92,15 @@ public sealed class HardwareMonitor : IDisposable
             double dw = SafeNext(_diskWrite);
             double gpu = 0;
             foreach (var c in _gpu) gpu += SafeNext(c);
+            long gpuMem = 0;
+            foreach (var c in _gpuMem) gpuMem += (long)SafeNext(c);
 
             GetMemory(out long used, out long total);
             double memPct = total > 0 ? used * 100.0 / total : 0;
 
             lock (_lock)
             {
-                _cpuV = cpu; _diskR = dr; _diskW = dw; _gpuV = gpu;
+                _cpuV = cpu; _diskR = dr; _diskW = dw; _gpuV = gpu; _gpuMemV = gpuMem;
                 _memUsed = used; _memTotal = total; _memPct = memPct;
                 _history.Enqueue(new HardwareSample
                 {
@@ -112,6 +135,7 @@ public sealed class HardwareMonitor : IDisposable
                 DiskReadBytesPerSec = _diskR,
                 DiskWriteBytesPerSec = _diskW,
                 GpuPercent = _gpuV,
+                GpuMemoryUsedBytes = _gpuMemV,
                 History = _history.ToList(),
             };
         }
@@ -153,5 +177,6 @@ public sealed class HardwareMonitor : IDisposable
         _diskRead?.Dispose();
         _diskWrite?.Dispose();
         foreach (var c in _gpu) c.Dispose();
+        foreach (var c in _gpuMem) c.Dispose();
     }
 }

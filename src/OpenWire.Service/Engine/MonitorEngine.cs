@@ -181,25 +181,42 @@ public sealed class MonitorEngine : IAsyncDisposable
     private void AttributePerApp(DateTimeOffset now)
     {
         var snap = _etw.SnapshotPerPid();
+
+        // Rates are per-second deltas; reset before re-accumulating this tick.
+        foreach (var u in _appStore.Values) { u.DownRate = 0; u.UpRate = 0; }
+
+        var childMap = new Dictionary<string, List<AppProcess>>(StringComparer.OrdinalIgnoreCase);
+
         foreach (var (pid, val) in snap)
         {
+            var app = _processes.Resolve(pid);
+            if (app.Id is "system") continue;
+            if (val.In + val.Out == 0) continue;
+
             _prevPerPid.TryGetValue(pid, out var prev);
             long di = Math.Max(0, val.In - prev.In);
             long dono = Math.Max(0, val.Out - prev.Out);
-            if (di == 0 && dono == 0) continue;
-
-            var app = _processes.Resolve(pid);
-            if (app.Id is "system") continue;
 
             var usage = GetOrCreateApp(app, now);
-            usage.BytesIn += di;
-            usage.BytesOut += dono;
-            usage.LastSeen = now;
-            usage.IsActive = true;
+            if (di > 0 || dono > 0)
+            {
+                usage.BytesIn += di;
+                usage.BytesOut += dono;
+                usage.LastSeen = now;
+                usage.IsActive = true;
+                usage.DownRate += di;
+                usage.UpRate += dono;
+                Accumulate(_pendingApp, app.Id, di, dono);
+            }
 
-            Accumulate(_pendingApp, app.Id, di, dono);
+            if (!childMap.TryGetValue(app.Id, out var list)) { list = new(); childMap[app.Id] = list; }
+            list.Add(new AppProcess { Pid = pid, BytesIn = val.In, BytesOut = val.Out, DownRate = di, UpRate = dono });
         }
         _prevPerPid = snap;
+
+        foreach (var (appId, list) in childMap)
+            if (_appStore.TryGetValue(appId, out var u))
+                u.Processes = list.OrderByDescending(p => p.BytesIn + p.BytesOut).ToList();
 
         // Decay the "active" flag for apps that didn't move this tick.
         foreach (var u in _appStore.Values)
@@ -265,15 +282,25 @@ public sealed class MonitorEngine : IAsyncDisposable
             {
                 if (string.IsNullOrEmpty(grp.Key) || grp.Key is "system") continue;
                 activeCounts[grp.Key] = grp.Count();
-                if (!_appStore.ContainsKey(grp.Key))
+
+                if (!_appStore.TryGetValue(grp.Key, out var u))
                 {
                     var app = _processes.Resolve(grp.First().ProcessId);
-                    if (app.Id is not ("system" or "unknown"))
-                    {
-                        var u = GetOrCreateApp(app, now);
-                        u.LastSeen = now;
-                    }
+                    if (app.Id is "system" or "unknown") continue;
+                    u = GetOrCreateApp(app, now);
+                    u.LastSeen = now;
                 }
+
+                // Most-contacted host + distinct host count.
+                var topHost = grp.GroupBy(c => c.RemoteDisplay).OrderByDescending(g => g.Count()).First();
+                u.PrimaryHost = topHost.Key;
+                u.PrimaryHostCountry = topHost.First().Geo.CountryCode;
+                u.HostCount = grp.Select(c => c.RemoteDisplay).Distinct().Count();
+
+                // Fallback child-process list from the connection table (no ETW bytes).
+                if (u.Processes.Count == 0)
+                    u.Processes = grp.Select(c => c.ProcessId).Distinct()
+                                     .Select(p => new AppProcess { Pid = p }).ToList();
             }
             foreach (var u in _appStore.Values)
                 u.ActiveConnections = activeCounts.TryGetValue(u.App.Id, out var n) ? n : 0;
@@ -512,49 +539,40 @@ public sealed class MonitorEngine : IAsyncDisposable
 
     private List<TrafficTypeUsage> BuildTrafficTypes(List<HostUsage> hosts)
     {
-        // Byte-accurate per-protocol classification needs per-port accounting (a later
-        // enhancement). For now we present a live port-class split from the current
-        // connection table as a representative breakdown, plus the aggregate volume.
+        // Byte-accurate protocol split from ETW per-port-class counters (elevated).
+        if (_etwActive && _etw.IsRunning)
+        {
+            var classes = _etw.SnapshotPortClasses();
+            if (classes.Count > 0)
+            {
+                long total = classes.Sum(c => c.In + c.Out);
+                var result = classes
+                    .Select(c => new TrafficTypeUsage { TypeName = c.Name, BytesIn = c.In, BytesOut = c.Out })
+                    .OrderByDescending(t => t.Total).ToList();
+                foreach (var t in result) t.Fraction = total > 0 ? (double)t.Total / total : 0;
+                return result;
+            }
+        }
+
+        // Fallback (no ETW): approximate from the live connection table by port class.
         long totalIn = hosts.Sum(h => h.BytesIn);
         long totalOut = hosts.Sum(h => h.BytesOut);
-        long total = totalIn + totalOut;
-
-        var classes = _connectionsSnapshot
-            .Where(ConnectionEnumerator.HasRemotePeer)
-            .GroupBy(c => ClassifyPort(c.RemotePort))
+        long grand = totalIn + totalOut;
+        var byClass = _connectionsSnapshot.Where(ConnectionEnumerator.HasRemotePeer)
+            .GroupBy(c => TrafficClassifier.Classify(c.RemotePort))
             .ToDictionary(g => g.Key, g => g.Count());
-        int conns = Math.Max(1, classes.Values.Sum());
-
-        var result = classes
-            .OrderByDescending(kv => kv.Value)
+        int conns = Math.Max(1, byClass.Values.Sum());
+        var fb = byClass.OrderByDescending(kv => kv.Value)
             .Select(kv => new TrafficTypeUsage
             {
                 TypeName = kv.Key,
                 BytesIn = (long)(totalIn * ((double)kv.Value / conns)),
                 BytesOut = (long)(totalOut * ((double)kv.Value / conns)),
-            })
-            .ToList();
-
-        if (result.Count == 0)
-            result.Add(new TrafficTypeUsage { TypeName = "Internet", BytesIn = totalIn, BytesOut = totalOut });
-
-        foreach (var t in result) t.Fraction = total > 0 ? (double)t.Total / total : 0;
-        return result;
+            }).ToList();
+        if (fb.Count == 0) fb.Add(new TrafficTypeUsage { TypeName = "Other", BytesIn = totalIn, BytesOut = totalOut });
+        foreach (var t in fb) t.Fraction = grand > 0 ? (double)t.Total / grand : 0;
+        return fb;
     }
-
-    private static string ClassifyPort(int port) => port switch
-    {
-        443 or 8443 => "Web (HTTPS)",
-        80 or 8080 => "Web (HTTP)",
-        53 => "DNS",
-        20 or 21 => "FTP",
-        22 => "SSH",
-        25 or 465 or 587 => "Email (SMTP)",
-        110 or 143 or 993 or 995 => "Email",
-        3389 => "Remote Desktop",
-        123 => "Time (NTP)",
-        _ => "Other",
-    };
 
     public List<ConnectionInfo> GetConnections() =>
         _connectionsSnapshot.Where(ConnectionEnumerator.HasRemotePeer).ToList();
