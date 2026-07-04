@@ -27,6 +27,9 @@ with no account, no telemetry, and no paywalled features.
   data-plan thresholds, and more.
 - **Things** — scan the local network and inventory every device (IP, MAC, vendor, type,
   first-seen, online status).
+- **Hardware resources** — live CPU / memory / disk / GPU graphs alongside the network views.
+- **GlassWire-accurate UI** — light theme, top 5-tab layout, the signature down/up gauge with
+  WAN/LAN bars, and green/red firewall pills.
 - **Driverless** — captures per-process traffic with **ETW**, not a kernel driver, so there is
   nothing to sign and nothing to install into the kernel.
 
@@ -126,14 +129,18 @@ OpenWire ships a small built-in MAC-OUI table. For full coverage, drop a Wiresha
 
 ## Feature ↔ screen map
 
-| Screen | What it does |
-|--------|--------------|
-| **Graph** | Live animated bandwidth graph + top applications. |
-| **Firewall** | Per-app allow/block table + firewall mode selector. |
-| **Usage** | Byte totals by app / host / traffic type over day / week / month. |
-| **Alerts** | Chronological security + activity event log. |
-| **Things** | LAN device inventory with scan. |
-| **Settings** | Monitors, resolution, data plan, and engine info. |
+The UI follows current GlassWire: a light theme with a top 5-tab bar, and a
+bottom dashboard (down/up gauge + WAN/LAN bars + history scrubber) on the
+Traffic tab.
+
+| Tab | What it does |
+|-----|--------------|
+| **Traffic** | Folds three sub-views — the live animated graph (yellow download / pink upload), a 4-column usage breakdown (Apps / Hosts / Traffic types / Countries), and a connection map — sharing the bottom gauge, WAN/LAN bars and timeline scrubber. |
+| **Firewall** | Per-app table with green/red **Incoming/Outgoing** pill toggles + version / hosts / down / up, and a firewall mode selector. |
+| **Alerts** | Security + activity log grouped by Today / Yesterday / date with NEW badges. |
+| **Scanner** | LAN device inventory with scan. |
+| **Hardware** | CPU / memory / disk / GPU graphs + a live stat row. |
+| **Settings** (gear) | Monitors, resolution, data plan, and engine info. |
 
 ---
 
