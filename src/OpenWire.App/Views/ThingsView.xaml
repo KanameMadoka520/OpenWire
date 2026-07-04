@@ -6,88 +6,85 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              mc:Ignorable="d"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
-    <Grid Margin="24,18,24,24">
+    <Grid Margin="24,18,24,18">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
         <Grid Grid.Row="0" Margin="0,0,0,14">
-            <StackPanel>
-                <TextBlock Text="Things" Style="{StaticResource H1}" />
-                <TextBlock Text="Devices on your local network" Style="{StaticResource Caption}" Margin="0,3,0,0" />
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <Border Background="{StaticResource BgSubtle}" BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="6" Padding="12,7">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE701;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14" Foreground="{StaticResource Success}" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding NetworkName}" Margin="8,0,0,0" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+                <Button Content="{Binding ScanLabel}" Style="{StaticResource Btn}" Margin="12,0,0,0" Command="{Binding ScanCommand}"
+                        IsEnabled="{Binding Scanning, Converter={StaticResource BoolVis}, ConverterParameter=invert}" />
+                <TextBlock Text="{Binding LastScanText}" Style="{StaticResource Caption}" VerticalAlignment="Center" Margin="14,0,0,0" />
             </StackPanel>
-            <Button Content="{Binding ScanLabel}" Style="{StaticResource Btn}" HorizontalAlignment="Right"
-                    Command="{Binding ScanCommand}" IsEnabled="{Binding Scanning, Converter={StaticResource BoolVis}, ConverterParameter=invert}" />
+            <CheckBox Style="{StaticResource Switch}" Content="Auto-scan" IsChecked="{Binding AutoScan}" HorizontalAlignment="Right" VerticalAlignment="Center" />
         </Grid>
 
         <ListView Grid.Row="1" Style="{StaticResource Table}" ItemContainerStyle="{StaticResource Row}" ItemsSource="{Binding Devices}">
             <ListView.View>
                 <GridView ColumnHeaderContainerStyle="{StaticResource ColHeader}">
-                    <GridViewColumn Header="DEVICE" Width="280">
+                    <GridViewColumn Header="DEVICE" Width="240">
                         <GridViewColumn.CellTemplate><DataTemplate>
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="{Binding Kind, Converter={StaticResource DevGlyph}}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                           FontSize="17" Foreground="{StaticResource Accent}" VerticalAlignment="Center" Margin="0,0,12,0" />
-                                <StackPanel VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding Name}" />
-                                    <TextBlock Text="{Binding Vendor}" Foreground="{StaticResource TextMuted}" FontSize="11" />
-                                </StackPanel>
-                            </StackPanel>
-                        </DataTemplate></GridViewColumn.CellTemplate>
-                    </GridViewColumn>
-                    <GridViewColumn Header="IP ADDRESS" Width="140">
-                        <GridViewColumn.CellTemplate><DataTemplate>
-                            <TextBlock Style="{StaticResource Mono}" Foreground="{StaticResource TextSecondary}" Text="{Binding IpAddress}" />
-                        </DataTemplate></GridViewColumn.CellTemplate>
-                    </GridViewColumn>
-                    <GridViewColumn Header="MAC" Width="160">
-                        <GridViewColumn.CellTemplate><DataTemplate>
-                            <TextBlock Style="{StaticResource Mono}" Foreground="{StaticResource TextMuted}" FontSize="12" Text="{Binding MacAddress}" />
-                        </DataTemplate></GridViewColumn.CellTemplate>
-                    </GridViewColumn>
-                    <GridViewColumn Header="FIRST SEEN" Width="140">
-                        <GridViewColumn.CellTemplate><DataTemplate>
-                            <TextBlock Foreground="{StaticResource TextSecondary}" FontSize="12"
-                                       Text="{Binding FirstSeen, Converter={StaticResource LocalTime}, ConverterParameter='MMM d'}" />
-                        </DataTemplate></GridViewColumn.CellTemplate>
-                    </GridViewColumn>
-                    <GridViewColumn Header="STATUS" Width="120">
-                        <GridViewColumn.CellTemplate><DataTemplate>
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <Ellipse Width="8" Height="8" VerticalAlignment="Center" Margin="0,0,7,0">
+                                <Ellipse Width="8" Height="8" VerticalAlignment="Center" Margin="0,0,10,0">
                                     <Ellipse.Style>
                                         <Style TargetType="Ellipse">
                                             <Setter Property="Fill" Value="{StaticResource TextMuted}" />
                                             <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsOnline}" Value="True">
-                                                    <Setter Property="Fill" Value="{StaticResource Success}" />
-                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding IsOnline}" Value="True"><Setter Property="Fill" Value="{StaticResource Success}" /></DataTrigger>
                                             </Style.Triggers>
                                         </Style>
                                     </Ellipse.Style>
                                 </Ellipse>
-                                <TextBlock FontSize="12" Foreground="{StaticResource TextSecondary}">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="Text" Value="Offline" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsOnline}" Value="True">
-                                                    <Setter Property="Text" Value="Online" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
+                                <TextBlock Text="{Binding Kind, Converter={StaticResource DevGlyph}}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                           FontSize="16" Foreground="{StaticResource Accent}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                             </StackPanel>
                         </DataTemplate></GridViewColumn.CellTemplate>
                     </GridViewColumn>
-                    <GridViewColumn Header="" Width="60">
+                    <GridViewColumn Header="DESCRIPTION" Width="150">
                         <GridViewColumn.CellTemplate><DataTemplate>
-                            <Button Style="{StaticResource IconBtn}" Width="30" Height="30" Content="&#xE74D;" FontSize="13"
-                                    ToolTip="Forget device"
-                                    Command="{Binding DataContext.ForgetCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
-                                    CommandParameter="{Binding}" />
+                            <TextBlock Text="{Binding Description}" Foreground="{StaticResource TextSecondary}" FontSize="12.5" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                        </DataTemplate></GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn Header="SYSTEM" Width="120">
+                        <GridViewColumn.CellTemplate><DataTemplate>
+                            <TextBlock Text="{Binding OperatingSystem}" Foreground="{StaticResource TextSecondary}" FontSize="12.5" VerticalAlignment="Center" />
+                        </DataTemplate></GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn Header="IP ADDRESS" Width="130">
+                        <GridViewColumn.CellTemplate><DataTemplate>
+                            <TextBlock Style="{StaticResource Mono}" FontSize="12.5" Foreground="{StaticResource TextSecondary}" Text="{Binding IpAddress}" VerticalAlignment="Center" />
+                        </DataTemplate></GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn Header="MAC" Width="150">
+                        <GridViewColumn.CellTemplate><DataTemplate>
+                            <TextBlock Style="{StaticResource Mono}" FontSize="12" Foreground="{StaticResource TextMuted}" Text="{Binding MacAddress}" VerticalAlignment="Center" />
+                        </DataTemplate></GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn Header="LAST SEEN" Width="130">
+                        <GridViewColumn.CellTemplate><DataTemplate>
+                            <TextBlock Foreground="{StaticResource TextSecondary}" FontSize="12" VerticalAlignment="Center"
+                                       Text="{Binding LastSeen, Converter={StaticResource LocalTime}, ConverterParameter='MMM d  HH:mm'}" />
+                        </DataTemplate></GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn Header="FIRST SEEN" Width="130">
+                        <GridViewColumn.CellTemplate><DataTemplate>
+                            <TextBlock Foreground="{StaticResource TextSecondary}" FontSize="12" VerticalAlignment="Center"
+                                       Text="{Binding FirstSeen, Converter={StaticResource LocalTime}, ConverterParameter='MMM d  HH:mm'}" />
+                        </DataTemplate></GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn Header="" Width="52">
+                        <GridViewColumn.CellTemplate><DataTemplate>
+                            <Button Style="{StaticResource IconBtn}" Width="30" Height="30" Content="&#xE74D;" FontSize="13" ToolTip="Forget device"
+                                    Command="{Binding DataContext.ForgetCommand, RelativeSource={RelativeSource AncestorType=ListView}}" CommandParameter="{Binding}" />
                         </DataTemplate></GridViewColumn.CellTemplate>
                     </GridViewColumn>
                 </GridView>

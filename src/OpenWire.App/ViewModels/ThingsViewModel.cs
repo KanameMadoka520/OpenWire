@@ -13,7 +13,10 @@ public partial class ThingsViewModel : ObservableObject
 
     [ObservableProperty] private ObservableCollection<Device> _devices = new();
     [ObservableProperty] private bool _scanning;
-    [ObservableProperty] private string _scanLabel = "Scan network";
+    [ObservableProperty] private string _scanLabel = "Scan";
+    [ObservableProperty] private string _networkName = "Local network";
+    [ObservableProperty] private string _lastScanText = "";
+    [ObservableProperty] private bool _autoScan;
 
     public ThingsViewModel(EngineClient client) => _client = client;
 
@@ -21,6 +24,7 @@ public partial class ThingsViewModel : ObservableObject
     {
         var resp = await _client.GetDevicesAsync();
         Fill(resp.Devices);
+        if (resp.Devices.Count > 0) LastScanText = "Scanned just now";
     }
 
     [RelayCommand]
@@ -35,6 +39,7 @@ public partial class ThingsViewModel : ObservableObject
             // streams freshly-discovered devices in via DeviceChanged events.
             var resp = await _client.GetDevicesAsync(rescan: true);
             Fill(resp.Devices);
+            LastScanText = "Scanned just now";
             await Task.Delay(6000);
         }
         catch
@@ -44,7 +49,7 @@ public partial class ThingsViewModel : ObservableObject
         finally
         {
             Scanning = false;
-            ScanLabel = "Scan network";
+            ScanLabel = "Scan";
         }
     }
 

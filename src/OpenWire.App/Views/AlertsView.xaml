@@ -17,25 +17,49 @@
     <Grid Margin="24,18,24,18">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <Grid Grid.Row="0" Margin="0,0,0,10">
-            <TextBlock Text="Alerts" Style="{StaticResource H1}" VerticalAlignment="Center" />
-            <Button Content="Mark all read" Style="{StaticResource BtnGhost}" HorizontalAlignment="Right" Command="{Binding MarkAllReadCommand}" />
+        <TextBlock Grid.Row="0" Text="Alerts" Style="{StaticResource H1}" Margin="0,0,0,12" />
+
+        <Grid Grid.Row="1" Margin="0,0,0,4">
+            <StackPanel Orientation="Horizontal" Background="{StaticResource BgSubtle}" HorizontalAlignment="Left">
+                <StackPanel.Resources>
+                    <Style TargetType="RadioButton" BasedOn="{StaticResource Seg}"><Setter Property="GroupName" Value="sev" /></Style>
+                </StackPanel.Resources>
+                <RadioButton IsChecked="{Binding SeverityFilter, Converter={StaticResource EnumMatch}, ConverterParameter=All, Mode=TwoWay}">
+                    <TextBlock><Run Text="All " /><Run Text="{Binding AllCount, Mode=OneWay}" Foreground="{StaticResource TextMuted}" /></TextBlock>
+                </RadioButton>
+                <RadioButton IsChecked="{Binding SeverityFilter, Converter={StaticResource EnumMatch}, ConverterParameter=Important, Mode=TwoWay}">
+                    <TextBlock><Run Text="Important " /><Run Text="{Binding ImportantCount, Mode=OneWay}" Foreground="{StaticResource TextMuted}" /></TextBlock>
+                </RadioButton>
+                <RadioButton IsChecked="{Binding SeverityFilter, Converter={StaticResource EnumMatch}, ConverterParameter=Log, Mode=TwoWay}">
+                    <TextBlock><Run Text="Log " /><Run Text="{Binding LogCount, Mode=OneWay}" Foreground="{StaticResource TextMuted}" /></TextBlock>
+                </RadioButton>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Grid Width="240" Margin="0,0,10,0">
+                    <TextBox Style="{StaticResource Search}" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock Text="Search" Foreground="{StaticResource TextMuted}" FontSize="13" Margin="12,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                               Visibility="{Binding SearchText.Length, Converter={StaticResource ZeroVis}, ConverterParameter=invert}" />
+                </Grid>
+                <Button Content="Mark all read" Style="{StaticResource BtnGhost}" Command="{Binding MarkAllReadCommand}" />
+            </StackPanel>
         </Grid>
 
-        <TextBlock Grid.Row="1" Text="{Binding EmptyText}" Style="{StaticResource Caption}"
+        <TextBlock Grid.Row="2" Text="{Binding EmptyText}" Style="{StaticResource Caption}"
                    HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="420" TextAlignment="Center"
                    Visibility="{Binding Alerts.Count, Converter={StaticResource ZeroVis}, ConverterParameter=invert}" />
 
-        <ListBox Grid.Row="1" Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource PlainRow}"
-                 ItemsSource="{Binding Source={StaticResource Grouped}}" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+        <ListBox Grid.Row="2" Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource PlainRow}"
+                 ItemsSource="{Binding Source={StaticResource Grouped}}" ScrollViewer.HorizontalScrollBarVisibility="Disabled" Margin="0,8,0,0">
             <ListBox.GroupStyle>
                 <GroupStyle>
                     <GroupStyle.HeaderTemplate>
                         <DataTemplate>
-                            <TextBlock Text="{Binding Name}" Style="{StaticResource TableHeaderText}" Margin="4,18,0,6" />
+                            <TextBlock Text="{Binding Name}" Style="{StaticResource TableHeaderText}" Margin="4,16,0,6" />
                         </DataTemplate>
                     </GroupStyle.HeaderTemplate>
                 </GroupStyle>
@@ -46,6 +70,7 @@
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
@@ -53,11 +78,12 @@
                                     Visibility="{Binding Acknowledged, Converter={StaticResource BoolVis}, ConverterParameter=invert}">
                                 <TextBlock Text="NEW" Foreground="White" FontSize="10" FontWeight="Bold" VerticalAlignment="Center" />
                             </Border>
-                            <StackPanel Grid.Column="1">
+                            <Image Grid.Column="1" Width="22" Height="22" VerticalAlignment="Top" Margin="0,0,12,0" Source="{Binding AppId, Converter={StaticResource AppIcon}}" />
+                            <StackPanel Grid.Column="2">
                                 <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
                                 <TextBlock Text="{Binding Message}" Foreground="{StaticResource TextSecondary}" FontSize="12.5" TextWrapping="Wrap" Margin="0,3,0,0" />
                             </StackPanel>
-                            <TextBlock Grid.Column="2" Style="{StaticResource Mono}" FontSize="12" Foreground="{StaticResource TextMuted}" VerticalAlignment="Top" Margin="12,0,0,0"
+                            <TextBlock Grid.Column="3" Style="{StaticResource Mono}" FontSize="12" Foreground="{StaticResource TextMuted}" VerticalAlignment="Top" Margin="12,0,0,0"
                                        Text="{Binding Time, Converter={StaticResource LocalTime}, ConverterParameter='HH:mm'}" />
                         </Grid>
                     </Border>

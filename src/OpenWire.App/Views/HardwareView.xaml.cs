@@ -36,14 +36,23 @@ public partial class HardwareView : UserControl
 
     private void OnSnapshot(HardwareSnapshot hw)
     {
-        var cpu = hw.History.Select(h => h.CpuPercent).ToList();
-        var mem = hw.History.Select(h => h.MemoryPercent).ToList();
-        var disk = hw.History.Select(h => h.DiskBytesPerSec).ToList();
-        var gpu = hw.History.Select(h => h.GpuPercent).ToList();
+        CpuGraph.SetValues(hw.History.Select(h => h.CpuPercent).ToList(), bytes: false);
+        MemGraph.SetValues(hw.History.Select(h => h.MemoryPercent).ToList(), bytes: false);
+        DiskGraph.SetValues(hw.History.Select(h => h.DiskBytesPerSec).ToList(), bytes: true);
+        GpuGraph.SetValues(hw.History.Select(h => h.GpuPercent).ToList(), bytes: false);
 
-        CpuGraph.SetValues(cpu, 100, bytes: false);
-        MemGraph.SetValues(mem, 100, bytes: false);
-        DiskGraph.SetValues(disk, Math.Max(disk.DefaultIfEmpty(0).Max(), 1_000_000), bytes: true);
-        GpuGraph.SetValues(gpu, Math.Max(gpu.DefaultIfEmpty(0).Max(), 100), bytes: false);
+        // time axis: 7 evenly-spaced absolute times spanning the history window
+        if (hw.History.Count >= 2)
+        {
+            var start = hw.History[0].Time.ToLocalTime();
+            var end = hw.History[^1].Time.ToLocalTime();
+            var labels = new string[7];
+            for (int i = 0; i < 7; i++)
+            {
+                var t = start + (end - start) * (i / 6.0);
+                labels[i] = t.ToString("HH:mm:ss");
+            }
+            TimeAxis.ItemsSource = labels;
+        }
     }
 }

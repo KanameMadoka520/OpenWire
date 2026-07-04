@@ -16,6 +16,7 @@ public partial class HardwareViewModel : ObservableObject
     [ObservableProperty] private string _diskReadText = "0 B/s";
     [ObservableProperty] private string _diskWriteText = "0 B/s";
     [ObservableProperty] private string _gpuText = "0 %";
+    [ObservableProperty] private string _gpuMemoryText = "0 B";
 
     /// <summary>Raised each poll so the view can feed the four metric graphs.</summary>
     public event Action<HardwareSnapshot>? SnapshotUpdated;
@@ -36,6 +37,7 @@ public partial class HardwareViewModel : ObservableObject
         DiskReadText = ByteFormatter.Rate(hw.DiskReadBytesPerSec);
         DiskWriteText = ByteFormatter.Rate(hw.DiskWriteBytesPerSec);
         GpuText = $"{hw.GpuPercent:0} %";
+        GpuMemoryText = ByteFormatter.Bytes(hw.GpuMemoryUsedBytes);
 
         SnapshotUpdated?.Invoke(hw);
     }

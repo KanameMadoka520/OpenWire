@@ -49,7 +49,28 @@
             <!-- graph -->
             <Border Background="{StaticResource BgGraph}" BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="8"
                     ClipToBounds="True" Visibility="{Binding SubView, Converter={StaticResource EnumVis}, ConverterParameter=Graph}">
-                <ctrl:TrafficGraph x:Name="Graph" />
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <ctrl:TrafficGraph x:Name="Graph" Grid.Row="0" />
+                    <!-- breakdown bar: down/up totals + top app + top host for the view -->
+                    <Border Grid.Row="1" BorderBrush="{StaticResource Border}" BorderThickness="0,1,0,0" Padding="14,7" Background="{StaticResource BgPanel}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE74B;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11" Foreground="{StaticResource InLine}" VerticalAlignment="Center" />
+                            <TextBlock Style="{StaticResource Mono}" FontSize="12" Margin="5,0,0,0" VerticalAlignment="Center" Text="{Binding BreakdownDown}" />
+                            <TextBlock Text="&#xE74A;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11" Foreground="{StaticResource OutLine}" VerticalAlignment="Center" Margin="16,0,0,0" />
+                            <TextBlock Style="{StaticResource Mono}" FontSize="12" Margin="5,0,0,0" VerticalAlignment="Center" Text="{Binding BreakdownUp}" />
+                            <Border Width="1" Background="{StaticResource Border}" Margin="16,2,16,2" />
+                            <TextBlock Text="&#xE71D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" />
+                            <TextBlock FontSize="12" Foreground="{StaticResource TextSecondary}" Margin="6,0,0,0" VerticalAlignment="Center" Text="{Binding TopApp}" TextTrimming="CharacterEllipsis" MaxWidth="260" />
+                            <Border Width="1" Background="{StaticResource Border}" Margin="16,2,16,2" />
+                            <TextBlock Text="&#xE968;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" />
+                            <TextBlock FontSize="12" Foreground="{StaticResource TextSecondary}" Margin="6,0,0,0" VerticalAlignment="Center" Text="{Binding TopHost}" TextTrimming="CharacterEllipsis" MaxWidth="260" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
             </Border>
 
             <!-- columns (usage) -->
