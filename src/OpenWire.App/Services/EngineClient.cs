@@ -1,0 +1,153 @@
+using System.Collections.Concurrent;
+using System.IO;
+using System.Windows.Threading;
+using OpenWire.Core.Ipc;
+using OpenWire.Core.Models;
+
+namespace OpenWire.App.Services;
+
+/// <summary>
+/// UI-side client for the OpenWire engine. Maintains a named-pipe connection with
+/// auto-reconnect, correlates request/response messages, and raises the engine's
+/// streamed events on the UI dispatcher.
+/// </summary>
+public sealed class EngineClient : IDisposable
+{
+    private readonly Dispatcher _ui;
+    private readonly ConcurrentDictionary<string, TaskCompletionSource<IpcMessage>> _pending = new();
+    private readonly CancellationTokenSource _cts = new();
+    private volatile IpcChannel? _channel;
+
+    public bool IsConnected { get; private set; }
+
+    public event Action<bool>? ConnectionChanged;
+    public event Action<LiveTickEvent>? LiveTick;
+    public event Action<AlertRaisedEvent>? AlertRaised;
+    public event Action<DeviceChangedEvent>? DeviceChanged;
+    public event Action<StatusChangedEvent>? StatusChanged;
+    public event Action<FirewallPromptEvent>? FirewallPrompt;
+
+    public EngineClient(Dispatcher ui) => _ui = ui;
+
+    public void Start() => _ = Task.Run(() => ConnectLoopAsync(_cts.Token));
+
+    private async Task ConnectLoopAsync(CancellationToken ct)
+    {
+        while (!ct.IsCancellationRequested)
+        {
+            try
+            {
+                var pipe = IpcTransport.CreateClientStream();
+                await pipe.ConnectAsync(2000, ct).ConfigureAwait(false);
+                var channel = new IpcChannel(pipe);
+                _channel = channel;
+                SetConnected(true);
+
+                // Subscribe to the live event stream for this connection.
+                await channel.SendAsync(new SubscribeLiveRequest { Subscribe = true }, ct).ConfigureAwait(false);
+
+                await ReceiveLoopAsync(channel, ct).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) { break; }
+            catch { /* engine not up yet */ }
+
+            _channel = null;
+            SetConnected(false);
+            FailPending();
+            try { await Task.Delay(1500, ct).ConfigureAwait(false); } catch { break; }
+        }
+    }
+
+    private async Task ReceiveLoopAsync(IpcChannel channel, CancellationToken ct)
+    {
+        while (!ct.IsCancellationRequested)
+        {
+            var msg = await channel.ReceiveAsync(ct).ConfigureAwait(false);
+            if (msg is null) break;
+
+            if (msg.CorrelationId is { } id && _pending.TryRemove(id, out var tcs))
+                tcs.TrySetResult(msg);
+            else
+                DispatchEvent(msg);
+        }
+    }
+
+    private void DispatchEvent(IpcMessage msg)
+    {
+        _ui.BeginInvoke(() =>
+        {
+            switch (msg)
+            {
+                case LiveTickEvent e: LiveTick?.Invoke(e); break;
+                case AlertRaisedEvent e: AlertRaised?.Invoke(e); break;
+                case DeviceChangedEvent e: DeviceChanged?.Invoke(e); break;
+                case StatusChangedEvent e: StatusChanged?.Invoke(e); break;
+                case FirewallPromptEvent e: FirewallPrompt?.Invoke(e); break;
+            }
+        });
+    }
+
+    private void SetConnected(bool value)
+    {
+        if (IsConnected == value) return;
+        IsConnected = value;
+        _ui.BeginInvoke(() => ConnectionChanged?.Invoke(value));
+    }
+
+    private void FailPending()
+    {
+        foreach (var kv in _pending)
+            kv.Value.TrySetException(new IOException("Engine disconnected."));
+        _pending.Clear();
+    }
+
+    private async Task<T> RequestAsync<T>(IpcMessage request, CancellationToken ct = default) where T : IpcMessage
+    {
+        var channel = _channel ?? throw new InvalidOperationException("Engine not connected.");
+        var id = Guid.NewGuid().ToString("N");
+        request.CorrelationId = id;
+
+        var tcs = new TaskCompletionSource<IpcMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _pending[id] = tcs;
+
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeout.CancelAfter(TimeSpan.FromSeconds(12));
+        await using var reg = timeout.Token.Register(() =>
+        {
+            if (_pending.TryRemove(id, out var t)) t.TrySetCanceled();
+        });
+
+        await channel.SendAsync(request, ct).ConfigureAwait(false);
+        var response = await tcs.Task.ConfigureAwait(false);
+
+        if (response is ErrorResponse err) throw new InvalidOperationException(err.Error);
+        return (T)response;
+    }
+
+    // ---- typed API ----
+
+    public Task<HelloResponse> HelloAsync() => RequestAsync<HelloResponse>(new HelloRequest { ClientVersion = "0.1.0" });
+    public Task<StatusResponse> GetStatusAsync() => RequestAsync<StatusResponse>(new GetStatusRequest());
+    public Task<GraphResponse> GetGraphAsync(GraphRange range) => RequestAsync<GraphResponse>(new GetGraphRequest { Range = range });
+    public Task<UsageResponse> GetUsageAsync(GraphRange range, UsageGroupBy groupBy) => RequestAsync<UsageResponse>(new GetUsageRequest { Range = range, GroupBy = groupBy });
+    public Task<ConnectionsResponse> GetConnectionsAsync() => RequestAsync<ConnectionsResponse>(new GetConnectionsRequest());
+    public Task<FirewallResponse> GetFirewallAsync() => RequestAsync<FirewallResponse>(new GetFirewallRequest());
+    public Task<OkResponse> SetFirewallModeAsync(FirewallMode mode) => RequestAsync<OkResponse>(new SetFirewallModeRequest { Mode = mode });
+    public Task<OkResponse> SetAppBlockedAsync(string appId, string path, bool blockIn, bool blockOut)
+        => RequestAsync<OkResponse>(new SetAppBlockedRequest { AppId = appId, ExecutablePath = path, BlockIncoming = blockIn, BlockOutgoing = blockOut });
+    public Task<OkResponse> ResolveAppDecisionAsync(string appId, bool allow) => RequestAsync<OkResponse>(new ResolveAppDecisionRequest { AppId = appId, Allow = allow });
+    public Task<AlertsResponse> GetAlertsAsync(int limit = 200) => RequestAsync<AlertsResponse>(new GetAlertsRequest { Limit = limit });
+    public Task<OkResponse> AckAlertAsync(long id, bool all = false) => RequestAsync<OkResponse>(new AckAlertRequest { AlertId = id, All = all });
+    public Task<DevicesResponse> GetDevicesAsync(bool rescan = false) => RequestAsync<DevicesResponse>(new GetDevicesRequest { Rescan = rescan });
+    public Task<OkResponse> RenameDeviceAsync(string id, string name) => RequestAsync<OkResponse>(new RenameDeviceRequest { DeviceId = id, Name = name });
+    public Task<OkResponse> ForgetDeviceAsync(string id) => RequestAsync<OkResponse>(new ForgetDeviceRequest { DeviceId = id });
+    public Task<SettingsResponse> GetSettingsAsync() => RequestAsync<SettingsResponse>(new GetSettingsRequest());
+    public Task<OkResponse> SetSettingsAsync(AppSettings settings) => RequestAsync<OkResponse>(new SetSettingsRequest { Settings = settings });
+
+    public void Dispose()
+    {
+        _cts.Cancel();
+        _channel?.Dispose();
+        _cts.Dispose();
+    }
+}
