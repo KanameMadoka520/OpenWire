@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace OpenWire.Core.Ipc;
@@ -15,9 +16,8 @@ public sealed class IpcChannel : IDisposable
     private readonly Stream _stream;
     private readonly SemaphoreSlim _writeLock = new(1, 1);
 
-    private byte[] _buffer = new byte[16 * 1024];
-    private int _bufStart;
-    private int _bufEnd;
+    private readonly byte[] _readBuf = new byte[64 * 1024];
+    private readonly List<byte> _pending = new(64 * 1024);
     private bool _disposed;
 
     public IpcChannel(Stream stream) => _stream = stream;
@@ -49,38 +49,32 @@ public sealed class IpcChannel : IDisposable
     /// </summary>
     public async Task<IpcMessage?> ReceiveAsync(CancellationToken ct = default)
     {
-        var line = new List<byte>(256);
-
         while (true)
         {
-            // Consume any buffered bytes, looking for the frame delimiter.
-            if (_bufStart < _bufEnd)
+            int nl = _pending.IndexOf(Delimiter);
+            if (nl == 0)
             {
-                int idx = Array.IndexOf(_buffer, Delimiter, _bufStart, _bufEnd - _bufStart);
-                if (idx >= 0)
-                {
-                    for (int i = _bufStart; i < idx; i++) line.Add(_buffer[i]);
-                    _bufStart = idx + 1;
-                    return Decode(line);
-                }
-
-                for (int i = _bufStart; i < _bufEnd; i++) line.Add(_buffer[i]);
-                _bufStart = _bufEnd = 0;
+                _pending.RemoveAt(0); // stray empty frame — skip
+                continue;
+            }
+            if (nl > 0)
+            {
+                var msg = IpcJson.Deserialize(CollectionsMarshal.AsSpan(_pending)[..nl]);
+                _pending.RemoveRange(0, nl + 1);
+                return msg;
             }
 
-            int read = await _stream.ReadAsync(_buffer.AsMemory(0, _buffer.Length), ct).ConfigureAwait(false);
+            int read = await _stream.ReadAsync(_readBuf.AsMemory(0, _readBuf.Length), ct).ConfigureAwait(false);
             if (read == 0)
-                return line.Count == 0 ? null : Decode(line);
+            {
+                if (_pending.Count == 0) return null;
+                var msg = IpcJson.Deserialize(CollectionsMarshal.AsSpan(_pending));
+                _pending.Clear();
+                return msg;
+            }
 
-            _bufStart = 0;
-            _bufEnd = read;
+            _pending.AddRange(_readBuf.AsSpan(0, read));
         }
-    }
-
-    private static IpcMessage? Decode(List<byte> line)
-    {
-        if (line.Count == 0) return null;
-        return IpcJson.Deserialize(System.Runtime.InteropServices.CollectionsMarshal.AsSpan(line));
     }
 
     public void Dispose()

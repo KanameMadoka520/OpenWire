@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Runtime.Versioning;
+using System.Threading.Channels;
 using OpenWire.Core.Ipc;
 using OpenWire.Service.Engine;
 
@@ -7,8 +8,9 @@ namespace OpenWire.Service.Ipc;
 
 /// <summary>
 /// Named-pipe server that exposes the engine to one or more UI clients. Each
-/// connection runs a request/response loop; connections that subscribe also receive
-/// the engine's streamed events (live ticks, alerts, device changes, status).
+/// connection has an independent inbound read loop and a decoupled outbound writer
+/// so a slow/large response can never block the reading of further requests
+/// (which would otherwise deadlock the full-duplex pipe).
 /// </summary>
 [SupportedOSPlatform("windows")]
 public sealed class IpcServer : IAsyncDisposable
@@ -17,6 +19,11 @@ public sealed class IpcServer : IAsyncDisposable
     {
         public required IpcChannel Channel;
         public volatile bool Subscribed;
+        public readonly Channel<IpcMessage> Outbound =
+            System.Threading.Channels.Channel.CreateBounded<IpcMessage>(
+                new BoundedChannelOptions(4096) { FullMode = BoundedChannelFullMode.DropOldest, SingleReader = true });
+
+        public void Enqueue(IpcMessage m) => Outbound.Writer.TryWrite(m);
     }
 
     private readonly MonitorEngine _engine;
@@ -62,6 +69,8 @@ public sealed class IpcServer : IAsyncDisposable
         var client = new Client { Channel = channel };
         _clients[id] = client;
 
+        var writer = Task.Run(() => WriteLoopAsync(client, ct), ct);
+
         try
         {
             while (!ct.IsCancellationRequested)
@@ -73,7 +82,7 @@ public sealed class IpcServer : IAsyncDisposable
                 if (response is not null)
                 {
                     response.CorrelationId = request.CorrelationId;
-                    await channel.SendAsync(response, ct).ConfigureAwait(false);
+                    client.Enqueue(response);
                 }
             }
         }
@@ -85,8 +94,21 @@ public sealed class IpcServer : IAsyncDisposable
         finally
         {
             _clients.TryRemove(id, out _);
+            client.Outbound.Writer.TryComplete();
+            try { await writer.ConfigureAwait(false); } catch { }
             channel.Dispose();
         }
+    }
+
+    /// <summary>Drains a client's outbound queue to its pipe, one message at a time.</summary>
+    private static async Task WriteLoopAsync(Client client, CancellationToken ct)
+    {
+        try
+        {
+            await foreach (var msg in client.Outbound.Reader.ReadAllAsync(ct).ConfigureAwait(false))
+                await client.Channel.SendAsync(msg, ct).ConfigureAwait(false);
+        }
+        catch { /* connection gone; read loop will clean up */ }
     }
 
     private IpcMessage? Dispatch(IpcMessage request, Client client, CancellationToken ct)
@@ -120,6 +142,9 @@ public sealed class IpcServer : IAsyncDisposable
                 case GetConnectionsRequest:
                     return new ConnectionsResponse { Connections = _engine.GetConnections() };
 
+                case GetHardwareRequest:
+                    return new HardwareResponse { Hardware = _engine.GetHardware() };
+
                 case GetFirewallRequest:
                 {
                     var (status, rules, profiles) = _engine.GetFirewall();
@@ -146,9 +171,6 @@ public sealed class IpcServer : IAsyncDisposable
                     return new OkResponse();
 
                 case GetDevicesRequest d:
-                    // A rescan can take many seconds; run it in the background and let
-                    // discovered devices stream back as DeviceChanged events. Return the
-                    // currently-known devices immediately so the request never blocks.
                     if (d.Rescan) _ = _engine.RescanDevicesAsync(ct);
                     return new DevicesResponse { Devices = _engine.GetDevices() };
 
@@ -180,17 +202,8 @@ public sealed class IpcServer : IAsyncDisposable
     private void OnEngineEvent(IpcMessage evt)
     {
         foreach (var kv in _clients)
-        {
-            var client = kv.Value;
-            if (!client.Subscribed) continue;
-            _ = SafeSendAsync(client, evt);
-        }
-    }
-
-    private static async Task SafeSendAsync(Client client, IpcMessage evt)
-    {
-        try { await client.Channel.SendAsync(evt).ConfigureAwait(false); }
-        catch { /* connection went away; its read loop will clean up */ }
+            if (kv.Value.Subscribed)
+                kv.Value.Enqueue(evt);
     }
 
     public async ValueTask DisposeAsync()
