@@ -1,0 +1,140 @@
+<UserControl x:Class="OpenWire.App.Views.UsageView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:OpenWire.App.ViewModels"
+             d:DataContext="{d:DesignInstance vm:UsageViewModel}"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
+    <Grid Margin="24,18,24,24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0">
+            <StackPanel>
+                <TextBlock Text="Usage" Style="{StaticResource H1}" />
+                <TextBlock Text="{Binding TotalText}" Style="{StaticResource Caption}" Margin="0,3,0,0" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" Background="{StaticResource BgPanel}" Margin="0,0,16,0">
+                    <StackPanel.Resources>
+                        <Style TargetType="RadioButton" BasedOn="{StaticResource Seg}"><Setter Property="GroupName" Value="grp" /></Style>
+                    </StackPanel.Resources>
+                    <RadioButton Content="Apps" IsChecked="{Binding GroupBy, Converter={StaticResource EnumMatch}, ConverterParameter=Apps, Mode=TwoWay}" />
+                    <RadioButton Content="Hosts" IsChecked="{Binding GroupBy, Converter={StaticResource EnumMatch}, ConverterParameter=Hosts, Mode=TwoWay}" />
+                    <RadioButton Content="Traffic types" IsChecked="{Binding GroupBy, Converter={StaticResource EnumMatch}, ConverterParameter=TrafficType, Mode=TwoWay}" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Background="{StaticResource BgPanel}">
+                    <StackPanel.Resources>
+                        <Style TargetType="RadioButton" BasedOn="{StaticResource Seg}"><Setter Property="GroupName" Value="urange" /></Style>
+                    </StackPanel.Resources>
+                    <RadioButton Content="Day" IsChecked="{Binding Range, Converter={StaticResource EnumMatch}, ConverterParameter=Day, Mode=TwoWay}" />
+                    <RadioButton Content="Week" IsChecked="{Binding Range, Converter={StaticResource EnumMatch}, ConverterParameter=Week, Mode=TwoWay}" />
+                    <RadioButton Content="Month" IsChecked="{Binding Range, Converter={StaticResource EnumMatch}, ConverterParameter=Month, Mode=TwoWay}" />
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+
+        <Border Grid.Row="1" Height="14" />
+
+        <Grid Grid.Row="2">
+            <!-- Apps -->
+            <ListView Style="{StaticResource Table}" ItemContainerStyle="{StaticResource Row}" ItemsSource="{Binding Apps}"
+                      Visibility="{Binding GroupBy, Converter={StaticResource EnumVis}, ConverterParameter=Apps}">
+                <ListView.View>
+                    <GridView ColumnHeaderContainerStyle="{StaticResource ColHeader}">
+                        <GridViewColumn Header="APPLICATION" Width="360">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Image Width="18" Height="18" Margin="0,0,10,0" Source="{Binding App.ExecutablePath, Converter={StaticResource AppIcon}}" />
+                                        <TextBlock Text="{Binding App.Name}" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                        <GridViewColumn Header="DOWNLOAD" Width="150">
+                            <GridViewColumn.CellTemplate><DataTemplate>
+                                <TextBlock Style="{StaticResource Mono}" Foreground="{StaticResource InLine}" Text="{Binding BytesIn, Converter={StaticResource Bytes}}" />
+                            </DataTemplate></GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                        <GridViewColumn Header="UPLOAD" Width="150">
+                            <GridViewColumn.CellTemplate><DataTemplate>
+                                <TextBlock Style="{StaticResource Mono}" Foreground="{StaticResource OutLine}" Text="{Binding BytesOut, Converter={StaticResource Bytes}}" />
+                            </DataTemplate></GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                        <GridViewColumn Header="TOTAL" Width="150">
+                            <GridViewColumn.CellTemplate><DataTemplate>
+                                <TextBlock Style="{StaticResource Mono}" Text="{Binding Total, Converter={StaticResource Bytes}}" />
+                            </DataTemplate></GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                    </GridView>
+                </ListView.View>
+            </ListView>
+
+            <!-- Hosts -->
+            <ListView Style="{StaticResource Table}" ItemContainerStyle="{StaticResource Row}" ItemsSource="{Binding Hosts}"
+                      Visibility="{Binding GroupBy, Converter={StaticResource EnumVis}, ConverterParameter=Hosts}">
+                <ListView.View>
+                    <GridView ColumnHeaderContainerStyle="{StaticResource ColHeader}">
+                        <GridViewColumn Header="HOST" Width="360">
+                            <GridViewColumn.CellTemplate><DataTemplate>
+                                <TextBlock Text="{Binding Host}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                            </DataTemplate></GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                        <GridViewColumn Header="COUNTRY" Width="100">
+                            <GridViewColumn.CellTemplate><DataTemplate>
+                                <Border Background="{StaticResource BgElevated}" CornerRadius="3" Padding="6,2" HorizontalAlignment="Left"
+                                        Visibility="{Binding Geo.CountryCode.Length, Converter={StaticResource ZeroVis}}">
+                                    <TextBlock Text="{Binding Geo.CountryCode}" FontSize="11" Foreground="{StaticResource TextSecondary}" />
+                                </Border>
+                            </DataTemplate></GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                        <GridViewColumn Header="DOWNLOAD" Width="140">
+                            <GridViewColumn.CellTemplate><DataTemplate>
+                                <TextBlock Style="{StaticResource Mono}" Foreground="{StaticResource InLine}" Text="{Binding BytesIn, Converter={StaticResource Bytes}}" />
+                            </DataTemplate></GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                        <GridViewColumn Header="UPLOAD" Width="140">
+                            <GridViewColumn.CellTemplate><DataTemplate>
+                                <TextBlock Style="{StaticResource Mono}" Foreground="{StaticResource OutLine}" Text="{Binding BytesOut, Converter={StaticResource Bytes}}" />
+                            </DataTemplate></GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                    </GridView>
+                </ListView.View>
+            </ListView>
+
+            <!-- Traffic types -->
+            <ListView Style="{StaticResource Table}" ItemContainerStyle="{StaticResource Row}" ItemsSource="{Binding Types}"
+                      Visibility="{Binding GroupBy, Converter={StaticResource EnumVis}, ConverterParameter=TrafficType}">
+                <ListView.View>
+                    <GridView ColumnHeaderContainerStyle="{StaticResource ColHeader}">
+                        <GridViewColumn Header="TRAFFIC TYPE" Width="360">
+                            <GridViewColumn.CellTemplate><DataTemplate>
+                                <TextBlock Text="{Binding TypeName}" VerticalAlignment="Center" />
+                            </DataTemplate></GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                        <GridViewColumn Header="DOWNLOAD" Width="150">
+                            <GridViewColumn.CellTemplate><DataTemplate>
+                                <TextBlock Style="{StaticResource Mono}" Foreground="{StaticResource InLine}" Text="{Binding BytesIn, Converter={StaticResource Bytes}}" />
+                            </DataTemplate></GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                        <GridViewColumn Header="UPLOAD" Width="150">
+                            <GridViewColumn.CellTemplate><DataTemplate>
+                                <TextBlock Style="{StaticResource Mono}" Foreground="{StaticResource OutLine}" Text="{Binding BytesOut, Converter={StaticResource Bytes}}" />
+                            </DataTemplate></GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                        <GridViewColumn Header="TOTAL" Width="150">
+                            <GridViewColumn.CellTemplate><DataTemplate>
+                                <TextBlock Style="{StaticResource Mono}" Text="{Binding Total, Converter={StaticResource Bytes}}" />
+                            </DataTemplate></GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                    </GridView>
+                </ListView.View>
+            </ListView>
+        </Grid>
+    </Grid>
+</UserControl>

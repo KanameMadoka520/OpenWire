@@ -1,0 +1,135 @@
+<Window x:Class="OpenWire.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        xmlns:views="clr-namespace:OpenWire.App.Views"
+        xmlns:vm="clr-namespace:OpenWire.App.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        d:DataContext="{d:DesignInstance vm:MainViewModel}"
+        Title="OpenWire" Height="780" Width="1240" MinHeight="560" MinWidth="900"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource BgApp}"
+        FontFamily="{StaticResource UiFont}"
+        TextOptions.TextFormattingMode="Ideal">
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="56" ResizeBorderThickness="6" CornerRadius="0" GlassFrameThickness="0" UseAeroCaptionButtons="False" />
+    </WindowChrome.WindowChrome>
+
+    <Window.Resources>
+        <DataTemplate DataType="{x:Type vm:GraphViewModel}"><views:GraphView /></DataTemplate>
+        <DataTemplate DataType="{x:Type vm:FirewallViewModel}"><views:FirewallView /></DataTemplate>
+        <DataTemplate DataType="{x:Type vm:UsageViewModel}"><views:UsageView /></DataTemplate>
+        <DataTemplate DataType="{x:Type vm:AlertsViewModel}"><views:AlertsView /></DataTemplate>
+        <DataTemplate DataType="{x:Type vm:ThingsViewModel}"><views:ThingsView /></DataTemplate>
+        <DataTemplate DataType="{x:Type vm:SettingsViewModel}"><views:SettingsView /></DataTemplate>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="56" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- ===================== TOP BAR ===================== -->
+        <Border Grid.Row="0" Background="{StaticResource BgPanel}" BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="216" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Brand -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="20,0,0,0" VerticalAlignment="Center">
+                    <Border Width="26" Height="26" CornerRadius="6" Background="{StaticResource Accent}">
+                        <TextBlock Text="&#xEDA3;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14"
+                                   Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <TextBlock Text="OpenWire" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" Margin="10,0,0,0" />
+                </StackPanel>
+
+                <!-- Machine name -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,0,0">
+                    <TextBlock Text="&#xE977;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="13"
+                               Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding MachineName}" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                </StackPanel>
+
+                <!-- Live speeds -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,18,0">
+                    <TextBlock Text="&#xE74B;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12" Foreground="{StaticResource InLine}" VerticalAlignment="Center" />
+                    <TextBlock Style="{StaticResource Mono}" FontSize="12.5" Foreground="{StaticResource TextPrimary}" Margin="6,0,16,0" VerticalAlignment="Center" Text="{Binding DownRate}" />
+                    <TextBlock Text="&#xE74A;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12" Foreground="{StaticResource OutLine}" VerticalAlignment="Center" />
+                    <TextBlock Style="{StaticResource Mono}" FontSize="12.5" Foreground="{StaticResource TextPrimary}" Margin="6,0,0,0" VerticalAlignment="Center" Text="{Binding UpRate}" />
+                </StackPanel>
+
+                <!-- Alerts pill -->
+                <Button Grid.Column="3" Style="{StaticResource IconBtn}" Width="Auto" Padding="10,0" Margin="0,0,8,0"
+                        shell:WindowChrome.IsHitTestVisibleInChrome="True" Command="{Binding ShowAlertsCommand}" ToolTip="Alerts">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xEA8F;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14" VerticalAlignment="Center" />
+                        <Border Background="{StaticResource AlertNew}" CornerRadius="9" MinWidth="18" Height="18" Padding="5,0" Margin="7,0,0,0"
+                                VerticalAlignment="Center" Visibility="{Binding UnreadAlerts, Converter={StaticResource ZeroVis}}">
+                            <TextBlock Text="{Binding UnreadAlerts}" Foreground="White" FontSize="10" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                    </StackPanel>
+                </Button>
+
+                <!-- Window buttons -->
+                <StackPanel Grid.Column="4" Orientation="Horizontal" shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                    <Button Style="{StaticResource IconBtn}" Content="&#xE921;" Click="OnMinimize" />
+                    <Button Style="{StaticResource IconBtn}" Content="&#xE922;" Click="OnMaximize" />
+                    <Button x:Name="CloseButton" Style="{StaticResource IconBtn}" Content="&#xE8BB;" Click="OnClose" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ===================== BODY ===================== -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="216" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Nav rail -->
+            <Border Grid.Column="0" Background="{StaticResource BgPanel}" BorderBrush="{StaticResource Border}" BorderThickness="0,0,1,0">
+                <StackPanel Margin="0,12,0,0">
+                    <StackPanel.Resources>
+                        <Style TargetType="RadioButton" BasedOn="{StaticResource NavItem}">
+                            <Setter Property="GroupName" Value="nav" />
+                        </Style>
+                    </StackPanel.Resources>
+                    <RadioButton Content="Graph" Tag="&#xE9D9;" IsChecked="{Binding CurrentSection, Converter={StaticResource EnumMatch}, ConverterParameter=Graph, Mode=TwoWay}" />
+                    <RadioButton Content="Firewall" Tag="&#xE83D;" IsChecked="{Binding CurrentSection, Converter={StaticResource EnumMatch}, ConverterParameter=Firewall, Mode=TwoWay}" />
+                    <RadioButton Content="Usage" Tag="&#xE9D2;" IsChecked="{Binding CurrentSection, Converter={StaticResource EnumMatch}, ConverterParameter=Usage, Mode=TwoWay}" />
+                    <RadioButton Content="Alerts" Tag="&#xEA8F;" IsChecked="{Binding CurrentSection, Converter={StaticResource EnumMatch}, ConverterParameter=Alerts, Mode=TwoWay}" />
+                    <RadioButton Content="Things" Tag="&#xE975;" IsChecked="{Binding CurrentSection, Converter={StaticResource EnumMatch}, ConverterParameter=Things, Mode=TwoWay}" />
+                    <RadioButton Content="Settings" Tag="&#xE713;" IsChecked="{Binding CurrentSection, Converter={StaticResource EnumMatch}, ConverterParameter=Settings, Mode=TwoWay}" />
+                </StackPanel>
+            </Border>
+
+            <!-- Content + connection overlay -->
+            <Grid Grid.Column="1">
+                <ContentControl Content="{Binding CurrentView}" />
+
+                <Border Background="{StaticResource BgApp}" Visibility="{Binding IsConnected, Converter={StaticResource BoolVis}, ConverterParameter=invert}">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <TextBlock Text="&#xE839;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="40"
+                                   Foreground="{StaticResource TextMuted}" HorizontalAlignment="Center" />
+                        <TextBlock Text="Connecting to the OpenWire engine…" Foreground="{StaticResource TextSecondary}"
+                                   HorizontalAlignment="Center" Margin="0,18,0,4" FontSize="15" />
+                        <TextBlock Text="The engine must run as administrator to monitor and enforce." Style="{StaticResource Caption}"
+                                   HorizontalAlignment="Center" />
+                        <Button Content="Start engine (admin)" Style="{StaticResource Btn}" Command="{Binding StartEngineCommand}"
+                                HorizontalAlignment="Center" Margin="0,20,0,0" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>

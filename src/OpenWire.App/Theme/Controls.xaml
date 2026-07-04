@@ -201,9 +201,14 @@
                         <TextBlock Text="&#xE70D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10"
                                    Foreground="{StaticResource TextSecondary}" HorizontalAlignment="Right"
                                    VerticalAlignment="Center" Margin="0,0,12,0" />
-                        <ToggleButton x:Name="tb" Background="Transparent" BorderThickness="0"
-                                      IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
-                                      Template="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" Focusable="False" />
+                        <ToggleButton x:Name="tb" Focusable="False" ClickMode="Press"
+                                      IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                            <ToggleButton.Template>
+                                <ControlTemplate TargetType="ToggleButton">
+                                    <Border Background="Transparent" />
+                                </ControlTemplate>
+                            </ToggleButton.Template>
+                        </ToggleButton>
                         <Popup IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True"
                                Focusable="False" PopupAnimation="Slide">
                             <Border Background="{StaticResource BgElevated}" BorderBrush="{StaticResource Border}"
@@ -237,6 +242,37 @@
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsHighlighted" Value="True">
                             <Setter TargetName="b" Property="Background" Value="{StaticResource BgApp}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ============ Toggle switch (CheckBox) ============ -->
+    <Style x:Key="Switch" TargetType="CheckBox">
+        <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
+        <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="CheckBox">
+                    <StackPanel Orientation="Horizontal">
+                        <Border x:Name="track" Width="40" Height="22" CornerRadius="11"
+                                Background="{StaticResource BgElevated}" BorderBrush="{StaticResource Border}" BorderThickness="1">
+                            <Ellipse x:Name="knob" Width="16" Height="16" Fill="{StaticResource TextMuted}"
+                                     HorizontalAlignment="Left" Margin="3,0,0,0" />
+                        </Border>
+                        <ContentPresenter VerticalAlignment="Center" Margin="12,0,0,0" />
+                    </StackPanel>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="track" Property="Background" Value="{StaticResource Accent}" />
+                            <Setter TargetName="track" Property="BorderBrush" Value="{StaticResource Accent}" />
+                            <Setter TargetName="knob" Property="Fill" Value="White" />
+                            <Setter TargetName="knob" Property="HorizontalAlignment" Value="Right" />
+                            <Setter TargetName="knob" Property="Margin" Value="0,0,3,0" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

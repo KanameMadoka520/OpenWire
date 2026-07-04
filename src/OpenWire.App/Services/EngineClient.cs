@@ -111,7 +111,7 @@ public sealed class EngineClient : IDisposable
         _pending[id] = tcs;
 
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        timeout.CancelAfter(TimeSpan.FromSeconds(12));
+        timeout.CancelAfter(TimeSpan.FromSeconds(20));
         await using var reg = timeout.Token.Register(() =>
         {
             if (_pending.TryRemove(id, out var t)) t.TrySetCanceled();

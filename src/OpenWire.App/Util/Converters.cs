@@ -80,24 +80,36 @@ public sealed class SeverityBrushConverter : IValueConverter
     private static Brush Res(string k) => (Brush)Application.Current.Resources[k];
 }
 
-/// <summary>Maps a device kind to a Segoe Fluent icon glyph.</summary>
+/// <summary>Maps a device kind to a Segoe Fluent / MDL2 icon glyph (by code point).</summary>
 public sealed class DeviceKindGlyphConverter : IValueConverter
 {
-    public object Convert(object? value, Type t, object? p, CultureInfo c) => value switch
+    public object Convert(object? value, Type t, object? p, CultureInfo c)
     {
-        DeviceKind.ThisComputer => "",
-        DeviceKind.Router => "",
-        DeviceKind.Computer => "",
-        DeviceKind.Phone => "",
-        DeviceKind.Tablet => "",
-        DeviceKind.Television => "",
-        DeviceKind.GameConsole => "",
-        DeviceKind.Printer => "",
-        DeviceKind.Camera => "",
-        DeviceKind.SmartHome => "",
-        DeviceKind.Server => "",
-        _ => "",
-    };
+        int code = value switch
+        {
+            DeviceKind.ThisComputer => 0xE977, // devices / this PC
+            DeviceKind.Router => 0xEC05,       // network tower
+            DeviceKind.Computer => 0xE977,
+            DeviceKind.Phone => 0xE8EA,        // cellphone
+            DeviceKind.Tablet => 0xE70A,
+            DeviceKind.Television => 0xE7F4,
+            DeviceKind.GameConsole => 0xE7FC,  // game
+            DeviceKind.Printer => 0xE749,      // print
+            DeviceKind.Camera => 0xE722,       // camera
+            DeviceKind.SmartHome => 0xE80F,    // home
+            DeviceKind.Server => 0xE968,
+            _ => 0xE977,
+        };
+        return ((char)code).ToString();
+    }
+    public object ConvertBack(object? v, Type t, object? p, CultureInfo c) => Binding.DoNothing;
+}
+
+/// <summary>Visible when the bound enum equals the parameter, else Collapsed.</summary>
+public sealed class EnumVisibilityConverter : IValueConverter
+{
+    public object Convert(object? value, Type t, object? p, CultureInfo c)
+        => value?.ToString() == p?.ToString() ? Visibility.Visible : Visibility.Collapsed;
     public object ConvertBack(object? v, Type t, object? p, CultureInfo c) => Binding.DoNothing;
 }
 

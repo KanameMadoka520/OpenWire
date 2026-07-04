@@ -1,7 +1,8 @@
 <Application x:Class="OpenWire.App.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:local="clr-namespace:OpenWire.App">
+             xmlns:local="clr-namespace:OpenWire.App"
+             xmlns:util="clr-namespace:OpenWire.App.Util">
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -9,6 +10,18 @@
                 <ResourceDictionary Source="Theme/Controls.xaml" />
                 <ResourceDictionary Source="Theme/Lists.xaml" />
             </ResourceDictionary.MergedDictionaries>
+
+            <util:EnumMatchConverter x:Key="EnumMatch" />
+            <util:EnumVisibilityConverter x:Key="EnumVis" />
+            <util:BytesConverter x:Key="Bytes" />
+            <util:RateConverter x:Key="Rate" />
+            <util:BoolToVisibilityConverter x:Key="BoolVis" />
+            <util:ZeroToCollapsedConverter x:Key="ZeroVis" />
+            <util:FirewallStatusBrushConverter x:Key="FwBrush" />
+            <util:SeverityBrushConverter x:Key="SevBrush" />
+            <util:DeviceKindGlyphConverter x:Key="DevGlyph" />
+            <util:LocalTimeConverter x:Key="LocalTime" />
+            <util:IconLoader x:Key="AppIcon" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>
