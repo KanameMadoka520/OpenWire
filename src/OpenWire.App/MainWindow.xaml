@@ -62,7 +62,7 @@
                     </StackPanel.Resources>
                     <RadioButton Content="Traffic" Tag="&#xE9D9;" IsChecked="{Binding CurrentSection, Converter={StaticResource EnumMatch}, ConverterParameter=Traffic, Mode=TwoWay}" />
                     <RadioButton Content="Firewall" Tag="&#xE83D;" IsChecked="{Binding CurrentSection, Converter={StaticResource EnumMatch}, ConverterParameter=Firewall, Mode=TwoWay}" />
-                    <RadioButton Tag="&#xEA8F;" IsChecked="{Binding CurrentSection, Converter={StaticResource EnumMatch}, ConverterParameter=Alerts, Mode=TwoWay}">
+                    <RadioButton Tag="&#xEA8F;" AutomationProperties.Name="Alerts" IsChecked="{Binding CurrentSection, Converter={StaticResource EnumMatch}, ConverterParameter=Alerts, Mode=TwoWay}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="Alerts" VerticalAlignment="Center" />
                             <Border Background="{StaticResource AlertNew}" CornerRadius="9" MinWidth="18" Height="18" Padding="5,0" Margin="7,0,0,0"

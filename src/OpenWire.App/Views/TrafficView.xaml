@@ -21,13 +21,13 @@
                 <StackPanel.Resources>
                     <Style TargetType="RadioButton" BasedOn="{StaticResource Seg}"><Setter Property="GroupName" Value="subview" /></Style>
                 </StackPanel.Resources>
-                <RadioButton Padding="16,7" IsChecked="{Binding SubView, Converter={StaticResource EnumMatch}, ConverterParameter=Graph, Mode=TwoWay}">
+                <RadioButton Padding="16,7" AutomationProperties.Name="GraphView" IsChecked="{Binding SubView, Converter={StaticResource EnumMatch}, ConverterParameter=Graph, Mode=TwoWay}">
                     <TextBlock Text="&#xE9D9;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" />
                 </RadioButton>
-                <RadioButton Padding="16,7" IsChecked="{Binding SubView, Converter={StaticResource EnumMatch}, ConverterParameter=Columns, Mode=TwoWay}">
+                <RadioButton Padding="16,7" AutomationProperties.Name="ColumnsView" IsChecked="{Binding SubView, Converter={StaticResource EnumMatch}, ConverterParameter=Columns, Mode=TwoWay}">
                     <TextBlock Text="&#xE71C;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" />
                 </RadioButton>
-                <RadioButton Padding="16,7" IsChecked="{Binding SubView, Converter={StaticResource EnumMatch}, ConverterParameter=Map, Mode=TwoWay}">
+                <RadioButton Padding="16,7" AutomationProperties.Name="MapView" IsChecked="{Binding SubView, Converter={StaticResource EnumMatch}, ConverterParameter=Map, Mode=TwoWay}">
                     <TextBlock Text="&#xE909;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" />
                 </RadioButton>
             </StackPanel>

@@ -57,8 +57,18 @@ CREATE INDEX IF NOT EXISTS ix_alerts_time ON alerts(time);
 
 CREATE TABLE IF NOT EXISTS devices (
     id TEXT PRIMARY KEY, name TEXT, custom_name TEXT, ip TEXT, mac TEXT, vendor TEXT,
-    kind INTEGER, is_gateway INTEGER, is_this INTEGER, first_seen INTEGER, last_seen INTEGER, online INTEGER);
+    kind INTEGER, is_gateway INTEGER, is_this INTEGER, first_seen INTEGER, last_seen INTEGER, online INTEGER,
+    description TEXT, os TEXT);
 ");
+
+        // Lightweight migrations for databases created by earlier versions.
+        TryExec("ALTER TABLE devices ADD COLUMN description TEXT;");
+        TryExec("ALTER TABLE devices ADD COLUMN os TEXT;");
+    }
+
+    private void TryExec(string sql)
+    {
+        try { Exec(sql); } catch { /* column already exists */ }
     }
 
     // ---------------- Settings ----------------
@@ -335,15 +345,16 @@ CREATE TABLE IF NOT EXISTS devices (
         lock (_lock)
         {
             using var cmd = _conn.CreateCommand();
-            cmd.CommandText = @"INSERT INTO devices(id,name,ip,mac,vendor,kind,is_gateway,is_this,first_seen,last_seen,online)
-                VALUES($id,$n,$ip,$mac,$v,$k,$g,$t,$fs,$ls,$on)
+            cmd.CommandText = @"INSERT INTO devices(id,name,ip,mac,vendor,kind,is_gateway,is_this,first_seen,last_seen,online,description,os)
+                VALUES($id,$n,$ip,$mac,$v,$k,$g,$t,$fs,$ls,$on,$desc,$os)
                 ON CONFLICT(id) DO UPDATE SET name=$n, ip=$ip, vendor=$v, kind=$k,
-                    is_gateway=$g, last_seen=$ls, online=$on;";
+                    is_gateway=$g, last_seen=$ls, online=$on, description=$desc, os=$os;";
             Bind(cmd, "$id", d.Id); Bind(cmd, "$n", d.Name); Bind(cmd, "$ip", d.IpAddress); Bind(cmd, "$mac", d.MacAddress);
             Bind(cmd, "$v", d.Vendor); Bind(cmd, "$k", (int)d.Kind); Bind(cmd, "$g", d.IsGateway ? 1 : 0);
             Bind(cmd, "$t", d.IsThisDevice ? 1 : 0);
             Bind(cmd, "$fs", d.FirstSeen.ToUnixTimeSeconds()); Bind(cmd, "$ls", d.LastSeen.ToUnixTimeSeconds());
             Bind(cmd, "$on", d.IsOnline ? 1 : 0);
+            Bind(cmd, "$desc", d.Description); Bind(cmd, "$os", d.OperatingSystem);
             cmd.ExecuteNonQuery();
         }
     }
@@ -378,7 +389,8 @@ CREATE TABLE IF NOT EXISTS devices (
         {
             var list = new List<Device>();
             using var cmd = _conn.CreateCommand();
-            cmd.CommandText = @"SELECT id,COALESCE(NULLIF(custom_name,''),name),ip,mac,vendor,kind,is_gateway,is_this,first_seen,last_seen,online
+            cmd.CommandText = @"SELECT id,COALESCE(NULLIF(custom_name,''),name),ip,mac,vendor,kind,is_gateway,is_this,first_seen,last_seen,online,
+                COALESCE(description,''),COALESCE(os,'')
                 FROM devices ORDER BY online DESC, is_this DESC, last_seen DESC;";
             using var r = cmd.ExecuteReader();
             while (r.Read())
@@ -396,6 +408,8 @@ CREATE TABLE IF NOT EXISTS devices (
                     FirstSeen = DateTimeOffset.FromUnixTimeSeconds(r.GetInt64(8)),
                     LastSeen = DateTimeOffset.FromUnixTimeSeconds(r.GetInt64(9)),
                     IsOnline = r.GetInt32(10) != 0,
+                    Description = r.GetString(11),
+                    OperatingSystem = r.GetString(12),
                 });
             }
             return list;

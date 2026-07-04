@@ -488,6 +488,12 @@ public sealed class MonitorEngine : IAsyncDisposable
             a.ActiveConnections = live.ActiveConnections;
             a.FirstSeen = live.FirstSeen;
             a.LastSeen = live.LastSeen;
+            a.DownRate = live.DownRate;
+            a.UpRate = live.UpRate;
+            a.PrimaryHost = live.PrimaryHost;
+            a.PrimaryHostCountry = live.PrimaryHostCountry;
+            a.HostCount = live.HostCount;
+            a.Processes = live.Processes;
         }
         foreach (var a in apps)
             a.FirewallStatus = FirewallStatusFor(a.App.Id);
