@@ -49,8 +49,10 @@ public sealed class ConnectionEnumerator
 
     /// <summary>Best-effort test of whether an address is private/loopback/link-local.</summary>
     public static bool IsLocalAddress(string address)
+        => !IPAddress.TryParse(address, out var ip) || IsLocalAddress(ip);
+
+    public static bool IsLocalAddress(IPAddress ip)
     {
-        if (!IPAddress.TryParse(address, out var ip)) return true;
         if (IPAddress.IsLoopback(ip)) return true;
 
         if (ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)

@@ -22,6 +22,7 @@ public sealed class MonitorEngine : IAsyncDisposable
     private readonly ConnectionEnumerator _connections;
     private readonly EtwNetworkMonitor _etw = new();
     private readonly InterfaceTrafficMonitor _iface = new();
+    private readonly HardwareMonitor _hardware = new();
     private readonly GeoIpResolver _geo;
     private readonly DnsResolver _dns = new();
     private readonly DeviceScanner _scanner;
@@ -81,6 +82,7 @@ public sealed class MonitorEngine : IAsyncDisposable
 
         CanEnforceFirewall = _firewall.CanEnforce();
         _etwActive = _etw.TryStart();
+        _hardware.Start();
         RefreshFirewallCache();
 
         Console.WriteLine($"[Engine] started. ETW={_etwActive}, firewall={CanEnforceFirewall}, geoip={_geo.Available}");
@@ -359,6 +361,10 @@ public sealed class MonitorEngine : IAsyncDisposable
         var plan = _settings.DataPlan;
         if (plan.Enabled) plan.UsedBytes = _store.DataPlanUsed(CycleStartBucket());
 
+        long wan, lan;
+        if (_etwActive && _etw.IsRunning) { (wan, lan) = _etw.ReadWanLan(); }
+        else { wan = totIn + totOut + _pendingGlobalIn + _pendingGlobalOut; lan = 0; }
+
         return new EngineStatus
         {
             MachineName = Environment.MachineName,
@@ -368,6 +374,8 @@ public sealed class MonitorEngine : IAsyncDisposable
             UploadBytesPerSec = upBps,
             TotalBytesIn = totIn + _pendingGlobalIn,
             TotalBytesOut = totOut + _pendingGlobalOut,
+            TotalWanBytes = wan,
+            TotalLanBytes = lan,
             ActiveAppCount = active,
             ActiveConnectionCount = _connectionsSnapshot.Count(ConnectionEnumerator.HasRemotePeer),
             OnlineDeviceCount = _status.OnlineDeviceCount,
@@ -438,43 +446,69 @@ public sealed class MonitorEngine : IAsyncDisposable
 
         var resp = new UsageResponse { GroupBy = groupBy, Range = range };
 
-        if (groupBy == UsageGroupBy.Hosts)
+        // Apps (with live session overlay: active flag, connection count, firewall status).
+        var apps = _store.QueryUsageByApp(fromBucket, toBucket);
+        var byId = apps.ToDictionary(a => a.App.Id, StringComparer.OrdinalIgnoreCase);
+        foreach (var live in _appStore.Values)
         {
-            resp.Hosts = _store.QueryUsageByHost(fromBucket, toBucket);
-        }
-        else if (groupBy == UsageGroupBy.TrafficType)
-        {
-            resp.Types = BuildTrafficTypes(_store.QueryUsageByHost(fromBucket, toBucket));
-        }
-        else
-        {
-            var apps = _store.QueryUsageByApp(fromBucket, toBucket);
-            var byId = apps.ToDictionary(a => a.App.Id, StringComparer.OrdinalIgnoreCase);
-
-            // Overlay live session state (active flag, connections, firewall status).
-            foreach (var live in _appStore.Values)
+            if (!byId.TryGetValue(live.App.Id, out var a))
             {
-                if (!byId.TryGetValue(live.App.Id, out var a))
-                {
-                    a = new AppUsage { App = live.App, BytesIn = live.BytesIn, BytesOut = live.BytesOut };
-                    byId[live.App.Id] = a;
-                    apps.Add(a);
-                }
-                a.IsActive = live.IsActive;
-                a.ActiveConnections = live.ActiveConnections;
-                a.FirstSeen = live.FirstSeen;
-                a.LastSeen = live.LastSeen;
+                a = new AppUsage { App = live.App, BytesIn = live.BytesIn, BytesOut = live.BytesOut };
+                byId[live.App.Id] = a;
+                apps.Add(a);
             }
-            foreach (var a in apps)
-                a.FirewallStatus = FirewallStatusFor(a.App.Id);
-
-            resp.Apps = apps.OrderByDescending(a => a.Total).ToList();
+            a.IsActive = live.IsActive;
+            a.ActiveConnections = live.ActiveConnections;
+            a.FirstSeen = live.FirstSeen;
+            a.LastSeen = live.LastSeen;
         }
+        foreach (var a in apps)
+            a.FirewallStatus = FirewallStatusFor(a.App.Id);
+        resp.Apps = apps.OrderByDescending(a => a.Total).ToList();
 
-        resp.TotalBytesIn = resp.Apps.Sum(a => a.BytesIn) + resp.Hosts.Sum(h => h.BytesIn);
-        resp.TotalBytesOut = resp.Apps.Sum(a => a.BytesOut) + resp.Hosts.Sum(h => h.BytesOut);
+        // Hosts, traffic types and countries all derive from the host rollup.
+        resp.Hosts = _store.QueryUsageByHost(fromBucket, toBucket);
+        resp.Types = BuildTrafficTypes(resp.Hosts);
+        resp.Countries = BuildCountries(resp.Hosts);
+
+        resp.TotalBytesIn = resp.Apps.Sum(a => a.BytesIn);
+        resp.TotalBytesOut = resp.Apps.Sum(a => a.BytesOut);
         return resp;
     }
+
+    private List<CountryUsage> BuildCountries(List<HostUsage> hosts)
+    {
+        var map = new Dictionary<string, CountryUsage>(StringComparer.OrdinalIgnoreCase);
+        foreach (var h in hosts)
+        {
+            string code = h.Geo.HasCountry ? h.Geo.CountryCode : "??";
+            if (!map.TryGetValue(code, out var cu))
+            {
+                cu = new CountryUsage
+                {
+                    CountryCode = h.Geo.HasCountry ? code : "",
+                    CountryName = h.Geo.HasCountry ? h.Geo.CountryName : "Unknown",
+                };
+                map[code] = cu;
+            }
+            cu.BytesIn += h.BytesIn;
+            cu.BytesOut += h.BytesOut;
+        }
+
+        // Add the LAN bucket ("Local network") from this session's WAN/LAN split.
+        if (_etwActive && _etw.IsRunning)
+        {
+            var (_, lan) = _etw.ReadWanLan();
+            if (lan > 0)
+                map["__local"] = new CountryUsage { CountryName = "Local network", IsLocal = true, BytesIn = lan };
+        }
+
+        long total = map.Values.Sum(c => c.Total);
+        foreach (var c in map.Values) c.Fraction = total > 0 ? (double)c.Total / total : 0;
+        return map.Values.OrderByDescending(c => c.Total).ToList();
+    }
+
+    public HardwareSnapshot GetHardware() => _hardware.GetSnapshot();
 
     private List<TrafficTypeUsage> BuildTrafficTypes(List<HostUsage> hosts)
     {
@@ -665,6 +699,7 @@ public sealed class MonitorEngine : IAsyncDisposable
     {
         try { FlushMinute(_currentBucket); } catch { }
         _etw.Dispose();
+        _hardware.Dispose();
         _geo.Dispose();
         _store.Dispose();
         await Task.CompletedTask;

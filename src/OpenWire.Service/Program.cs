@@ -67,6 +67,11 @@ internal static class Program
         foreach (var c in conns.Take(10))
             Console.WriteLine($"  {c.AppName,-24} {c.RemoteDisplay}:{c.RemotePort,-5} {c.Geo.CountryCode,-3} [{c.State}]");
 
+        var hw = engine.GetHardware();
+        Console.WriteLine($"\nHardware: CPU {hw.CpuPercent:0}%  Mem {ByteFormatter.Bytes(hw.MemoryUsedBytes)} ({hw.MemoryPercent:0}%)  " +
+                          $"Disk R {ByteFormatter.Rate(hw.DiskReadBytesPerSec)} W {ByteFormatter.Rate(hw.DiskWriteBytesPerSec)}  " +
+                          $"GPU {hw.GpuPercent:0}%  history:{hw.History.Count}");
+
         Console.WriteLine("\nSelf-test complete.");
         return 0;
     }

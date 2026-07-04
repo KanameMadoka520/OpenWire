@@ -28,6 +28,8 @@ public sealed class EtwNetworkMonitor : IDisposable
 
     private long _globalIn;
     private long _globalOut;
+    private long _wanBytes;
+    private long _lanBytes;
 
     private TraceEventSession? _session;
     private Thread? _pump;
@@ -99,6 +101,12 @@ public sealed class EtwNetworkMonitor : IDisposable
         if (incoming) Interlocked.Add(ref _globalIn, size);
         else Interlocked.Add(ref _globalOut, size);
 
+        if (remote is not null)
+        {
+            if (ConnectionEnumerator.IsLocalAddress(remote)) Interlocked.Add(ref _lanBytes, size);
+            else Interlocked.Add(ref _wanBytes, size);
+        }
+
         if (pid > 0)
         {
             var pc = _perPid.GetOrAdd(pid, static _ => new ProcCounter());
@@ -127,6 +135,9 @@ public sealed class EtwNetworkMonitor : IDisposable
 
     public (long In, long Out) ReadGlobal()
         => (Interlocked.Read(ref _globalIn), Interlocked.Read(ref _globalOut));
+
+    public (long Wan, long Lan) ReadWanLan()
+        => (Interlocked.Read(ref _wanBytes), Interlocked.Read(ref _lanBytes));
 
     public Dictionary<int, (long In, long Out)> SnapshotPerPid()
     {
