@@ -22,9 +22,9 @@
     <None Include="Assets\Flags\NOTICE.md" />
   </ItemGroup>
 
-  <!-- Public-domain world coastline (Natural Earth 1:110m), projected + embedded. -->
+  <!-- Public-domain world country polygons (Natural Earth 1:110m), projected + embedded. -->
   <ItemGroup>
-    <EmbeddedResource Include="Controls\WorldLand.txt" />
+    <EmbeddedResource Include="Controls\WorldCountries.txt" />
   </ItemGroup>
 
   <PropertyGroup>
