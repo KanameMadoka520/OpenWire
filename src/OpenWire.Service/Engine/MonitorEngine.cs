@@ -664,7 +664,11 @@ public sealed class MonitorEngine : IAsyncDisposable
             _settings.ActiveProfile = _settings.FirewallProfiles[0].Name;
             changed = true;
         }
-        if (changed) _store.SaveSettings(_settings);
+        // Best-effort: the profiles exist in memory regardless; persistence can fail
+        // (e.g. a read-only DB when running non-elevated) and must not crash startup.
+        if (changed)
+            try { _store.SaveSettings(_settings); }
+            catch (Exception ex) { Console.Error.WriteLine($"[Engine] persist profiles: {ex.Message}"); }
     }
 
     private FirewallProfile? ActiveProfileObj() =>
