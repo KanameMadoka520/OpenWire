@@ -384,6 +384,14 @@ CREATE TABLE IF NOT EXISTS devices (
             removed += ExecDelete("DELETE FROM usage_host WHERE bucket<$c;", minuteCutoffUnix);
             removed += ExecDelete("DELETE FROM traffic_day    WHERE day<$c;", dayCutoffUnix);
             removed += ExecDelete("DELETE FROM usage_app_day  WHERE day<$c;", dayCutoffUnix);
+
+            // Drop host metadata for hosts that no longer have any usage rows, so the
+            // table doesn't accumulate a permanent row per IP ever contacted.
+            using (var cmd = _conn.CreateCommand())
+            {
+                cmd.CommandText = "DELETE FROM host_meta WHERE host_key NOT IN (SELECT DISTINCT host_key FROM usage_host);";
+                removed += cmd.ExecuteNonQuery();
+            }
             return removed;
         }
     }

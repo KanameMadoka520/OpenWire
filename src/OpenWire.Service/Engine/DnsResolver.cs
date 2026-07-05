@@ -39,7 +39,9 @@ public sealed class DnsResolver
 
         if (_cache.TryGetValue(ip, out var e))
         {
-            if (e.Host.Length > 0 && e.Expiry > DateTimeOffset.UtcNow) return e.Host;
+            // A valid entry (positive OR a negative/NXDOMAIN result within its TTL) is
+            // returned as-is without scheduling another lookup.
+            if (e.Expiry > DateTimeOffset.UtcNow) return e.Host;
             if (e.Pending) return e.Host; // may be empty while first lookup runs
         }
 
@@ -53,7 +55,7 @@ public sealed class DnsResolver
         lock (entry)
         {
             if (entry.Pending) return;
-            if (entry.Host.Length > 0 && entry.Expiry > DateTimeOffset.UtcNow) return;
+            if (entry.Expiry > DateTimeOffset.UtcNow) return; // still valid (positive or negative)
             entry.Pending = true;
         }
 
