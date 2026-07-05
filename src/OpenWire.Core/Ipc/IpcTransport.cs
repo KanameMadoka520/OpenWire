@@ -35,6 +35,20 @@ public static class IpcTransport
             PipeAccessRights.FullControl,
             AccessControlType.Allow));
 
+        // The creating identity needs FullControl (which includes CreateNewInstance) to
+        // open the accept loop's subsequent pipe instances. When elevated the
+        // Administrators rule covers this; when the engine runs as a normal user, grant
+        // the current user explicitly — otherwise the 2nd instance fails with Access
+        // Denied and the accept loop busy-spins.
+        try
+        {
+            using var me = WindowsIdentity.GetCurrent();
+            if (me.User is not null)
+                security.AddAccessRule(new PipeAccessRule(
+                    me.User, PipeAccessRights.FullControl, AccessControlType.Allow));
+        }
+        catch { /* fall back to the rules above */ }
+
         return NamedPipeServerStreamAcl.Create(
             PipeName,
             PipeDirection.InOut,

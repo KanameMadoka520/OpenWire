@@ -19,6 +19,7 @@ public sealed class IpcServer : IAsyncDisposable
     {
         public required IpcChannel Channel;
         public volatile bool Subscribed;
+        public CancellationTokenSource? Cts;
         public readonly Channel<IpcMessage> Outbound =
             System.Threading.Channels.Channel.CreateBounded<IpcMessage>(
                 new BoundedChannelOptions(4096) { FullMode = BoundedChannelFullMode.DropOldest, SingleReader = true });
@@ -66,19 +67,21 @@ public sealed class IpcServer : IAsyncDisposable
     {
         var id = Guid.NewGuid();
         var channel = new IpcChannel(server);
-        var client = new Client { Channel = channel };
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        var client = new Client { Channel = channel, Cts = linked };
         _clients[id] = client;
 
-        var writer = Task.Run(() => WriteLoopAsync(client, ct), ct);
+        var token = linked.Token;
+        var writer = Task.Run(() => WriteLoopAsync(client, token), token);
 
         try
         {
-            while (!ct.IsCancellationRequested)
+            while (!token.IsCancellationRequested)
             {
-                var request = await channel.ReceiveAsync(ct).ConfigureAwait(false);
+                var request = await channel.ReceiveAsync(token).ConfigureAwait(false);
                 if (request is null) break;
 
-                IpcMessage? response = Dispatch(request, client, ct);
+                IpcMessage? response = Dispatch(request, client, token);
                 if (response is not null)
                 {
                     response.CorrelationId = request.CorrelationId;
@@ -94,6 +97,7 @@ public sealed class IpcServer : IAsyncDisposable
         finally
         {
             _clients.TryRemove(id, out _);
+            linked.Cancel();                       // stop the writer if the reader ended first
             client.Outbound.Writer.TryComplete();
             try { await writer.ConfigureAwait(false); } catch { }
             channel.Dispose();
@@ -108,7 +112,14 @@ public sealed class IpcServer : IAsyncDisposable
             await foreach (var msg in client.Outbound.Reader.ReadAllAsync(ct).ConfigureAwait(false))
                 await client.Channel.SendAsync(msg, ct).ConfigureAwait(false);
         }
-        catch { /* connection gone; read loop will clean up */ }
+        catch { /* connection gone / send failed */ }
+        finally
+        {
+            // If the writer stops (a send threw, or we were cancelled), tear down the
+            // whole client so the read loop unblocks and the client sees EOF and
+            // reconnects — instead of a live read pipe wedged behind a dead writer.
+            try { client.Cts?.Cancel(); } catch { }
+        }
     }
 
     private IpcMessage? Dispatch(IpcMessage request, Client client, CancellationToken ct)

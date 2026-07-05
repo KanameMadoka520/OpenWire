@@ -35,11 +35,13 @@ public sealed class EngineClient : IDisposable
     {
         while (!ct.IsCancellationRequested)
         {
+            System.IO.Pipes.NamedPipeClientStream? pipe = null;
+            IpcChannel? channel = null;
             try
             {
-                var pipe = IpcTransport.CreateClientStream();
+                pipe = IpcTransport.CreateClientStream();
                 await pipe.ConnectAsync(2000, ct).ConfigureAwait(false);
-                var channel = new IpcChannel(pipe);
+                channel = new IpcChannel(pipe);
                 _channel = channel;
                 SetConnected(true);
 
@@ -50,10 +52,18 @@ public sealed class EngineClient : IDisposable
             }
             catch (OperationCanceledException) { break; }
             catch { /* engine not up yet */ }
+            finally
+            {
+                _channel = null;
+                // Release the OS pipe handle instead of leaking it to GC finalization on
+                // every reconnect cycle. Disposing the channel disposes the pipe; if the
+                // connect failed before wrapping, dispose the pipe directly.
+                if (channel is not null) channel.Dispose();
+                else pipe?.Dispose();
+                SetConnected(false);
+                FailPending();
+            }
 
-            _channel = null;
-            SetConnected(false);
-            FailPending();
             try { await Task.Delay(1500, ct).ConfigureAwait(false); } catch { break; }
         }
     }
