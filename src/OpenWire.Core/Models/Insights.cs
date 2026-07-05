@@ -109,6 +109,9 @@ public sealed class UsageAnomaly
     public string ExecutablePath { get; set; } = string.Empty;
     public string CountryCode { get; set; } = string.Empty;
 
+    /// <summary>Local hour-of-day (0..23) for OddHour anomalies; -1 otherwise.</summary>
+    public int Hour { get; set; } = -1;
+
     /// <summary>What we observed, and the baseline it is being compared against.</summary>
     public long ObservedBytes { get; set; }
     public long BaselineBytes { get; set; }
@@ -116,6 +119,7 @@ public sealed class UsageAnomaly
     /// <summary>How many times the baseline the observation is (0 when not applicable).</summary>
     public double Ratio { get; set; }
 
-    /// <summary>Stable key for de-duplicating repeat alerts within a day.</summary>
-    public string DedupeKey => $"{Kind}|{AppId}|{CountryCode}";
+    /// <summary>Stable key for de-duplicating repeat alerts within a day. Includes the
+    /// hour so distinct odd-hour anomalies (which carry no app/country) stay distinct.</summary>
+    public string DedupeKey => $"{Kind}|{AppId}|{CountryCode}|{Hour}";
 }

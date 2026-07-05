@@ -391,6 +391,10 @@ public sealed class MonitorEngine : IAsyncDisposable
         {
             long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             long minuteCutoff = now - (long)days * 86400;
+            // Never prune minute rows the active monthly data plan still needs to sum
+            // (DataPlanUsed reads only traffic_min back to the billing-cycle start).
+            if (_settings.DataPlan.Enabled)
+                minuteCutoff = Math.Min(minuteCutoff, CycleStartBucket());
             long dayCutoff = LocalDayStart(now) - Math.Max(days, 730) * 86400L; // keep ≥2y of daily rollups
             int removed = _store.PruneOldHistory(minuteCutoff, dayCutoff);
             if (removed > 0) Console.WriteLine($"[Engine] pruned {removed} history rows older than {days}d.");
@@ -681,9 +685,10 @@ public sealed class MonitorEngine : IAsyncDisposable
         }
         report.BusiestHour = busiest;
 
-        // Previous equal-length window, for the period-over-period delta.
+        // Previous equal-length window, for the period-over-period delta. End one minute
+        // before fromBucket so the two windows partition cleanly (QueryGlobal is inclusive).
         long prevFrom = (nowSec - 2 * windowSec) / 60 * 60;
-        var prevRows = _store.QueryGlobal(prevFrom, fromBucket);
+        var prevRows = _store.QueryGlobal(prevFrom, fromBucket - 60);
         report.PreviousTotalBytes = prevRows.Sum(r => r.In + r.Out);
         report.ChangeFraction = report.PreviousTotalBytes > 0
             ? (double)(report.TotalBytes - report.PreviousTotalBytes) / report.PreviousTotalBytes
@@ -1072,12 +1077,14 @@ public sealed class MonitorEngine : IAsyncDisposable
 
     private static long MinuteBucket(DateTimeOffset t) => t.ToUnixTimeSeconds() / 60 * 60;
 
-    /// <summary>Unix seconds at local midnight of the day containing <paramref name="unixSeconds"/>.</summary>
+    /// <summary>Unix seconds at local midnight of the day containing <paramref name="unixSeconds"/>.
+    /// Resolves the UTC offset at midnight (not at the input instant) so the boundary is
+    /// correct on DST-transition days.</summary>
     private static long LocalDayStart(long unixSeconds)
     {
-        var local = DateTimeOffset.FromUnixTimeSeconds(unixSeconds).ToLocalTime();
-        var midnight = new DateTimeOffset(local.Year, local.Month, local.Day, 0, 0, 0, local.Offset);
-        return midnight.ToUnixTimeSeconds();
+        var localMidnight = DateTimeOffset.FromUnixTimeSeconds(unixSeconds).ToLocalTime().Date;
+        var offset = TimeZoneInfo.Local.GetUtcOffset(localMidnight);
+        return new DateTimeOffset(localMidnight, offset).ToUnixTimeSeconds();
     }
 
     private long CycleStartBucket()

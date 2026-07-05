@@ -120,18 +120,19 @@ public static class AnomalyDetector
             });
         }
 
-        // 4) Significant traffic during a normally-idle hour.
+        // 4) Significant traffic during a normally-idle hour. Everything is compared in
+        //    per-day terms (baselineHours/todayHours totals are window sums): an hour is
+        //    "normally idle" if its average day is under 5% of the busiest hour's.
         if (baselineDays >= 2 && baselineHours.Count == 24 && todayHours.Count == 24)
         {
-            long peak = baselineHours.Max(h => h.Total);
-            if (peak > 0)
+            long peakPerDay = baselineHours.Max(h => h.Total) / baselineDays;
+            if (peakPerDay > 0)
             {
-                long quietThreshold = (long)(peak * 0.05);   // "idle" = under 5% of the busiest hour
+                long quietThreshold = (long)(peakPerDay * 0.05);
                 foreach (var th in todayHours)
                 {
                     if (th.Total < OddHourFloorBytes) continue;
-                    var bh = baselineHours[th.Hour];
-                    long baselinePerDay = bh.Total / baselineDays;
+                    long baselinePerDay = baselineHours[th.Hour].Total / baselineDays;
                     if (baselinePerDay > quietThreshold) continue;   // this hour is normally active
                     if (th.Total < Math.Max(OddHourFloorBytes, baselinePerDay * 3)) continue;
 
@@ -141,6 +142,7 @@ public static class AnomalyDetector
                         Severity = AlertSeverity.Info,
                         Title = $"Activity at an unusual hour ({th.Hour:00}:00)",
                         Detail = $"{ByteFormatter.Bytes(th.Total)} of traffic around {th.Hour:00}:00 today — a time your network is normally quiet.",
+                        Hour = th.Hour,
                         ObservedBytes = th.Total,
                         BaselineBytes = baselinePerDay,
                     });
