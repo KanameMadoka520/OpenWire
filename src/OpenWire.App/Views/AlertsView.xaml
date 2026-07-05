@@ -24,7 +24,8 @@
         <TextBlock Grid.Row="0" Text="Alerts" Style="{StaticResource H1}" Margin="0,0,0,12" />
 
         <Grid Grid.Row="1" Margin="0,0,0,4">
-            <StackPanel Orientation="Horizontal" Background="{StaticResource BgSubtle}" HorizontalAlignment="Left">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+              <StackPanel Orientation="Horizontal" Background="{StaticResource BgSubtle}">
                 <StackPanel.Resources>
                     <Style TargetType="RadioButton" BasedOn="{StaticResource Seg}"><Setter Property="GroupName" Value="sev" /></Style>
                 </StackPanel.Resources>
@@ -37,6 +38,15 @@
                 <RadioButton IsChecked="{Binding SeverityFilter, Converter={StaticResource EnumMatch}, ConverterParameter=Log, Mode=TwoWay}">
                     <TextBlock><Run Text="Log " /><Run Text="{Binding LogCount, Mode=OneWay}" Foreground="{StaticResource TextMuted}" /></TextBlock>
                 </RadioButton>
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" Background="{StaticResource BgSubtle}" Margin="10,0,0,0">
+                <StackPanel.Resources>
+                    <Style TargetType="RadioButton" BasedOn="{StaticResource Seg}"><Setter Property="GroupName" Value="atime" /></Style>
+                </StackPanel.Resources>
+                <RadioButton Content="All time" IsChecked="{Binding TimeFilter, Converter={StaticResource EnumMatch}, ConverterParameter=All, Mode=TwoWay}" />
+                <RadioButton Content="Today" IsChecked="{Binding TimeFilter, Converter={StaticResource EnumMatch}, ConverterParameter=Today, Mode=TwoWay}" />
+                <RadioButton Content="Week" IsChecked="{Binding TimeFilter, Converter={StaticResource EnumMatch}, ConverterParameter=Week, Mode=TwoWay}" />
+              </StackPanel>
             </StackPanel>
 
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">

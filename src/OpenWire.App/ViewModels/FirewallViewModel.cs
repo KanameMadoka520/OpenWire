@@ -106,6 +106,8 @@ public partial class FirewallViewModel : ObservableObject
     [ObservableProperty] private ObservableCollection<AppRowVM> _apps = new();
     [ObservableProperty] private string _statusText = "";
     [ObservableProperty] private bool _canEnforce;
+    [ObservableProperty] private string _searchText = "";
+    private List<AppRowVM> _allApps = new();
 
     // Profiles + active network.
     [ObservableProperty] private ObservableCollection<FirewallProfile> _profiles = new();
@@ -132,12 +134,25 @@ public partial class FirewallViewModel : ObservableObject
         _suppressProfileSwitch = false;
 
         var usage = await _client.GetUsageAsync(GraphRange.Day, UsageGroupBy.Apps);
-        Apps = new ObservableCollection<AppRowVM>(
-            usage.Apps.Select(a => new AppRowVM(a, this, rules.GetValueOrDefault(a.App.Id))));
+        _allApps = usage.Apps.Select(a => new AppRowVM(a, this, rules.GetValueOrDefault(a.App.Id))).ToList();
+        ApplyAppFilter();
 
         StatusText = CanEnforce
-            ? $"{fw.Status.BlockedAppCount} blocked · {Apps.Count} active applications · profile “{fw.Status.ActiveProfile}”"
+            ? $"{fw.Status.BlockedAppCount} blocked · {_allApps.Count} active applications · profile “{fw.Status.ActiveProfile}”"
             : "Run the engine as administrator to enforce blocks and show per-app rates";
+    }
+
+    partial void OnSearchTextChanged(string value) => ApplyAppFilter();
+
+    private void ApplyAppFilter()
+    {
+        IEnumerable<AppRowVM> q = _allApps;
+        var s = SearchText?.Trim();
+        if (!string.IsNullOrEmpty(s))
+            q = q.Where(a => (a.Name?.Contains(s, StringComparison.OrdinalIgnoreCase) ?? false)
+                          || (a.HostText?.Contains(s, StringComparison.OrdinalIgnoreCase) ?? false)
+                          || (a.Path?.Contains(s, StringComparison.OrdinalIgnoreCase) ?? false));
+        Apps = new ObservableCollection<AppRowVM>(q);
     }
 
     partial void OnSelectedProfileChanged(FirewallProfile? value)

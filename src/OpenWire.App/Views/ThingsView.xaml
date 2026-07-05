@@ -24,10 +24,32 @@
                         IsEnabled="{Binding Scanning, Converter={StaticResource BoolVis}, ConverterParameter=invert}" />
                 <TextBlock Text="{Binding LastScanText}" Style="{StaticResource Caption}" VerticalAlignment="Center" Margin="14,0,0,0" />
             </StackPanel>
-            <TextBlock Text="Rescans automatically every 30 min" Style="{StaticResource Caption}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                <Grid Width="220" Margin="0,0,12,0">
+                    <TextBox Style="{StaticResource Search}" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock Text="Search devices" Foreground="{StaticResource TextMuted}" FontSize="13" Margin="12,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                               Visibility="{Binding SearchText.Length, Converter={StaticResource ZeroVis}, ConverterParameter=invert}" />
+                </Grid>
+                <TextBlock Text="Rescans every 30 min" Style="{StaticResource Caption}" VerticalAlignment="Center" />
+            </StackPanel>
         </Grid>
 
-        <ListView Grid.Row="1" Style="{StaticResource Table}" ItemContainerStyle="{StaticResource Row}" ItemsSource="{Binding Devices}">
+        <!-- empty state (pre-scan / no devices) -->
+        <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Visibility="{Binding HasDevices, Converter={StaticResource BoolVis}, ConverterParameter=invert}">
+            <TextBlock Text="&#xE701;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="46"
+                       Foreground="{StaticResource TextMuted}" HorizontalAlignment="Center" />
+            <TextBlock Text="Curious what's on your network?" Foreground="{StaticResource TextSecondary}" FontSize="15"
+                       HorizontalAlignment="Center" Margin="0,16,0,2" />
+            <TextBlock Text="Scan to discover every device connected to your local network." Style="{StaticResource Caption}"
+                       HorizontalAlignment="Center" TextAlignment="Center" MaxWidth="360" />
+            <Button Content="{Binding ScanLabel}" Style="{StaticResource Btn}" Command="{Binding ScanCommand}"
+                    HorizontalAlignment="Center" Margin="0,18,0,0"
+                    IsEnabled="{Binding Scanning, Converter={StaticResource BoolVis}, ConverterParameter=invert}" />
+        </StackPanel>
+
+        <ListView Grid.Row="1" Style="{StaticResource Table}" ItemContainerStyle="{StaticResource Row}" ItemsSource="{Binding Devices}"
+                  Visibility="{Binding HasDevices, Converter={StaticResource BoolVis}}">
             <ListView.View>
                 <GridView ColumnHeaderContainerStyle="{StaticResource ColHeader}">
                     <GridViewColumn Header="DEVICE" Width="240">

@@ -69,7 +69,13 @@ public partial class MainViewModel : ObservableObject
         client.ConnectionChanged += OnConnectionChanged;
         client.LiveTick += OnLiveTick;
         client.StatusChanged += e => ApplyStatus(e.Status);
-        client.AlertRaised += e => { UnreadAlerts++; Alerts.OnAlertRaised(e.Alert); };
+        client.AlertRaised += e =>
+        {
+            UnreadAlerts++;
+            Alerts.OnAlertRaised(e.Alert);
+            if (e.Alert.Kind == AlertKind.NewApp)
+                Traffic.Graph.NotifyNewApp(e.Alert.AppName ?? "New app");
+        };
         client.DeviceChanged += e => Scanner.OnDeviceChanged(e.Device);
     }
 

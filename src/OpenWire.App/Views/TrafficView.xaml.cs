@@ -21,6 +21,7 @@ public partial class TrafficView : UserControl
         _graph = vm.Graph;
         _graph.SeriesLoaded += OnSeriesLoaded;
         _graph.SampleReceived += OnSampleReceived;
+        _graph.PinRequested += OnPinRequested;
         try { await vm.LoadAsync(); } catch { /* engine not ready */ }
     }
 
@@ -29,8 +30,10 @@ public partial class TrafficView : UserControl
         if (_graph is null) return;
         _graph.SeriesLoaded -= OnSeriesLoaded;
         _graph.SampleReceived -= OnSampleReceived;
+        _graph.PinRequested -= OnPinRequested;
     }
 
     private void OnSeriesLoaded(TrafficSeries series) => Graph.SetSeries(series);
     private void OnSampleReceived(double epochSec, double inBytes, double outBytes) => Graph.AddSample(epochSec, inBytes, outBytes);
+    private void OnPinRequested(double epochSec, string label) => Graph.AddPin(epochSec, label);
 }

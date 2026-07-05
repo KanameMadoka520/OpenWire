@@ -15,6 +15,7 @@ public partial class AlertsViewModel : ObservableObject
 
     [ObservableProperty] private ObservableCollection<Alert> _alerts = new();
     [ObservableProperty] private string _severityFilter = "All";   // All / Important / Log
+    [ObservableProperty] private string _timeFilter = "All";       // All / Today / Week
     [ObservableProperty] private string _searchText = "";
     [ObservableProperty] private int _allCount;
     [ObservableProperty] private int _importantCount;
@@ -51,6 +52,10 @@ public partial class AlertsViewModel : ObservableObject
         if (SeverityFilter == "Important") q = q.Where(a => a.Severity != AlertSeverity.Info);
         else if (SeverityFilter == "Log") q = q.Where(a => a.Severity == AlertSeverity.Info);
 
+        var now = DateTimeOffset.Now;
+        if (TimeFilter == "Today") q = q.Where(a => a.Time.ToLocalTime().Date == now.Date);
+        else if (TimeFilter == "Week") q = q.Where(a => a.Time.ToLocalTime() >= now.AddDays(-7));
+
         if (!string.IsNullOrWhiteSpace(SearchText))
         {
             var s = SearchText.Trim();
@@ -67,6 +72,7 @@ public partial class AlertsViewModel : ObservableObject
     }
 
     partial void OnSeverityFilterChanged(string value) => ApplyFilter();
+    partial void OnTimeFilterChanged(string value) => ApplyFilter();
     partial void OnSearchTextChanged(string value) => ApplyFilter();
 
     [RelayCommand]

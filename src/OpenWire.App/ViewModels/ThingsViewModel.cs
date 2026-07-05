@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OpenWire.App.Services;
@@ -16,6 +17,9 @@ public partial class ThingsViewModel : ObservableObject
     [ObservableProperty] private string _scanLabel = "Scan";
     [ObservableProperty] private string _networkName = "Local network";
     [ObservableProperty] private string _lastScanText = "";
+    [ObservableProperty] private string _searchText = "";
+    [ObservableProperty] private bool _hasDevices;
+    private readonly List<Device> _all = new();
 
     public ThingsViewModel(EngineClient client) => _client = client;
 
@@ -62,12 +66,30 @@ public partial class ThingsViewModel : ObservableObject
 
     public void OnDeviceChanged(Device device)
     {
-        for (int i = 0; i < Devices.Count; i++)
-        {
-            if (Devices[i].Id == device.Id) { Devices[i] = device; return; }
-        }
-        Devices.Add(device);
+        int idx = _all.FindIndex(d => d.Id == device.Id);
+        if (idx >= 0) _all[idx] = device; else _all.Add(device);
+        ApplyFilter();
     }
 
-    private void Fill(IEnumerable<Device> list) => Devices = new ObservableCollection<Device>(list);
+    partial void OnSearchTextChanged(string value) => ApplyFilter();
+
+    private void Fill(IEnumerable<Device> list)
+    {
+        _all.Clear();
+        _all.AddRange(list);
+        ApplyFilter();
+    }
+
+    private void ApplyFilter()
+    {
+        IEnumerable<Device> q = _all;
+        var s = SearchText?.Trim();
+        if (!string.IsNullOrEmpty(s))
+            q = q.Where(d => (d.Name?.Contains(s, StringComparison.OrdinalIgnoreCase) ?? false)
+                          || (d.IpAddress?.Contains(s, StringComparison.OrdinalIgnoreCase) ?? false)
+                          || (d.MacAddress?.Contains(s, StringComparison.OrdinalIgnoreCase) ?? false)
+                          || (d.Description?.Contains(s, StringComparison.OrdinalIgnoreCase) ?? false));
+        Devices = new ObservableCollection<Device>(q);
+        HasDevices = _all.Count > 0;
+    }
 }

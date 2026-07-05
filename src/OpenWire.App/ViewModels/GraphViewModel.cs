@@ -20,6 +20,12 @@ public partial class GraphViewModel : ObservableObject
     /// <summary>Raised for each live per-second sample (epochSec, inBytes, outBytes).</summary>
     public event Action<double, double, double>? SampleReceived;
 
+    /// <summary>Raised to drop a marker on the graph (epochSec, label) — e.g. a new app.</summary>
+    public event Action<double, string>? PinRequested;
+
+    public void NotifyNewApp(string name) =>
+        PinRequested?.Invoke(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0, name);
+
     public GraphViewModel(EngineClient client) => _client = client;
 
     public async Task LoadAsync()

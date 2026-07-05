@@ -20,10 +20,20 @@ public sealed class TrafficGraph : FrameworkElement
         public Pt(double t, double i, double o) { TimeSec = t; In = i; Out = o; }
     }
 
+    /// <summary>A marker dropped on the timeline (e.g. a new app's first connection).</summary>
+    private readonly struct Pin
+    {
+        public readonly double TimeSec;
+        public readonly string Label;
+        public Pin(double t, string label) { TimeSec = t; Label = label; }
+    }
+
     private readonly List<Pt> _points = new();
+    private readonly List<Pin> _pins = new();
     private double _peak = 8 * 1024;
     private double _renderPeak = 8 * 1024;
     private bool _volumeUnits;
+    private double? _hoverX;
 
     private readonly Brush _inFill, _outFill;
     private readonly Pen _inPen, _outPen, _gridPen;
@@ -53,7 +63,20 @@ public sealed class TrafficGraph : FrameworkElement
 
         Loaded += (_, _) => CompositionTarget.Rendering += OnFrame;
         Unloaded += (_, _) => CompositionTarget.Rendering -= OnFrame;
+
+        MouseMove += (_, e) => { _hoverX = e.GetPosition(this).X; if (!LiveScroll) InvalidateVisual(); };
+        MouseLeave += (_, _) => { _hoverX = null; if (!LiveScroll) InvalidateVisual(); };
     }
+
+    /// <summary>Drop a labelled marker on the timeline (e.g. a new app's first connection).</summary>
+    public void AddPin(double epochSec, string label)
+    {
+        _pins.Add(new Pin(epochSec, label));
+        if (_pins.Count > 200) _pins.RemoveAt(0);
+        InvalidateVisual();
+    }
+
+    public void ClearPins() { _pins.Clear(); InvalidateVisual(); }
 
     private void OnFrame(object? sender, EventArgs e)
     {
@@ -98,6 +121,8 @@ public sealed class TrafficGraph : FrameworkElement
         double w = ActualWidth, h = ActualHeight;
         if (w <= 1 || h <= 1) return;
 
+        dc.DrawRectangle(Brushes.Transparent, null, new Rect(0, 0, w, h)); // make the plot hit-testable for hover
+
         double nowSec = LiveScroll
             ? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0
             : (_points.Count > 0 ? _points[^1].TimeSec : 0);
@@ -131,6 +156,77 @@ public sealed class TrafficGraph : FrameworkElement
         var ft = new FormattedText(label, CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
             _mono, 12, _gridText, VisualTreeHelper.GetDpi(this).PixelsPerDip);
         dc.DrawText(ft, new Point(8, 6));
+
+        DrawPins(dc, X, padTop, h - padBottom);
+        DrawHover(dc, w, X, fromSec, padTop, plotH, peak);
+    }
+
+    /// <summary>Draw the new-app event markers along the timeline.</summary>
+    private void DrawPins(DrawingContext dc, Func<double, double> X, double top, double bottom)
+    {
+        if (_pins.Count == 0) return;
+        var accent = ResColor("AccentColor", Color.FromRgb(0x3B, 0x82, 0xF6));
+        var line = new Pen(new SolidColorBrush(Color.FromArgb(0x4A, accent.R, accent.G, accent.B)), 1)
+            { DashStyle = new DashStyle(new double[] { 2, 3 }, 0) };
+        var fill = new SolidColorBrush(accent);
+        foreach (var p in _pins)
+        {
+            double x = X(p.TimeSec);
+            if (x < 0 || x > ActualWidth) continue;
+            dc.DrawLine(line, new Point(x, top), new Point(x, bottom));
+            var flag = new StreamGeometry();
+            using (var c = flag.Open())
+            {
+                c.BeginFigure(new Point(x, top - 1), true, true);
+                c.LineTo(new Point(x + 9, top + 2), true, true);
+                c.LineTo(new Point(x, top + 5), true, true);
+            }
+            flag.Freeze();
+            dc.DrawGeometry(fill, null, flag);
+        }
+    }
+
+    /// <summary>On historical ranges, draw a crosshair + inspect card at the hovered interval.</summary>
+    private void DrawHover(DrawingContext dc, double w, Func<double, double> X, double fromSec, double top, double plotH, double peak)
+    {
+        if (LiveScroll || _hoverX is not double mx || _points.Count == 0) return;
+
+        double tHover = fromSec + mx / w * WindowSeconds;
+        Pt best = _points[0]; double bd = double.MaxValue;
+        foreach (var p in _points) { double d = Math.Abs(p.TimeSec - tHover); if (d < bd) { bd = d; best = p; } }
+        double x = X(best.TimeSec);
+        if (x < 0 || x > w) return;
+
+        var ch = new Pen(new SolidColorBrush(Color.FromArgb(0x70, 0x5B, 0x64, 0x72)), 1);
+        dc.DrawLine(ch, new Point(x, top), new Point(x, top + plotH));
+        double yIn = top + plotH - Math.Min(1.0, best.In / peak) * plotH;
+        double yOut = top + plotH - Math.Min(1.0, best.Out / peak) * plotH;
+        dc.DrawEllipse(_inPen.Brush, null, new Point(x, yIn), 3, 3);
+        dc.DrawEllipse(_outPen.Brush, null, new Point(x, yOut), 3, 3);
+
+        string time = DateTimeOffset.FromUnixTimeSeconds((long)best.TimeSec).ToLocalTime()
+            .ToString(_volumeUnits ? "MMM d  HH:mm" : "HH:mm:ss");
+        string dn = "↓ " + (_volumeUnits ? ByteFormatter.Bytes((long)best.In) : ByteFormatter.Rate(best.In));
+        string up = "↑ " + (_volumeUnits ? ByteFormatter.Bytes((long)best.Out) : ByteFormatter.Rate(best.Out));
+
+        double dpi = VisualTreeHelper.GetDpi(this).PixelsPerDip;
+        FormattedText Ft(string s, Brush b, double sz) =>
+            new(s, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, _mono, sz, b, dpi);
+        var l0 = Ft(time, _gridText, 11);
+        var l1 = Ft(dn, _inPen.Brush, 12);
+        var l2 = Ft(up, _outPen.Brush, 12);
+
+        double cardW = Math.Max(l0.Width, Math.Max(l1.Width, l2.Width)) + 20;
+        double cardH = l0.Height + l1.Height + l2.Height + 16;
+        double cx = x + 12; if (cx + cardW > w) cx = x - cardW - 12; if (cx < 2) cx = 2;
+        double cy = Math.Max(2, top + 4);
+
+        var cardBg = new SolidColorBrush(ResColor("BgPanelColor", Colors.White)) { Opacity = 0.97 };
+        var cardBorder = new Pen(new SolidColorBrush(ResColor("BorderStrongColor", Color.FromRgb(0xD3, 0xD8, 0xE0))), 1);
+        dc.DrawRoundedRectangle(cardBg, cardBorder, new Rect(cx, cy, cardW, cardH), 6, 6);
+        dc.DrawText(l0, new Point(cx + 10, cy + 6));
+        dc.DrawText(l1, new Point(cx + 10, cy + 6 + l0.Height));
+        dc.DrawText(l2, new Point(cx + 10, cy + 6 + l0.Height + l1.Height));
     }
 
     private void DrawGridlines(DrawingContext dc, double w, double h, double peak, double padTop, double plotH)
