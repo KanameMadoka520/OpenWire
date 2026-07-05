@@ -28,6 +28,10 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private string _engineInfo = "";
     [ObservableProperty] private string _savedText = "";
 
+    /// <summary>Raised after settings are persisted, so the shell can react live
+    /// (tray notifications / minimize-to-tray preferences).</summary>
+    public event Action<AppSettings>? Saved;
+
     public SettingsViewModel(EngineClient client) => _client = client;
 
     public async Task LoadAsync()
@@ -74,6 +78,7 @@ public partial class SettingsViewModel : ObservableObject
         _settings.VirusTotalApiKey = (VirusTotalApiKey ?? "").Trim();
 
         await _client.SetSettingsAsync(_settings);
+        Saved?.Invoke(_settings);
         SavedText = "Saved ✓";
         await Task.Delay(2000);
         SavedText = "";

@@ -1,0 +1,29 @@
+<Window x:Class="OpenWire.App.Views.FirewallPromptWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="OpenWire" Width="440" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterScreen" ShowInTaskbar="True" Topmost="True"
+        Background="{StaticResource BgApp}" FontFamily="{StaticResource UiFont}">
+    <Border Padding="24" Background="{StaticResource BgApp}">
+        <StackPanel>
+            <StackPanel Orientation="Horizontal">
+                <Border Width="42" Height="42" CornerRadius="10" Background="{StaticResource AccentSoft}" Margin="0,0,14,0">
+                    <TextBlock Text="&#xE83D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="20"
+                               Foreground="{StaticResource Accent}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock x:Name="NameText" FontSize="16" FontWeight="SemiBold" Text="An application" />
+                    <TextBlock Text="wants to connect to the network" Foreground="{StaticResource TextSecondary}" FontSize="12.5" />
+                </StackPanel>
+            </StackPanel>
+
+            <TextBlock x:Name="DetailText" Foreground="{StaticResource TextSecondary}" FontSize="12.5"
+                       TextWrapping="Wrap" Margin="0,16,0,20" />
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="Block" Style="{StaticResource BtnGhost}" Click="OnBlock" Margin="0,0,10,0" MinWidth="96" />
+                <Button Content="Allow" Style="{StaticResource Btn}" Click="OnAllow" MinWidth="96" />
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>

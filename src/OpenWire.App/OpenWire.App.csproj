@@ -8,6 +8,14 @@
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
   </ItemGroup>
 
+  <!-- UseWindowsForms adds WinForms/Drawing global usings that collide with WPF's
+       Brush/Pen/Point/Color/UserControl. Drop the globals; TrayService imports them
+       explicitly (fully-qualified) where the tray NotifyIcon actually needs them. -->
+  <ItemGroup>
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
   <!-- Public-domain country flags (famfamfam), compiled in so the UI works offline. -->
   <ItemGroup>
     <Resource Include="Assets\Flags\*.png" />
@@ -20,6 +28,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <!-- for the system-tray NotifyIcon (isolated in TrayService); WPF stays primary -->
+    <UseWindowsForms>true</UseWindowsForms>
   </PropertyGroup>
 
 </Project>
