@@ -28,11 +28,11 @@ public sealed class BarChart : FrameworkElement
 
     public BarChart()
     {
-        var accent = Color.FromRgb(0x3F, 0x6C, 0x8C);
+        var accent = ResColor("AccentColor", Color.FromRgb(0x3F, 0x6C, 0x8C));
         _bar = new SolidColorBrush(Color.FromArgb(0x66, accent.R, accent.G, accent.B)); _bar.Freeze();
         _barHi = new SolidColorBrush(accent); _barHi.Freeze();
-        _grid = new Pen(new SolidColorBrush(Color.FromRgb(0xD8, 0xCF, 0xBA)), 1); _grid.Freeze();
-        _text = new SolidColorBrush(Color.FromRgb(0x87, 0x7E, 0x6C)); _text.Freeze();
+        _grid = new Pen(new SolidColorBrush(ResColor("GridLineColor", Color.FromRgb(0xE4, 0xE7, 0xEB))), 1); _grid.Freeze();
+        _text = new SolidColorBrush(ResColor("GridTextColor", Color.FromRgb(0x79, 0x81, 0x8B))); _text.Freeze();
     }
 
     /// <summary>Feed a labelled series. <paramref name="highlight"/> draws one bar solid.</summary>
@@ -46,6 +46,9 @@ public sealed class BarChart : FrameworkElement
         _max = Math.Max(peak * 1.15, bytes ? 1_000_000 : 1);
         InvalidateVisual();
     }
+
+    private static Color ResColor(string key, Color fallback)
+        => Application.Current?.TryFindResource(key) is Color c ? c : fallback;
 
     private string Fmt(double v) => _bytes ? ByteFormatter.Bytes((long)v) : v.ToString("0");
 

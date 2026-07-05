@@ -21,7 +21,7 @@
             <StackPanel>
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="Firewall" Style="{StaticResource H1}" />
-                    <Path Data="{StaticResource DoodleShield}" Style="{StaticResource Doodle}" Width="24" Height="24" Opacity="0.32" VerticalAlignment="Center" Margin="12,2,0,0" />
+                    <Path Data="{StaticResource DoodleShield}" Style="{StaticResource Doodle}" Width="24" Height="24" VerticalAlignment="Center" Margin="12,2,0,0" />
                 </StackPanel>
                 <TextBlock Text="{Binding StatusText}" Style="{StaticResource Caption}" Margin="0,3,0,0" />
             </StackPanel>

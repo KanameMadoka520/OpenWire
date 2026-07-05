@@ -1,0 +1,101 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+
+    <!-- MINIMAL skin: a clean, flat light theme (white surfaces, blue accent, sans
+         type). Same keys as the Pencil skin; the skin parameters below neutralise the
+         sketch decorations (no hand font, no doodles, no offset shadows). -->
+
+    <!-- palette -->
+    <Color x:Key="BgAppColor">#FFFFFF</Color>
+    <Color x:Key="BgPanelColor">#FFFFFF</Color>
+    <Color x:Key="BgSubtleColor">#F4F6F9</Color>
+    <Color x:Key="BgElevatedColor">#E7ECF3</Color>
+    <Color x:Key="BgGraphColor">#FBFCFE</Color>
+    <Color x:Key="BorderColor">#E7EAEF</Color>
+    <Color x:Key="BorderStrongColor">#D3D8E0</Color>
+
+    <Color x:Key="TextPrimaryColor">#1E2530</Color>
+    <Color x:Key="TextSecondaryColor">#5B6472</Color>
+    <Color x:Key="TextMutedColor">#6B7382</Color>
+
+    <Color x:Key="InFillColor">#F7C948</Color>
+    <Color x:Key="InLineColor">#E0A100</Color>
+    <Color x:Key="OutFillColor">#F97CA8</Color>
+    <Color x:Key="OutLineColor">#EC5C90</Color>
+
+    <Color x:Key="AccentColor">#3B82F6</Color>
+    <Color x:Key="AccentSoftColor">#EAF1FE</Color>
+
+    <Color x:Key="AllowTextColor">#12805C</Color>
+    <Color x:Key="AllowBgColor">#E3F6EE</Color>
+    <Color x:Key="BlockTextColor">#D64545</Color>
+    <Color x:Key="BlockBgColor">#FDECEC</Color>
+
+    <Color x:Key="FlameBlockedColor">#EC5C90</Color>
+    <Color x:Key="FlameIdleColor">#B0B8C4</Color>
+    <Color x:Key="AlertNewColor">#F04438</Color>
+    <Color x:Key="NewBadgeColor">#12B76A</Color>
+    <Color x:Key="AlertDotColor">#F79009</Color>
+    <Color x:Key="SuccessColor">#12B76A</Color>
+    <Color x:Key="WarningColor">#F79009</Color>
+    <Color x:Key="DangerColor">#F04438</Color>
+    <Color x:Key="UpgradeGreenColor">#2AAE57</Color>
+    <Color x:Key="GraphiteColor">#1E2530</Color>
+
+    <Color x:Key="GridLineColor">#ECEFF3</Color>
+    <Color x:Key="GridTextColor">#98A2B3</Color>
+
+    <!-- brushes -->
+    <SolidColorBrush x:Key="BgApp" Color="{StaticResource BgAppColor}" />
+    <SolidColorBrush x:Key="BgPanel" Color="{StaticResource BgPanelColor}" />
+    <SolidColorBrush x:Key="BgSubtle" Color="{StaticResource BgSubtleColor}" />
+    <SolidColorBrush x:Key="BgElevated" Color="{StaticResource BgElevatedColor}" />
+    <SolidColorBrush x:Key="BgGraph" Color="{StaticResource BgGraphColor}" />
+    <SolidColorBrush x:Key="Border" Color="{StaticResource BorderColor}" />
+    <SolidColorBrush x:Key="BorderStrong" Color="{StaticResource BorderStrongColor}" />
+    <SolidColorBrush x:Key="TextPrimary" Color="{StaticResource TextPrimaryColor}" />
+    <SolidColorBrush x:Key="TextSecondary" Color="{StaticResource TextSecondaryColor}" />
+    <SolidColorBrush x:Key="TextMuted" Color="{StaticResource TextMutedColor}" />
+    <SolidColorBrush x:Key="InFill" Color="{StaticResource InFillColor}" />
+    <SolidColorBrush x:Key="InLine" Color="{StaticResource InLineColor}" />
+    <SolidColorBrush x:Key="OutFill" Color="{StaticResource OutFillColor}" />
+    <SolidColorBrush x:Key="OutLine" Color="{StaticResource OutLineColor}" />
+    <SolidColorBrush x:Key="Accent" Color="{StaticResource AccentColor}" />
+    <SolidColorBrush x:Key="AccentSoft" Color="{StaticResource AccentSoftColor}" />
+    <SolidColorBrush x:Key="AllowText" Color="{StaticResource AllowTextColor}" />
+    <SolidColorBrush x:Key="AllowBg" Color="{StaticResource AllowBgColor}" />
+    <SolidColorBrush x:Key="BlockText" Color="{StaticResource BlockTextColor}" />
+    <SolidColorBrush x:Key="BlockBg" Color="{StaticResource BlockBgColor}" />
+    <SolidColorBrush x:Key="FlameBlocked" Color="{StaticResource FlameBlockedColor}" />
+    <SolidColorBrush x:Key="FlameIdle" Color="{StaticResource FlameIdleColor}" />
+    <SolidColorBrush x:Key="AlertNew" Color="{StaticResource AlertNewColor}" />
+    <SolidColorBrush x:Key="NewBadge" Color="{StaticResource NewBadgeColor}" />
+    <SolidColorBrush x:Key="AlertDot" Color="{StaticResource AlertDotColor}" />
+    <SolidColorBrush x:Key="Success" Color="{StaticResource SuccessColor}" />
+    <SolidColorBrush x:Key="Warning" Color="{StaticResource WarningColor}" />
+    <SolidColorBrush x:Key="Danger" Color="{StaticResource DangerColor}" />
+    <SolidColorBrush x:Key="UpgradeGreen" Color="{StaticResource UpgradeGreenColor}" />
+    <SolidColorBrush x:Key="Graphite" Color="{StaticResource GraphiteColor}" />
+
+    <!-- skin style parameters (neutralised: clean/flat) -->
+    <FontFamily x:Key="HeadingFont">Segoe UI Variable Text, Segoe UI, Inter</FontFamily>
+
+    <!-- doodles hidden: transparent ink -->
+    <SolidColorBrush x:Key="DoodleInk" Color="#00000000" />
+
+    <!-- no paper grain -->
+    <SolidColorBrush x:Key="PaperOverlay" Color="Transparent" />
+
+    <!-- no drawn borders on buttons / pills (transparent → invisible) -->
+    <SolidColorBrush x:Key="SketchBorderBrush" Color="Transparent" />
+    <SolidColorBrush x:Key="PillBorderBrush" Color="Transparent" />
+
+    <!-- no tab underline -->
+    <SolidColorBrush x:Key="TabUnderline" Color="Transparent" />
+
+    <!-- subtle flat lift; no offset shadow on buttons -->
+    <DropShadowEffect x:Key="CardEffect" Color="#1E2530" BlurRadius="6" ShadowDepth="1" Direction="270" Opacity="0.05" />
+    <DropShadowEffect x:Key="ButtonEffect" Color="#000000" BlurRadius="0" ShadowDepth="0" Opacity="0" />
+
+</ResourceDictionary>

@@ -1,8 +1,25 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <FontFamily x:Key="UiFont">Segoe UI Variable Text, Segoe UI, Inter</FontFamily>
-    <FontFamily x:Key="MonoFont">Cascadia Mono, Consolas, Segoe UI</FontFamily>
+    <!-- ============ Pencil doodle skins (DoodleInk is transparent in the Minimal skin → hidden) ============ -->
+    <Style x:Key="Doodle" TargetType="Path">
+        <Setter Property="Stroke" Value="{StaticResource DoodleInk}" />
+        <Setter Property="StrokeThickness" Value="1.7" />
+        <Setter Property="StrokeStartLineCap" Value="Round" />
+        <Setter Property="StrokeEndLineCap" Value="Round" />
+        <Setter Property="StrokeLineJoin" Value="Round" />
+        <Setter Property="Fill" Value="Transparent" />
+        <Setter Property="Stretch" Value="Uniform" />
+        <Setter Property="IsHitTestVisible" Value="False" />
+        <Setter Property="SnapsToDevicePixels" Value="False" />
+    </Style>
+    <Style x:Key="DoodleFill" TargetType="Path" BasedOn="{StaticResource Doodle}">
+        <Setter Property="Fill" Value="{StaticResource DoodleInk}" />
+        <Setter Property="Stroke" Value="{x:Null}" />
+    </Style>
+    <Style x:Key="DoodleHero" TargetType="Path" BasedOn="{StaticResource Doodle}">
+        <Setter Property="StrokeThickness" Value="2.1" />
+    </Style>
 
     <!-- ============ Text ============ -->
     <Style TargetType="TextBlock">
@@ -14,10 +31,9 @@
     </Style>
 
     <Style x:Key="H1" TargetType="TextBlock">
-        <Setter Property="FontFamily" Value="{StaticResource HandFont}" />
+        <Setter Property="FontFamily" Value="{StaticResource HeadingFont}" />
         <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
-        <Setter Property="FontSize" Value="25" />
-        <Setter Property="FontWeight" Value="Normal" />
+        <Setter Property="FontSize" Value="22" />
     </Style>
 
     <Style x:Key="Caption" TargetType="TextBlock">
@@ -40,34 +56,29 @@
         <Setter Property="FontSize" Value="13" />
     </Style>
 
-    <!-- ============ Card (sketch note-card: graphite edge + soft lift) ============ -->
+    <!-- ============ Card (skin-driven: sketch note-card in Pencil, flat panel in Minimal) ============ -->
     <Style x:Key="Card" TargetType="Border">
         <Setter Property="Background" Value="{StaticResource BgPanel}" />
         <Setter Property="BorderBrush" Value="{StaticResource BorderStrong}" />
-        <Setter Property="BorderThickness" Value="1.3" />
-        <Setter Property="CornerRadius" Value="4" />
-        <Setter Property="Effect">
-            <Setter.Value>
-                <DropShadowEffect Color="{StaticResource GraphiteColor}" BlurRadius="5" ShadowDepth="2" Direction="300" Opacity="0.15" />
-            </Setter.Value>
-        </Setter>
+        <Setter Property="BorderThickness" Value="1.2" />
+        <Setter Property="CornerRadius" Value="5" />
+        <Setter Property="Effect" Value="{StaticResource CardEffect}" />
     </Style>
 
     <!-- ============ Buttons ============ -->
     <Style x:Key="Btn" TargetType="Button">
         <Setter Property="Foreground" Value="White" />
         <Setter Property="Background" Value="{StaticResource Accent}" />
-        <Setter Property="FontFamily" Value="{StaticResource HandFont}" />
-        <Setter Property="FontSize" Value="15" />
-        <Setter Property="FontWeight" Value="Normal" />
+        <Setter Property="FontFamily" Value="{StaticResource HeadingFont}" />
+        <Setter Property="FontSize" Value="14.5" />
         <Setter Property="Padding" Value="15,7" />
         <Setter Property="Cursor" Value="Hand" />
-        <Setter Property="Effect" Value="{StaticResource SketchLift}" />
+        <Setter Property="Effect" Value="{StaticResource ButtonEffect}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
                     <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="4"
-                            BorderBrush="{StaticResource Graphite}" BorderThickness="1.3"
+                            BorderBrush="{StaticResource SketchBorderBrush}" BorderThickness="1.3"
                             Padding="{TemplateBinding Padding}">
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
@@ -90,16 +101,16 @@
     <Style x:Key="BtnGhost" TargetType="Button">
         <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
         <Setter Property="Background" Value="{StaticResource BgPanel}" />
-        <Setter Property="FontFamily" Value="{StaticResource HandFont}" />
+        <Setter Property="FontFamily" Value="{StaticResource HeadingFont}" />
         <Setter Property="FontSize" Value="14" />
         <Setter Property="Padding" Value="13,6" />
         <Setter Property="Cursor" Value="Hand" />
-        <Setter Property="Effect" Value="{StaticResource SketchLift}" />
+        <Setter Property="Effect" Value="{StaticResource ButtonEffect}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
                     <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="4"
-                            BorderBrush="{StaticResource Graphite}" BorderThickness="1.3"
+                            BorderBrush="{StaticResource BorderStrong}" BorderThickness="1.2"
                             Padding="{TemplateBinding Padding}">
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
@@ -195,7 +206,7 @@
     <Style x:Key="TopTab" TargetType="RadioButton">
         <Setter Property="Foreground" Value="{StaticResource TextSecondary}" />
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="FontFamily" Value="{StaticResource HandFont}" />
+        <Setter Property="FontFamily" Value="{StaticResource HeadingFont}" />
         <Setter Property="FontSize" Value="15" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Template">
@@ -209,7 +220,7 @@
                                 <ContentPresenter VerticalAlignment="Center" Margin="10,0,0,0" />
                             </StackPanel>
                             <Path x:Name="ul" Data="{StaticResource DoodleSquiggle}" Stretch="Fill" Height="5" Margin="4,0,4,-3"
-                                  VerticalAlignment="Bottom" Stroke="{StaticResource Accent}" StrokeThickness="1.7"
+                                  VerticalAlignment="Bottom" Stroke="{StaticResource TabUnderline}" StrokeThickness="1.7"
                                   StrokeStartLineCap="Round" StrokeEndLineCap="Round" Visibility="Collapsed" IsHitTestVisible="False" />
                         </Grid>
                     </Border>
@@ -308,7 +319,7 @@
             <Setter.Value>
                 <ControlTemplate TargetType="ToggleButton">
                     <Border x:Name="b" CornerRadius="13" Padding="12,4" Background="{StaticResource AllowBg}"
-                            BorderBrush="{StaticResource Graphite}" BorderThickness="1.1">
+                            BorderBrush="{StaticResource PillBorderBrush}" BorderThickness="1.1">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock x:Name="t" Text="Allowed" Foreground="{StaticResource AllowText}" FontWeight="SemiBold" VerticalAlignment="Center" />
                             <TextBlock Text="&#xE70D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="8" Margin="8,1,0,0"

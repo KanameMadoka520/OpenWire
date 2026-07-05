@@ -1,0 +1,129 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+
+    <!-- PENCIL skin: graphite ink + muted colored pencil on a WHITE sketch sheet
+         (no cream/beige). Same keys as the Minimal skin, so a restart re-skins the
+         whole app. Skin-specific style parameters (fonts, effects, doodle ink,
+         borders) let one Controls.xaml serve both skins. -->
+
+    <!-- palette -->
+    <Color x:Key="BgAppColor">#F6F7F8</Color>
+    <Color x:Key="BgPanelColor">#FFFFFF</Color>
+    <Color x:Key="BgSubtleColor">#ECEEF1</Color>
+    <Color x:Key="BgElevatedColor">#E0E4E9</Color>
+    <Color x:Key="BgGraphColor">#FFFFFF</Color>
+    <Color x:Key="BorderColor">#D3D8DE</Color>
+    <Color x:Key="BorderStrongColor">#8B929B</Color>
+
+    <Color x:Key="TextPrimaryColor">#23272D</Color>
+    <Color x:Key="TextSecondaryColor">#525963</Color>
+    <Color x:Key="TextMutedColor">#79818B</Color>
+
+    <Color x:Key="InFillColor">#E7BE55</Color>
+    <Color x:Key="InLineColor">#B08A2C</Color>
+    <Color x:Key="OutFillColor">#E38BA6</Color>
+    <Color x:Key="OutLineColor">#C05C80</Color>
+
+    <Color x:Key="AccentColor">#3B6E8F</Color>
+    <Color x:Key="AccentSoftColor">#E4ECF2</Color>
+
+    <Color x:Key="AllowTextColor">#3C6B37</Color>
+    <Color x:Key="AllowBgColor">#E5EEDC</Color>
+    <Color x:Key="BlockTextColor">#A8443B</Color>
+    <Color x:Key="BlockBgColor">#F3E0D9</Color>
+
+    <Color x:Key="FlameBlockedColor">#C05C80</Color>
+    <Color x:Key="FlameIdleColor">#A0A6AE</Color>
+    <Color x:Key="AlertNewColor">#B0463B</Color>
+    <Color x:Key="NewBadgeColor">#4C8A3F</Color>
+    <Color x:Key="AlertDotColor">#C58A2E</Color>
+    <Color x:Key="SuccessColor">#4C8A3F</Color>
+    <Color x:Key="WarningColor">#C58A2E</Color>
+    <Color x:Key="DangerColor">#B0463B</Color>
+    <Color x:Key="UpgradeGreenColor">#4C8A3F</Color>
+    <Color x:Key="GraphiteColor">#2E3238</Color>
+
+    <!-- chart gridlines / labels (cool, on white) -->
+    <Color x:Key="GridLineColor">#E4E7EB</Color>
+    <Color x:Key="GridTextColor">#79818B</Color>
+
+    <!-- brushes -->
+    <SolidColorBrush x:Key="BgApp" Color="{StaticResource BgAppColor}" />
+    <SolidColorBrush x:Key="BgPanel" Color="{StaticResource BgPanelColor}" />
+    <SolidColorBrush x:Key="BgSubtle" Color="{StaticResource BgSubtleColor}" />
+    <SolidColorBrush x:Key="BgElevated" Color="{StaticResource BgElevatedColor}" />
+    <SolidColorBrush x:Key="BgGraph" Color="{StaticResource BgGraphColor}" />
+    <SolidColorBrush x:Key="Border" Color="{StaticResource BorderColor}" />
+    <SolidColorBrush x:Key="BorderStrong" Color="{StaticResource BorderStrongColor}" />
+    <SolidColorBrush x:Key="TextPrimary" Color="{StaticResource TextPrimaryColor}" />
+    <SolidColorBrush x:Key="TextSecondary" Color="{StaticResource TextSecondaryColor}" />
+    <SolidColorBrush x:Key="TextMuted" Color="{StaticResource TextMutedColor}" />
+    <SolidColorBrush x:Key="InFill" Color="{StaticResource InFillColor}" />
+    <SolidColorBrush x:Key="InLine" Color="{StaticResource InLineColor}" />
+    <SolidColorBrush x:Key="OutFill" Color="{StaticResource OutFillColor}" />
+    <SolidColorBrush x:Key="OutLine" Color="{StaticResource OutLineColor}" />
+    <SolidColorBrush x:Key="Accent" Color="{StaticResource AccentColor}" />
+    <SolidColorBrush x:Key="AccentSoft" Color="{StaticResource AccentSoftColor}" />
+    <SolidColorBrush x:Key="AllowText" Color="{StaticResource AllowTextColor}" />
+    <SolidColorBrush x:Key="AllowBg" Color="{StaticResource AllowBgColor}" />
+    <SolidColorBrush x:Key="BlockText" Color="{StaticResource BlockTextColor}" />
+    <SolidColorBrush x:Key="BlockBg" Color="{StaticResource BlockBgColor}" />
+    <SolidColorBrush x:Key="FlameBlocked" Color="{StaticResource FlameBlockedColor}" />
+    <SolidColorBrush x:Key="FlameIdle" Color="{StaticResource FlameIdleColor}" />
+    <SolidColorBrush x:Key="AlertNew" Color="{StaticResource AlertNewColor}" />
+    <SolidColorBrush x:Key="NewBadge" Color="{StaticResource NewBadgeColor}" />
+    <SolidColorBrush x:Key="AlertDot" Color="{StaticResource AlertDotColor}" />
+    <SolidColorBrush x:Key="Success" Color="{StaticResource SuccessColor}" />
+    <SolidColorBrush x:Key="Warning" Color="{StaticResource WarningColor}" />
+    <SolidColorBrush x:Key="Danger" Color="{StaticResource DangerColor}" />
+    <SolidColorBrush x:Key="UpgradeGreen" Color="{StaticResource UpgradeGreenColor}" />
+    <SolidColorBrush x:Key="Graphite" Color="{StaticResource GraphiteColor}" />
+
+    <!-- skin style parameters (consumed by Controls.xaml) -->
+    <FontFamily x:Key="HeadingFont">Ink Free, Segoe Print, Comic Sans MS, Segoe UI</FontFamily>
+
+    <!-- doodle ink: faint graphite → doodles show in Pencil (transparent in Minimal) -->
+    <SolidColorBrush x:Key="DoodleInk" Color="#332E3238" />
+
+    <!-- window paper grain (faint cool speckles on white) -->
+    <DrawingBrush x:Key="PaperOverlay" TileMode="Tile" Viewport="0,0,140,140" ViewportUnits="Absolute" Stretch="None">
+        <DrawingBrush.Drawing>
+            <GeometryDrawing Brush="#0C2E3238">
+                <GeometryDrawing.Geometry>
+                    <GeometryGroup>
+                        <EllipseGeometry Center="14,22" RadiusX="0.7" RadiusY="0.7" />
+                        <EllipseGeometry Center="63,12" RadiusX="0.5" RadiusY="0.5" />
+                        <EllipseGeometry Center="98,34" RadiusX="0.6" RadiusY="0.6" />
+                        <EllipseGeometry Center="126,18" RadiusX="0.5" RadiusY="0.5" />
+                        <EllipseGeometry Center="35,54" RadiusX="0.6" RadiusY="0.6" />
+                        <EllipseGeometry Center="80,66" RadiusX="0.5" RadiusY="0.5" />
+                        <EllipseGeometry Center="112,78" RadiusX="0.7" RadiusY="0.7" />
+                        <EllipseGeometry Center="20,92" RadiusX="0.5" RadiusY="0.5" />
+                        <EllipseGeometry Center="52,104" RadiusX="0.6" RadiusY="0.6" />
+                        <EllipseGeometry Center="90,116" RadiusX="0.5" RadiusY="0.5" />
+                        <EllipseGeometry Center="128,102" RadiusX="0.6" RadiusY="0.6" />
+                        <EllipseGeometry Center="8,124" RadiusX="0.5" RadiusY="0.5" />
+                        <EllipseGeometry Center="70,132" RadiusX="0.6" RadiusY="0.6" />
+                        <RectangleGeometry Rect="44,30 26,0.4" />
+                        <RectangleGeometry Rect="96,60 22,0.4" />
+                        <RectangleGeometry Rect="16,74 20,0.35" />
+                    </GeometryGroup>
+                </GeometryDrawing.Geometry>
+            </GeometryDrawing>
+        </DrawingBrush.Drawing>
+    </DrawingBrush>
+
+    <!-- sketchy borders on buttons / pills (thickness is fixed in the templates;
+         a transparent brush in the Minimal skin makes the border disappear) -->
+    <SolidColorBrush x:Key="SketchBorderBrush" Color="{StaticResource GraphiteColor}" />
+    <SolidColorBrush x:Key="PillBorderBrush" Color="{StaticResource GraphiteColor}" />
+
+    <!-- squiggle underline colour under the selected tab -->
+    <SolidColorBrush x:Key="TabUnderline" Color="{StaticResource AccentColor}" />
+
+    <!-- card lift + button offset shadow (hand-sketch feel) -->
+    <DropShadowEffect x:Key="CardEffect" Color="{StaticResource GraphiteColor}" BlurRadius="5" ShadowDepth="2" Direction="300" Opacity="0.13" />
+    <DropShadowEffect x:Key="ButtonEffect" Color="{StaticResource GraphiteColor}" BlurRadius="0" ShadowDepth="2.2" Direction="300" Opacity="0.26" />
+
+</ResourceDictionary>

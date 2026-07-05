@@ -28,11 +28,18 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private string _engineInfo = "";
     [ObservableProperty] private string _savedText = "";
 
+    /// <summary>UI skin: "Minimal" or "Pencil". Changing it restarts the app to re-skin.</summary>
+    [ObservableProperty] private string _theme = ThemeManager.Read();
+
     /// <summary>Raised after settings are persisted, so the shell can react live
     /// (tray notifications / minimize-to-tray preferences).</summary>
     public event Action<AppSettings>? Saved;
 
     public SettingsViewModel(EngineClient client) => _client = client;
+
+    // Fired only when the user actually picks a different skin (EnumMatchConverter.
+    // ConvertBack never writes on the initial source→target binding sync).
+    partial void OnThemeChanged(string value) => ThemeManager.SwitchAndRestart(value);
 
     public async Task LoadAsync()
     {

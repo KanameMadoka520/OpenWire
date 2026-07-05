@@ -20,17 +20,20 @@ public sealed class MetricGraph : FrameworkElement
     private readonly Brush _text;
     private readonly Typeface _mono = new("Cascadia Mono, Consolas");
 
+    private static Color ResColor(string key, Color fallback)
+        => Application.Current?.TryFindResource(key) is Color c ? c : fallback;
+
     public MetricGraph()
     {
-        var accent = Color.FromRgb(0x3F, 0x6C, 0x8C);
+        var accent = ResColor("AccentColor", Color.FromRgb(0x3F, 0x6C, 0x8C));
         var b = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(0, 1) };
         b.GradientStops.Add(new GradientStop(Color.FromArgb(0x59, accent.R, accent.G, accent.B), 0));
         b.GradientStops.Add(new GradientStop(Color.FromArgb(0x0E, accent.R, accent.G, accent.B), 1));
         b.Freeze();
         _fill = b;
         _line = new Pen(new SolidColorBrush(accent), 1.4); _line.Freeze();
-        _grid = new Pen(new SolidColorBrush(Color.FromRgb(0xD8, 0xCF, 0xBA)), 1); _grid.Freeze();
-        _text = new SolidColorBrush(Color.FromRgb(0x87, 0x7E, 0x6C)); _text.Freeze();
+        _grid = new Pen(new SolidColorBrush(ResColor("GridLineColor", Color.FromRgb(0xE4, 0xE7, 0xEB))), 1); _grid.Freeze();
+        _text = new SolidColorBrush(ResColor("GridTextColor", Color.FromRgb(0x79, 0x81, 0x8B))); _text.Freeze();
     }
 
     /// <summary>Set the series; the graph auto-scales to the visible peak.</summary>

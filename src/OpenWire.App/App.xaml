@@ -4,14 +4,10 @@
              xmlns:local="clr-namespace:OpenWire.App"
              xmlns:util="clr-namespace:OpenWire.App.Util">
     <Application.Resources>
+        <!-- The theme skin dictionaries (SketchAssets + Skin.* + Controls + Lists) are
+             merged in code at startup (App.OnStartup → ThemeManager.Apply) so the user's
+             chosen skin loads first. Only the shared converters live here. -->
         <ResourceDictionary>
-            <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="Theme/Colors.xaml" />
-                <ResourceDictionary Source="Theme/Sketch.xaml" />
-                <ResourceDictionary Source="Theme/Controls.xaml" />
-                <ResourceDictionary Source="Theme/Lists.xaml" />
-            </ResourceDictionary.MergedDictionaries>
-
             <util:EnumMatchConverter x:Key="EnumMatch" />
             <util:EnumVisibilityConverter x:Key="EnumVis" />
             <util:BytesConverter x:Key="Bytes" />

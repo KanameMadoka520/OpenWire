@@ -23,6 +23,9 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
+        // Apply the chosen skin (Minimal / Pencil) before any window is created.
+        ThemeManager.Apply(this, ThemeManager.Read());
+
         // Never let a stray background/UI exception take down the whole app.
         DispatcherUnhandledException += OnDispatcherException;
 
