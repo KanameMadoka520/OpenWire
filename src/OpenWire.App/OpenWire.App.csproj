@@ -22,6 +22,11 @@
     <None Include="Assets\Flags\NOTICE.md" />
   </ItemGroup>
 
+  <!-- Public-domain world coastline (Natural Earth 1:110m), projected + embedded. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Controls\WorldLand.txt" />
+  </ItemGroup>
+
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net9.0-windows</TargetFramework>
