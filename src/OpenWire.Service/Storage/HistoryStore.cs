@@ -46,6 +46,22 @@ CREATE TABLE IF NOT EXISTS usage_host (
     PRIMARY KEY (host_key, bucket));
 CREATE INDEX IF NOT EXISTS ix_usage_host_bucket ON usage_host(bucket);
 
+-- Compact per-local-day rollups. Kept far longer than the minute tables so
+-- long-term trends and per-app anomaly baselines survive minute-row pruning.
+CREATE TABLE IF NOT EXISTS traffic_day (
+    day INTEGER PRIMARY KEY, bytes_in INTEGER NOT NULL, bytes_out INTEGER NOT NULL);
+
+CREATE TABLE IF NOT EXISTS usage_app_day (
+    app_id TEXT NOT NULL, day INTEGER NOT NULL,
+    bytes_in INTEGER NOT NULL, bytes_out INTEGER NOT NULL,
+    PRIMARY KEY (app_id, day));
+CREATE INDEX IF NOT EXISTS ix_usage_app_day_day ON usage_app_day(day);
+
+-- First/last time each country was ever contacted (survives pruning) so a first
+-- contact with a new country can be flagged as an anomaly.
+CREATE TABLE IF NOT EXISTS country_seen (
+    code TEXT PRIMARY KEY, first_seen INTEGER NOT NULL, last_seen INTEGER NOT NULL);
+
 CREATE TABLE IF NOT EXISTS host_meta (
     host_key TEXT PRIMARY KEY, remote_addr TEXT, host_name TEXT, country_code TEXT, country_name TEXT);
 
@@ -124,6 +140,44 @@ CREATE TABLE IF NOT EXISTS devices (
             cmd.CommandText = @"INSERT INTO usage_host(host_key,bucket,bytes_in,bytes_out) VALUES($h,$b,$i,$o)
                 ON CONFLICT(host_key,bucket) DO UPDATE SET bytes_in=bytes_in+$i, bytes_out=bytes_out+$o;";
             Bind(cmd, "$h", hostKey); Bind(cmd, "$b", bucket); Bind(cmd, "$i", bytesIn); Bind(cmd, "$o", bytesOut);
+            cmd.ExecuteNonQuery();
+        }
+    }
+
+    public void AddGlobalDay(long day, long bytesIn, long bytesOut)
+    {
+        lock (_lock)
+        {
+            using var cmd = _conn.CreateCommand();
+            cmd.CommandText = @"INSERT INTO traffic_day(day,bytes_in,bytes_out) VALUES($d,$i,$o)
+                ON CONFLICT(day) DO UPDATE SET bytes_in=bytes_in+$i, bytes_out=bytes_out+$o;";
+            Bind(cmd, "$d", day); Bind(cmd, "$i", bytesIn); Bind(cmd, "$o", bytesOut);
+            cmd.ExecuteNonQuery();
+        }
+    }
+
+    public void AddAppDay(string appId, long day, long bytesIn, long bytesOut)
+    {
+        lock (_lock)
+        {
+            using var cmd = _conn.CreateCommand();
+            cmd.CommandText = @"INSERT INTO usage_app_day(app_id,day,bytes_in,bytes_out) VALUES($a,$d,$i,$o)
+                ON CONFLICT(app_id,day) DO UPDATE SET bytes_in=bytes_in+$i, bytes_out=bytes_out+$o;";
+            Bind(cmd, "$a", appId); Bind(cmd, "$d", day); Bind(cmd, "$i", bytesIn); Bind(cmd, "$o", bytesOut);
+            cmd.ExecuteNonQuery();
+        }
+    }
+
+    /// <summary>Record that <paramref name="code"/> was contacted at <paramref name="nowUnix"/>.</summary>
+    public void TouchCountry(string code, long nowUnix)
+    {
+        if (string.IsNullOrEmpty(code)) return;
+        lock (_lock)
+        {
+            using var cmd = _conn.CreateCommand();
+            cmd.CommandText = @"INSERT INTO country_seen(code,first_seen,last_seen) VALUES($c,$n,$n)
+                ON CONFLICT(code) DO UPDATE SET last_seen=$n;";
+            Bind(cmd, "$c", code); Bind(cmd, "$n", nowUnix);
             cmd.ExecuteNonQuery();
         }
     }
@@ -249,6 +303,97 @@ CREATE TABLE IF NOT EXISTS devices (
             using var r = cmd.ExecuteReader();
             return r.Read() ? (r.GetInt64(0), r.GetInt64(1)) : (0, 0);
         }
+    }
+
+    // ---------------- Analytics + retention ----------------
+
+    /// <summary>Per-local-day global totals between two day buckets (inclusive).</summary>
+    public List<(long Day, long In, long Out)> QueryGlobalDaily(long fromDay, long toDay)
+    {
+        lock (_lock)
+        {
+            var list = new List<(long, long, long)>();
+            using var cmd = _conn.CreateCommand();
+            cmd.CommandText = "SELECT day,bytes_in,bytes_out FROM traffic_day WHERE day>=$f AND day<=$t ORDER BY day;";
+            Bind(cmd, "$f", fromDay); Bind(cmd, "$t", toDay);
+            using var r = cmd.ExecuteReader();
+            while (r.Read()) list.Add((r.GetInt64(0), r.GetInt64(1), r.GetInt64(2)));
+            return list;
+        }
+    }
+
+    /// <summary>
+    /// Per-app daily baseline over [fromDay, toDay): active-day count and byte totals,
+    /// used to compute an "average per active day" baseline for spike detection.
+    /// </summary>
+    public List<(string AppId, int ActiveDays, long In, long Out)> AppDailyBaseline(long fromDay, long toDay)
+    {
+        lock (_lock)
+        {
+            var list = new List<(string, int, long, long)>();
+            using var cmd = _conn.CreateCommand();
+            cmd.CommandText = @"SELECT app_id, COUNT(*), SUM(bytes_in), SUM(bytes_out)
+                FROM usage_app_day WHERE day>=$f AND day<$t GROUP BY app_id;";
+            Bind(cmd, "$f", fromDay); Bind(cmd, "$t", toDay);
+            using var r = cmd.ExecuteReader();
+            while (r.Read()) list.Add((r.GetString(0), r.GetInt32(1), r.GetInt64(2), r.GetInt64(3)));
+            return list;
+        }
+    }
+
+    /// <summary>Countries whose very first contact happened at or after <paramref name="cutoffUnix"/>.</summary>
+    public List<(string Code, long FirstSeen)> NewCountriesSince(long cutoffUnix)
+    {
+        lock (_lock)
+        {
+            var list = new List<(string, long)>();
+            using var cmd = _conn.CreateCommand();
+            cmd.CommandText = "SELECT code,first_seen FROM country_seen WHERE first_seen>=$c AND code<>'' ORDER BY first_seen DESC;";
+            Bind(cmd, "$c", cutoffUnix);
+            using var r = cmd.ExecuteReader();
+            while (r.Read()) list.Add((r.GetString(0), r.GetInt64(1)));
+            return list;
+        }
+    }
+
+    /// <summary>Resolve a country code to its friendly name from recorded host metadata.</summary>
+    public string CountryName(string code)
+    {
+        if (string.IsNullOrEmpty(code)) return code;
+        lock (_lock)
+        {
+            using var cmd = _conn.CreateCommand();
+            cmd.CommandText = "SELECT country_name FROM host_meta WHERE country_code=$c AND country_name<>'' LIMIT 1;";
+            Bind(cmd, "$c", code);
+            return cmd.ExecuteScalar() as string ?? code;
+        }
+    }
+
+    /// <summary>
+    /// Drop minute-granularity rows older than <paramref name="minuteCutoffUnix"/> and
+    /// day rollups older than <paramref name="dayCutoffUnix"/>. Keeps the DB bounded
+    /// while preserving long-term daily trends. Returns rows removed.
+    /// </summary>
+    public int PruneOldHistory(long minuteCutoffUnix, long dayCutoffUnix)
+    {
+        lock (_lock)
+        {
+            int removed = 0;
+            removed += ExecDelete("DELETE FROM traffic_min WHERE bucket<$c;", minuteCutoffUnix);
+            removed += ExecDelete("DELETE FROM usage_app  WHERE bucket<$c;", minuteCutoffUnix);
+            removed += ExecDelete("DELETE FROM usage_host WHERE bucket<$c;", minuteCutoffUnix);
+            removed += ExecDelete("DELETE FROM traffic_day    WHERE day<$c;", dayCutoffUnix);
+            removed += ExecDelete("DELETE FROM usage_app_day  WHERE day<$c;", dayCutoffUnix);
+            return removed;
+        }
+    }
+
+    private int ExecDelete(string sql, long cutoff)
+    {
+        using var cmd = _conn.CreateCommand();
+        cmd.CommandText = sql;
+        Bind(cmd, "$c", cutoff);
+        return cmd.ExecuteNonQuery();
     }
 
     // ---------------- Alerts ----------------
