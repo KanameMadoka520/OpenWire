@@ -34,6 +34,11 @@ public sealed class UsageResponse : IpcMessage
     public long TotalBytesOut { get; set; }
 }
 
+public sealed class InsightsResponse : IpcMessage
+{
+    public InsightsReport Report { get; set; } = new();
+}
+
 public sealed class ConnectionsResponse : IpcMessage
 {
     public List<ConnectionInfo> Connections { get; set; } = new();

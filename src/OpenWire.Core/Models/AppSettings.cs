@@ -30,6 +30,21 @@ public sealed class AppSettings
     public bool MonitorHostsFile { get; set; } = true;
     public bool MonitorRdp { get; set; } = true;
 
+    /// <summary>
+    /// Detect statistical usage anomalies over recorded history (per-app volume
+    /// spikes vs a rolling baseline, upload-heavy apps, first contact with a new
+    /// country, odd-hour activity) and raise them as alerts. Monitoring/recording
+    /// is OpenWire's core purpose; this turns the record into anomaly detection.
+    /// </summary>
+    public bool MonitorUsageAnomalies { get; set; } = true;
+
+    /// <summary>
+    /// Days of per-minute history to retain. Older minute rows are pruned to keep
+    /// the database bounded; compact daily rollups are kept far longer so long-term
+    /// trends and patterns survive. 0 disables pruning (keep everything).
+    /// </summary>
+    public int HistoryRetentionDays { get; set; } = 90;
+
     /// <summary>Whether reverse DNS lookups are performed for remote endpoints.</summary>
     public bool ResolveHostNames { get; set; } = true;
 

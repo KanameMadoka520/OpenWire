@@ -32,6 +32,12 @@ public sealed class GetUsageRequest : IpcMessage
     public UsageGroupBy GroupBy { get; set; } = UsageGroupBy.Apps;
 }
 
+/// <summary>Fetch the computed analytics report (patterns + anomalies) for a range.</summary>
+public sealed class GetInsightsRequest : IpcMessage
+{
+    public GraphRange Range { get; set; } = GraphRange.Week;
+}
+
 /// <summary>Fetch the current live connection table.</summary>
 public sealed class GetConnectionsRequest : IpcMessage { }
 

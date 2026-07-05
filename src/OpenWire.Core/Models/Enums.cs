@@ -101,6 +101,9 @@ public enum AlertKind
 
     /// <summary>General informational event.</summary>
     Info = 11,
+
+    /// <summary>A statistical usage anomaly (traffic spike, upload-heavy app, new country, odd-hour activity).</summary>
+    UsageAnomaly = 12,
 }
 
 /// <summary>Severity used for colour-coding alerts.</summary>
