@@ -8,7 +8,7 @@ using OpenWire.Core.Util;
 
 namespace OpenWire.App.ViewModels;
 
-public enum Section { Traffic, Firewall, Alerts, Scanner, Hardware, Settings }
+public enum Section { Traffic, Analytics, Firewall, Alerts, Scanner, Hardware, Settings }
 
 /// <summary>Root view-model: shell state, headline dashboard status, and the
 /// screen view-models. Mirrors GlassWire's five top tabs (Traffic / Firewall /
@@ -45,6 +45,7 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private bool _canEnforceFirewall;
 
     public TrafficViewModel Traffic { get; }
+    public AnalyticsViewModel Analytics { get; }
     public FirewallViewModel Firewall { get; }
     public AlertsViewModel Alerts { get; }
     public ThingsViewModel Scanner { get; }
@@ -57,6 +58,7 @@ public partial class MainViewModel : ObservableObject
     {
         _client = client;
         Traffic = new TrafficViewModel(client);
+        Analytics = new AnalyticsViewModel(client);
         Firewall = new FirewallViewModel(client);
         Alerts = new AlertsViewModel(client);
         Scanner = new ThingsViewModel(client);
@@ -131,6 +133,7 @@ public partial class MainViewModel : ObservableObject
         CurrentView = value switch
         {
             Section.Traffic => Traffic,
+            Section.Analytics => Analytics,
             Section.Firewall => Firewall,
             Section.Alerts => Alerts,
             Section.Scanner => Scanner,
@@ -149,6 +152,7 @@ public partial class MainViewModel : ObservableObject
             switch (value)
             {
                 case Section.Traffic: await Traffic.LoadAsync(); break;
+                case Section.Analytics: await Analytics.LoadAsync(); break;
                 case Section.Firewall: await Firewall.LoadAsync(); break;
                 case Section.Alerts: await Alerts.LoadAsync(); break;
                 case Section.Scanner: await Scanner.LoadAsync(); break;

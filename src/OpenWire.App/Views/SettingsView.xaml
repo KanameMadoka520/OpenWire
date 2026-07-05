@@ -21,8 +21,11 @@
                 <TextBlock Text="SECURITY MONITORS" Style="{StaticResource TableHeaderText}" Margin="2,4,0,10" />
                 <Border Style="{StaticResource Card}" Padding="18">
                     <StackPanel>
+                        <CheckBox Style="{StaticResource Switch}" Content="Usage anomalies (spikes, upload-heavy apps, new countries, odd hours)" IsChecked="{Binding MonitorUsageAnomalies}" Margin="0,0,0,14" />
                         <CheckBox Style="{StaticResource Switch}" Content="New device on network" IsChecked="{Binding MonitorNewDevices}" Margin="0,0,0,14" />
                         <CheckBox Style="{StaticResource Switch}" Content="DNS server changes" IsChecked="{Binding MonitorDnsChanges}" Margin="0,0,0,14" />
+                        <CheckBox Style="{StaticResource Switch}" Content="Hosts file changes" IsChecked="{Binding MonitorHostsFile}" Margin="0,0,0,14" />
+                        <CheckBox Style="{StaticResource Switch}" Content="ARP spoofing (gateway MAC changes)" IsChecked="{Binding MonitorArpSpoofing}" Margin="0,0,0,14" />
                         <CheckBox Style="{StaticResource Switch}" Content="Remote Desktop (RDP) connections" IsChecked="{Binding MonitorRdp}" Margin="0,0,0,14" />
                         <CheckBox Style="{StaticResource Switch}" Content="Show desktop notifications" IsChecked="{Binding ShowNotifications}" />
                     </StackPanel>
@@ -45,6 +48,19 @@
                             <TextBox Style="{StaticResource Search}" Width="120" Text="{Binding DataLimitGb}" />
                             <TextBlock Text="Reset day" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" Width="90" Margin="24,0,0,0" />
                             <TextBox Style="{StaticResource Search}" Width="80" Text="{Binding BillingDay}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <TextBlock Text="HISTORY" Style="{StaticResource TableHeaderText}" Margin="2,24,0,10" />
+                <Border Style="{StaticResource Card}" Padding="18">
+                    <StackPanel>
+                        <TextBlock Foreground="{StaticResource TextSecondary}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,12"
+                                   Text="Per-minute history is pruned after this many days to keep the database small; compact daily rollups are kept much longer for long-term trends and anomaly baselines. Set to 0 to keep all minute-level history." />
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Keep minutes for" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" Width="120" />
+                            <TextBox Style="{StaticResource Search}" Width="80" Text="{Binding HistoryRetentionDays}" />
+                            <TextBlock Text="days" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" Margin="10,0,0,0" />
                         </StackPanel>
                     </StackPanel>
                 </Border>

@@ -20,6 +20,7 @@
 
     <Window.Resources>
         <DataTemplate DataType="{x:Type vm:TrafficViewModel}"><views:TrafficView /></DataTemplate>
+        <DataTemplate DataType="{x:Type vm:AnalyticsViewModel}"><views:AnalyticsView /></DataTemplate>
         <DataTemplate DataType="{x:Type vm:FirewallViewModel}"><views:FirewallView /></DataTemplate>
         <DataTemplate DataType="{x:Type vm:AlertsViewModel}"><views:AlertsView /></DataTemplate>
         <DataTemplate DataType="{x:Type vm:ThingsViewModel}"><views:ThingsView /></DataTemplate>
@@ -61,6 +62,7 @@
                         <Style TargetType="RadioButton" BasedOn="{StaticResource TopTab}"><Setter Property="GroupName" Value="tabs" /></Style>
                     </StackPanel.Resources>
                     <RadioButton Content="Traffic" Tag="&#xE9D9;" IsChecked="{Binding CurrentSection, Converter={StaticResource EnumMatch}, ConverterParameter=Traffic, Mode=TwoWay}" />
+                    <RadioButton Content="Analytics" Tag="&#xE9D2;" IsChecked="{Binding CurrentSection, Converter={StaticResource EnumMatch}, ConverterParameter=Analytics, Mode=TwoWay}" />
                     <RadioButton Content="Firewall" Tag="&#xE83D;" IsChecked="{Binding CurrentSection, Converter={StaticResource EnumMatch}, ConverterParameter=Firewall, Mode=TwoWay}" />
                     <RadioButton Tag="&#xEA8F;" AutomationProperties.Name="Alerts" IsChecked="{Binding CurrentSection, Converter={StaticResource EnumMatch}, ConverterParameter=Alerts, Mode=TwoWay}">
                         <StackPanel Orientation="Horizontal">

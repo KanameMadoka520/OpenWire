@@ -26,6 +26,7 @@
             <util:IconLoader x:Key="AppIcon" />
             <util:CountryFlagConverter x:Key="Flag" />
             <util:ReputationBrushConverter x:Key="RepBrush" />
+            <util:AnomalyKindGlyphConverter x:Key="AnomGlyph" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>

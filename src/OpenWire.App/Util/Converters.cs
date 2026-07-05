@@ -119,6 +119,24 @@ public sealed class DeviceKindGlyphConverter : IValueConverter
     public object ConvertBack(object? v, Type t, object? p, CultureInfo c) => Binding.DoNothing;
 }
 
+/// <summary>Maps a usage-anomaly kind to a Segoe Fluent / MDL2 icon glyph.</summary>
+public sealed class AnomalyKindGlyphConverter : IValueConverter
+{
+    public object Convert(object? value, Type t, object? p, CultureInfo c)
+    {
+        int code = value switch
+        {
+            AnomalyKind.VolumeSpike => 0xE9D9, // line chart / spike
+            AnomalyKind.UploadHeavy => 0xE74A, // up arrow (upload)
+            AnomalyKind.NewCountry => 0xE909,  // globe
+            AnomalyKind.OddHour => 0xE823,     // clock / recent
+            _ => 0xE7BA,                       // warning
+        };
+        return ((char)code).ToString();
+    }
+    public object ConvertBack(object? v, Type t, object? p, CultureInfo c) => Binding.DoNothing;
+}
+
 /// <summary>Visible when the bound enum equals the parameter, else Collapsed.</summary>
 public sealed class EnumVisibilityConverter : IValueConverter
 {
