@@ -139,6 +139,9 @@ public sealed class IpcServer : IAsyncDisposable
                 case GetUsageRequest u:
                     return _engine.GetUsage(u.Range, u.GroupBy);
 
+                case GetInsightsRequest gi:
+                    return new InsightsResponse { Report = _engine.GetInsights(gi.Range) };
+
                 case GetConnectionsRequest:
                     return new ConnectionsResponse { Connections = _engine.GetConnections() };
 

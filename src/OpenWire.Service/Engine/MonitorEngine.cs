@@ -30,6 +30,7 @@ public sealed class MonitorEngine : IAsyncDisposable
     private readonly FirewallManager _firewall = new();
     private readonly AlertEngine _alerts = new();
     private readonly ReputationService _reputation = new();
+    private readonly IntegrityMonitor _integrity = new();
     private readonly HistoryStore _store;
 
     private readonly object _ringLock = new();
@@ -58,6 +59,10 @@ public sealed class MonitorEngine : IAsyncDisposable
     private long _tick;
     private int _scanning;
 
+    // Usage-anomaly alert de-duplication: raise each distinct anomaly at most once per local day.
+    private readonly HashSet<string> _anomaliesAlertedToday = new(StringComparer.OrdinalIgnoreCase);
+    private long _anomalyDayStamp = -1;
+
     public event Action<IpcMessage>? Events;
 
     public string EngineVersion => "0.1.0";
@@ -85,11 +90,13 @@ public sealed class MonitorEngine : IAsyncDisposable
         _alerts.SeedKnownApps(_store.GetKnownAppIds());
         _alerts.SeedKnownDevices(_store.GetKnownDeviceIds());
         _alerts.SeedDns(_scanner.GetLocalInfo().DnsServers);
+        _integrity.Seed();
 
         CanEnforceFirewall = _firewall.CanEnforce();
         _etwActive = _etw.TryStart();
         _hardware.Start();
         RefreshFirewallCache();
+        PruneHistory();
 
         Console.WriteLine($"[Engine] started. ETW={_etwActive}, firewall={CanEnforceFirewall}, geoip={_geo.Available}");
 
@@ -165,6 +172,10 @@ public sealed class MonitorEngine : IAsyncDisposable
 
         // 5) periodic security checks
         if (_tick % 30 == 0) RunPeriodicChecks();
+
+        // 5b) usage-anomaly scan (~10 min) and history pruning (~hourly)
+        if (_tick % 600 == 0) RunUsageAnomalyChecks();
+        if (_tick % 3600 == 0) PruneHistory();
 
         // 6) scheduled device rescan
         if (now - _lastDeviceScan > TimeSpan.FromMinutes(30))
@@ -263,20 +274,30 @@ public sealed class MonitorEngine : IAsyncDisposable
 
     private void FlushMinute(long bucket)
     {
+        long day = LocalDayStart(bucket);
+
         if (_pendingGlobalIn > 0 || _pendingGlobalOut > 0)
+        {
             _store.AddGlobalMinute(bucket, _pendingGlobalIn, _pendingGlobalOut);
+            _store.AddGlobalDay(day, _pendingGlobalIn, _pendingGlobalOut);
+        }
         _pendingGlobalIn = _pendingGlobalOut = 0;
 
         foreach (var (appId, v) in _pendingApp)
+        {
             _store.AddAppMinute(appId, bucket, v.In, v.Out);
+            _store.AddAppDay(appId, day, v.In, v.Out);
+        }
         _pendingApp.Clear();
 
+        long nowUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         foreach (var (ip, v) in _pendingHost)
         {
             _store.AddHostMinute(ip, bucket, v.In, v.Out);
             var geo = _settings.ResolveGeoIp ? _geo.Resolve(ip) : GeoInfo.Unknown;
             var host = _dns.Resolve(ip);
             _store.UpsertHostMeta(ip, ip, host, geo);
+            if (geo.HasCountry) _store.TouchCountry(geo.CountryCode, nowUnix);
         }
         _pendingHost.Clear();
     }
@@ -341,6 +362,15 @@ public sealed class MonitorEngine : IAsyncDisposable
             if (a is not null) Persist(a);
         }
 
+        if (_settings.MonitorHostsFile)
+        {
+            var a = _integrity.CheckHostsFile();
+            if (a is not null) Persist(a);
+        }
+
+        if (_settings.MonitorArpSpoofing)
+            foreach (var a in _integrity.CheckGatewayArp()) Persist(a);
+
         if (_settings.DataPlan.Enabled)
         {
             _settings.DataPlan.UsedBytes = _store.DataPlanUsed(CycleStartBucket());
@@ -350,6 +380,22 @@ public sealed class MonitorEngine : IAsyncDisposable
 
         RefreshNetwork();
         RefreshFirewallCache();
+    }
+
+    /// <summary>Drop history rows older than the configured retention (best effort).</summary>
+    private void PruneHistory()
+    {
+        int days = _settings.HistoryRetentionDays;
+        if (days <= 0) return; // retention disabled: keep everything
+        try
+        {
+            long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            long minuteCutoff = now - (long)days * 86400;
+            long dayCutoff = LocalDayStart(now) - Math.Max(days, 730) * 86400L; // keep ≥2y of daily rollups
+            int removed = _store.PruneOldHistory(minuteCutoff, dayCutoff);
+            if (removed > 0) Console.WriteLine($"[Engine] pruned {removed} history rows older than {days}d.");
+        }
+        catch (Exception ex) { Console.Error.WriteLine($"[Engine] prune: {ex.Message}"); }
     }
 
     /// <summary>Re-detect the active network and auto-activate a matching profile.</summary>
@@ -585,6 +631,188 @@ public sealed class MonitorEngine : IAsyncDisposable
         long total = map.Values.Sum(c => c.Total);
         foreach (var c in map.Values) c.Fraction = total > 0 ? (double)c.Total / total : 0;
         return map.Values.OrderByDescending(c => c.Total).ToList();
+    }
+
+    // ---------------- analytics / anomalies ----------------
+
+    /// <summary>
+    /// Build the analytics report for a range: totals, hour-of-day and per-day
+    /// patterns, top apps, detected anomalies and plain-language highlights. Pure
+    /// read over the recorded rollups, so it works without elevation too.
+    /// </summary>
+    public InsightsReport GetInsights(GraphRange range)
+    {
+        long nowSec = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        long windowSec = (long)range.Duration().TotalSeconds;
+        long fromBucket = (nowSec - windowSec) / 60 * 60;
+        long toBucket = nowSec / 60 * 60;
+        long todayStart = LocalDayStart(nowSec);
+
+        var report = new InsightsReport { Range = range };
+        var rows = _store.QueryGlobal(fromBucket, toBucket);
+
+        // Hour-of-day (local) and per-local-day breakdown.
+        var hoursIn = new long[24];
+        var hoursOut = new long[24];
+        var dayMap = new SortedDictionary<long, (long In, long Out)>();
+        foreach (var (bucket, inB, outB) in rows)
+        {
+            int hr = DateTimeOffset.FromUnixTimeSeconds(bucket).ToLocalTime().Hour;
+            hoursIn[hr] += inB; hoursOut[hr] += outB;
+            long day = LocalDayStart(bucket);
+            dayMap.TryGetValue(day, out var d);
+            dayMap[day] = (d.In + inB, d.Out + outB);
+        }
+        for (int h = 0; h < 24; h++)
+            report.HourOfDay.Add(new HourUsage { Hour = h, BytesIn = hoursIn[h], BytesOut = hoursOut[h] });
+        foreach (var (day, d) in dayMap)
+            report.Daily.Add(new DayUsage { DayStartUnix = day, BytesIn = d.In, BytesOut = d.Out });
+
+        report.TotalBytesIn = rows.Sum(r => r.In);
+        report.TotalBytesOut = rows.Sum(r => r.Out);
+        report.ActiveDays = dayMap.Count;
+        report.AveragePerActiveDay = report.ActiveDays > 0 ? report.TotalBytes / report.ActiveDays : 0;
+
+        int busiest = -1; long peak = 0;
+        for (int h = 0; h < 24; h++)
+        {
+            long t = hoursIn[h] + hoursOut[h];
+            if (t > peak) { peak = t; busiest = h; }
+        }
+        report.BusiestHour = busiest;
+
+        // Previous equal-length window, for the period-over-period delta.
+        long prevFrom = (nowSec - 2 * windowSec) / 60 * 60;
+        var prevRows = _store.QueryGlobal(prevFrom, fromBucket);
+        report.PreviousTotalBytes = prevRows.Sum(r => r.In + r.Out);
+        report.ChangeFraction = report.PreviousTotalBytes > 0
+            ? (double)(report.TotalBytes - report.PreviousTotalBytes) / report.PreviousTotalBytes
+            : 0;
+
+        // Top apps in the window.
+        var apps = _store.QueryUsageByApp(fromBucket, toBucket);
+        report.ActiveApps = apps.Count;
+        long appGrand = apps.Sum(a => a.Total);
+        foreach (var a in apps.OrderByDescending(a => a.Total).Take(8))
+            report.TopApps.Add(new AppShare
+            {
+                AppId = a.App.Id,
+                Name = a.App.Name,
+                ExecutablePath = a.App.ExecutablePath,
+                BytesIn = a.BytesIn,
+                BytesOut = a.BytesOut,
+                Fraction = appGrand > 0 ? (double)a.Total / appGrand : 0,
+            });
+
+        report.Anomalies = ComputeAnomalies(nowSec, todayStart, rows);
+        report.Highlights = BuildHighlights(report);
+        return report;
+    }
+
+    /// <summary>Compute today's anomalies against the trailing baseline (used by both
+    /// the Analytics report and the periodic alert scan).</summary>
+    private List<UsageAnomaly> ComputeAnomalies(long nowSec, long todayStart, List<(long Bucket, long In, long Out)> windowRows)
+    {
+        long todayStartBucket = todayStart / 60 * 60;
+        long nowBucket = nowSec / 60 * 60;
+        var today = _store.QueryUsageByApp(todayStartBucket, nowBucket);
+
+        const int BaselineDays = 14;
+        long baseFromDay = LocalDayStart(nowSec - BaselineDays * 86400L);
+        var baselines = _store.AppDailyBaseline(baseFromDay, todayStart)
+            .Select(b => new AnomalyDetector.Baseline(b.AppId, b.ActiveDays, b.In, b.Out))
+            .ToList();
+
+        long countryCutoff = nowSec - 86400;
+        var newCountries = _store.NewCountriesSince(countryCutoff)
+            .Select(c => new AnomalyDetector.NewCountry(c.Code, _store.CountryName(c.Code), c.FirstSeen))
+            .ToList();
+
+        var baseHours = NewHourList();
+        var todayHours = NewHourList();
+        var baseDays = new HashSet<long>();
+        foreach (var (bucket, inB, outB) in windowRows)
+        {
+            int hr = DateTimeOffset.FromUnixTimeSeconds(bucket).ToLocalTime().Hour;
+            if (bucket >= todayStart) { todayHours[hr].BytesIn += inB; todayHours[hr].BytesOut += outB; }
+            else { baseHours[hr].BytesIn += inB; baseHours[hr].BytesOut += outB; baseDays.Add(LocalDayStart(bucket)); }
+        }
+
+        return AnomalyDetector.Detect(today, baselines, baseDays.Count, newCountries, baseHours, todayHours);
+    }
+
+    private static List<HourUsage> NewHourList()
+    {
+        var list = new List<HourUsage>(24);
+        for (int h = 0; h < 24; h++) list.Add(new HourUsage { Hour = h });
+        return list;
+    }
+
+    private static List<string> BuildHighlights(InsightsReport r)
+    {
+        var h = new List<string>();
+        if (r.TotalBytes == 0)
+        {
+            h.Add("No recorded network activity in this period yet.");
+            return h;
+        }
+
+        if (r.BusiestHour >= 0)
+            h.Add($"Your network is busiest around {r.BusiestHour:00}:00.");
+
+        if (r.TopApps.Count > 0 && r.TopApps[0].Fraction > 0)
+            h.Add($"{r.TopApps[0].Name} accounts for {r.TopApps[0].Fraction:P0} of traffic ({ByteFormatter.Bytes(r.TopApps[0].Total)}).");
+
+        if (r.PreviousTotalBytes > 0)
+        {
+            string dir = r.ChangeFraction >= 0 ? "up" : "down";
+            h.Add($"Usage is {dir} {Math.Abs(r.ChangeFraction):P0} versus the previous {r.Range.Label().ToLowerInvariant()} " +
+                  $"({ByteFormatter.Bytes(r.TotalBytes)} vs {ByteFormatter.Bytes(r.PreviousTotalBytes)}).");
+        }
+
+        if (r.ActiveDays > 0)
+            h.Add($"Averaging {ByteFormatter.Bytes(r.AveragePerActiveDay)} per active day over {r.ActiveDays} day(s).");
+
+        if (r.TotalBytesIn > 0 && r.TotalBytesOut > 0)
+            h.Add($"Split: {ByteFormatter.Bytes(r.TotalBytesIn)} down · {ByteFormatter.Bytes(r.TotalBytesOut)} up.");
+
+        if (r.Anomalies.Count > 0)
+            h.Add($"{r.Anomalies.Count} usage anomal{(r.Anomalies.Count == 1 ? "y" : "ies")} detected — see below.");
+
+        return h;
+    }
+
+    /// <summary>Periodic scan that raises freshly-detected usage anomalies as alerts
+    /// (each distinct anomaly at most once per local day).</summary>
+    private void RunUsageAnomalyChecks()
+    {
+        if (!_settings.MonitorUsageAnomalies) return;
+        try
+        {
+            long nowSec = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            long todayStart = LocalDayStart(nowSec);
+            long fromBucket = (nowSec - 14 * 86400L) / 60 * 60;
+            var rows = _store.QueryGlobal(fromBucket, nowSec / 60 * 60);
+            var anomalies = ComputeAnomalies(nowSec, todayStart, rows);
+
+            if (_anomalyDayStamp != todayStart) { _anomaliesAlertedToday.Clear(); _anomalyDayStamp = todayStart; }
+
+            foreach (var an in anomalies)
+            {
+                if (!_anomaliesAlertedToday.Add(an.DedupeKey)) continue;
+                Persist(new Alert
+                {
+                    Time = DateTimeOffset.UtcNow,
+                    Kind = AlertKind.UsageAnomaly,
+                    Severity = an.Severity,
+                    Title = an.Title,
+                    Message = an.Detail,
+                    AppId = string.IsNullOrEmpty(an.AppId) ? null : an.AppId,
+                    AppName = string.IsNullOrEmpty(an.AppName) ? null : an.AppName,
+                });
+            }
+        }
+        catch (Exception ex) { Console.Error.WriteLine($"[Engine] anomaly scan: {ex.Message}"); }
     }
 
     public HardwareSnapshot GetHardware() => _hardware.GetSnapshot();
@@ -843,6 +1071,14 @@ public sealed class MonitorEngine : IAsyncDisposable
     // ---------------- helpers ----------------
 
     private static long MinuteBucket(DateTimeOffset t) => t.ToUnixTimeSeconds() / 60 * 60;
+
+    /// <summary>Unix seconds at local midnight of the day containing <paramref name="unixSeconds"/>.</summary>
+    private static long LocalDayStart(long unixSeconds)
+    {
+        var local = DateTimeOffset.FromUnixTimeSeconds(unixSeconds).ToLocalTime();
+        var midnight = new DateTimeOffset(local.Year, local.Month, local.Day, 0, 0, 0, local.Offset);
+        return midnight.ToUnixTimeSeconds();
+    }
 
     private long CycleStartBucket()
     {

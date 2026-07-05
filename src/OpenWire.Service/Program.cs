@@ -62,6 +62,16 @@ internal static class Program
         foreach (var a in usage.Apps.Take(8))
             Console.WriteLine($"  {a.App.Name,-28} down {ByteFormatter.Bytes(a.BytesIn),10}  up {ByteFormatter.Bytes(a.BytesOut),10}  [{a.FirewallStatus}]");
 
+        var insights = engine.GetInsights(Core.Models.GraphRange.Week);
+        Console.WriteLine($"\nInsights (week): {ByteFormatter.Bytes(insights.TotalBytes)} total, " +
+                          $"{insights.ActiveApps} apps, {insights.ActiveDays} active day(s), " +
+                          $"busiest hour {(insights.BusiestHour < 0 ? "n/a" : insights.BusiestHour + ":00")}, " +
+                          $"{insights.Anomalies.Count} anomal(ies)");
+        foreach (var hl in insights.Highlights)
+            Console.WriteLine($"  • {hl}");
+        foreach (var an in insights.Anomalies.Take(5))
+            Console.WriteLine($"  ! [{an.Kind}] {an.Title}");
+
         var conns = engine.GetConnections();
         Console.WriteLine($"\nActive connections: {conns.Count}");
         foreach (var c in conns.Take(10))
