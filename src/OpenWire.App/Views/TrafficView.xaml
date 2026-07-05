@@ -17,6 +17,8 @@
 
         <!-- Control strip -->
         <Grid Grid.Row="0" Margin="24,16,24,10">
+            <Button x:Name="PauseBtn" Style="{StaticResource IconBtn}" HorizontalAlignment="Left" VerticalAlignment="Center"
+                    Content="&#xE769;" ToolTip="Pause the live graph" Click="OnTogglePause" />
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Background="{StaticResource BgSubtle}">
                 <StackPanel.Resources>
                     <Style TargetType="RadioButton" BasedOn="{StaticResource Seg}"><Setter Property="GroupName" Value="subview" /></Style>
@@ -77,14 +79,10 @@
             <views:UsageView DataContext="{Binding Usage}"
                              Visibility="{Binding DataContext.SubView, RelativeSource={RelativeSource AncestorType={x:Type views:TrafficView}}, Converter={StaticResource EnumVis}, ConverterParameter=Columns}" />
 
-            <!-- map placeholder -->
+            <!-- world connection map -->
             <Border Background="{StaticResource BgGraph}" BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="8"
                     Visibility="{Binding SubView, Converter={StaticResource EnumVis}, ConverterParameter=Map}">
-                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <TextBlock Text="&#xE909;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="44" Foreground="{StaticResource TextMuted}" HorizontalAlignment="Center" />
-                    <TextBlock Text="Connection map" Foreground="{StaticResource TextSecondary}" FontSize="15" Margin="0,14,0,2" HorizontalAlignment="Center" />
-                    <TextBlock Text="A world map of live connections by country is on the roadmap." Style="{StaticResource Caption}" HorizontalAlignment="Center" />
-                </StackPanel>
+                <ctrl:WorldMap x:Name="Map" Margin="10" />
             </Border>
         </Grid>
 

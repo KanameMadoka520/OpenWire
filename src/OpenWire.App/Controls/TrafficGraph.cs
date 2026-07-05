@@ -46,6 +46,9 @@ public sealed class TrafficGraph : FrameworkElement
     public double WindowSeconds { get; private set; } = 300;
     public bool LiveScroll { get; private set; } = true;
 
+    /// <summary>Freeze the live scroll (data keeps buffering; the view stops advancing).</summary>
+    public bool Paused { get; set; }
+
     public TrafficGraph()
     {
         Color inC = ResColor("InFillColor", Color.FromRgb(0x2F, 0xB8, 0xC6));
@@ -80,7 +83,7 @@ public sealed class TrafficGraph : FrameworkElement
 
     private void OnFrame(object? sender, EventArgs e)
     {
-        if (!LiveScroll) return;
+        if (!LiveScroll || Paused) return;
         var now = DateTime.UtcNow;
         if ((now - _lastFrame).TotalMilliseconds < 33) return; // ~30 fps
         _lastFrame = now;
