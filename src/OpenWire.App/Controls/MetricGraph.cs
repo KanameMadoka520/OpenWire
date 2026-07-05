@@ -22,15 +22,15 @@ public sealed class MetricGraph : FrameworkElement
 
     public MetricGraph()
     {
-        var accent = Color.FromRgb(0x6F, 0x9F, 0xE8);
+        var accent = Color.FromRgb(0x3F, 0x6C, 0x8C);
         var b = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(0, 1) };
         b.GradientStops.Add(new GradientStop(Color.FromArgb(0x59, accent.R, accent.G, accent.B), 0));
         b.GradientStops.Add(new GradientStop(Color.FromArgb(0x0E, accent.R, accent.G, accent.B), 1));
         b.Freeze();
         _fill = b;
         _line = new Pen(new SolidColorBrush(accent), 1.4); _line.Freeze();
-        _grid = new Pen(new SolidColorBrush(Color.FromRgb(0xEC, 0xEF, 0xF3)), 1); _grid.Freeze();
-        _text = new SolidColorBrush(Color.FromRgb(0x98, 0xA2, 0xB3)); _text.Freeze();
+        _grid = new Pen(new SolidColorBrush(Color.FromRgb(0xD8, 0xCF, 0xBA)), 1); _grid.Freeze();
+        _text = new SolidColorBrush(Color.FromRgb(0x87, 0x7E, 0x6C)); _text.Freeze();
     }
 
     /// <summary>Set the series; the graph auto-scales to the visible peak.</summary>

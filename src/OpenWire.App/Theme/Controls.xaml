@@ -14,10 +14,10 @@
     </Style>
 
     <Style x:Key="H1" TargetType="TextBlock">
-        <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
+        <Setter Property="FontFamily" Value="{StaticResource HandFont}" />
         <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
-        <Setter Property="FontSize" Value="18" />
-        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="FontSize" Value="25" />
+        <Setter Property="FontWeight" Value="Normal" />
     </Style>
 
     <Style x:Key="Caption" TargetType="TextBlock">
@@ -40,27 +40,34 @@
         <Setter Property="FontSize" Value="13" />
     </Style>
 
-    <!-- ============ Card ============ -->
+    <!-- ============ Card (sketch note-card: graphite edge + soft lift) ============ -->
     <Style x:Key="Card" TargetType="Border">
         <Setter Property="Background" Value="{StaticResource BgPanel}" />
-        <Setter Property="BorderBrush" Value="{StaticResource Border}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="BorderBrush" Value="{StaticResource BorderStrong}" />
+        <Setter Property="BorderThickness" Value="1.3" />
+        <Setter Property="CornerRadius" Value="4" />
+        <Setter Property="Effect">
+            <Setter.Value>
+                <DropShadowEffect Color="{StaticResource GraphiteColor}" BlurRadius="5" ShadowDepth="2" Direction="300" Opacity="0.15" />
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <!-- ============ Buttons ============ -->
     <Style x:Key="Btn" TargetType="Button">
         <Setter Property="Foreground" Value="White" />
         <Setter Property="Background" Value="{StaticResource Accent}" />
-        <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
-        <Setter Property="FontSize" Value="13" />
-        <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="Padding" Value="14,7" />
+        <Setter Property="FontFamily" Value="{StaticResource HandFont}" />
+        <Setter Property="FontSize" Value="15" />
+        <Setter Property="FontWeight" Value="Normal" />
+        <Setter Property="Padding" Value="15,7" />
         <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Effect" Value="{StaticResource SketchLift}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
                     <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="4"
+                            BorderBrush="{StaticResource Graphite}" BorderThickness="1.3"
                             Padding="{TemplateBinding Padding}">
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
@@ -81,17 +88,18 @@
     </Style>
 
     <Style x:Key="BtnGhost" TargetType="Button">
-        <Setter Property="Foreground" Value="{StaticResource TextSecondary}" />
-        <Setter Property="Background" Value="Transparent" />
-        <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
-        <Setter Property="FontSize" Value="13" />
-        <Setter Property="Padding" Value="12,6" />
+        <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
+        <Setter Property="Background" Value="{StaticResource BgPanel}" />
+        <Setter Property="FontFamily" Value="{StaticResource HandFont}" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="Padding" Value="13,6" />
         <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Effect" Value="{StaticResource SketchLift}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
                     <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="4"
-                            BorderBrush="{StaticResource Border}" BorderThickness="1"
+                            BorderBrush="{StaticResource Graphite}" BorderThickness="1.3"
                             Padding="{TemplateBinding Padding}">
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
@@ -187,18 +195,23 @@
     <Style x:Key="TopTab" TargetType="RadioButton">
         <Setter Property="Foreground" Value="{StaticResource TextSecondary}" />
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
-        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontFamily" Value="{StaticResource HandFont}" />
+        <Setter Property="FontSize" Value="15" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="RadioButton">
-                    <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="10" Padding="16,7" Margin="3,0">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock x:Name="glyph" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="19"
-                                       Foreground="{TemplateBinding Foreground}" Text="{TemplateBinding Tag}" VerticalAlignment="Center" />
-                            <ContentPresenter VerticalAlignment="Center" Margin="10,0,0,0" />
-                        </StackPanel>
+                    <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="10" Padding="16,6" Margin="3,0">
+                        <Grid>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock x:Name="glyph" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="19"
+                                           Foreground="{TemplateBinding Foreground}" Text="{TemplateBinding Tag}" VerticalAlignment="Center" />
+                                <ContentPresenter VerticalAlignment="Center" Margin="10,0,0,0" />
+                            </StackPanel>
+                            <Path x:Name="ul" Data="{StaticResource DoodleSquiggle}" Stretch="Fill" Height="5" Margin="4,0,4,-3"
+                                  VerticalAlignment="Bottom" Stroke="{StaticResource Accent}" StrokeThickness="1.7"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round" Visibility="Collapsed" IsHitTestVisible="False" />
+                        </Grid>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
@@ -208,8 +221,8 @@
                         <Trigger Property="IsChecked" Value="True">
                             <Setter TargetName="b" Property="Background" Value="{StaticResource AccentSoft}" />
                             <Setter TargetName="glyph" Property="Foreground" Value="{StaticResource Accent}" />
+                            <Setter TargetName="ul" Property="Visibility" Value="Visible" />
                             <Setter Property="Foreground" Value="{StaticResource Accent}" />
-                            <Setter Property="FontWeight" Value="SemiBold" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -294,7 +307,8 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ToggleButton">
-                    <Border x:Name="b" CornerRadius="13" Padding="12,5" Background="{StaticResource AllowBg}">
+                    <Border x:Name="b" CornerRadius="13" Padding="12,4" Background="{StaticResource AllowBg}"
+                            BorderBrush="{StaticResource Graphite}" BorderThickness="1.1">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock x:Name="t" Text="Allowed" Foreground="{StaticResource AllowText}" FontWeight="SemiBold" VerticalAlignment="Center" />
                             <TextBlock Text="&#xE70D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="8" Margin="8,1,0,0"

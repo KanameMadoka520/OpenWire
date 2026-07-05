@@ -21,7 +21,10 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0" Text="Alerts" Style="{StaticResource H1}" Margin="0,0,0,12" />
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
+            <TextBlock Text="Alerts" Style="{StaticResource H1}" />
+            <Path Data="{StaticResource DoodleBell}" Style="{StaticResource Doodle}" Width="22" Height="22" Opacity="0.32" VerticalAlignment="Center" Margin="12,2,0,0" />
+        </StackPanel>
 
         <Grid Grid.Row="1" Margin="0,0,0,4">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">

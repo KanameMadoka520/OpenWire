@@ -28,11 +28,11 @@ public sealed class BarChart : FrameworkElement
 
     public BarChart()
     {
-        var accent = Color.FromRgb(0x6F, 0x9F, 0xE8);
-        _bar = new SolidColorBrush(Color.FromArgb(0x5E, accent.R, accent.G, accent.B)); _bar.Freeze();
+        var accent = Color.FromRgb(0x3F, 0x6C, 0x8C);
+        _bar = new SolidColorBrush(Color.FromArgb(0x66, accent.R, accent.G, accent.B)); _bar.Freeze();
         _barHi = new SolidColorBrush(accent); _barHi.Freeze();
-        _grid = new Pen(new SolidColorBrush(Color.FromRgb(0xEC, 0xEF, 0xF3)), 1); _grid.Freeze();
-        _text = new SolidColorBrush(Color.FromRgb(0x98, 0xA2, 0xB3)); _text.Freeze();
+        _grid = new Pen(new SolidColorBrush(Color.FromRgb(0xD8, 0xCF, 0xBA)), 1); _grid.Freeze();
+        _text = new SolidColorBrush(Color.FromRgb(0x87, 0x7E, 0x6C)); _text.Freeze();
     }
 
     /// <summary>Feed a labelled series. <paramref name="highlight"/> draws one bar solid.</summary>
@@ -48,6 +48,14 @@ public sealed class BarChart : FrameworkElement
     }
 
     private string Fmt(double v) => _bytes ? ByteFormatter.Bytes((long)v) : v.ToString("0");
+
+    // Redraw whenever the control is (re)sized, so data set while the control had zero
+    // size (e.g. fed during a tab switch before first layout) still paints once laid out.
+    protected override void OnRenderSizeChanged(SizeChangedInfo sizeInfo)
+    {
+        base.OnRenderSizeChanged(sizeInfo);
+        InvalidateVisual();
+    }
 
     protected override void OnRender(DrawingContext dc)
     {

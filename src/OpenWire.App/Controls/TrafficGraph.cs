@@ -57,8 +57,8 @@ public sealed class TrafficGraph : FrameworkElement
         _outFill = VerticalFade(outC, 0.68, 0.08);
         _inPen = new Pen(new SolidColorBrush(inL), 1.4); _inPen.Freeze();
         _outPen = new Pen(new SolidColorBrush(outL), 1.4); _outPen.Freeze();
-        _gridPen = new Pen(new SolidColorBrush(Color.FromRgb(0xEC, 0xEF, 0xF3)), 1); _gridPen.Freeze();
-        _gridText = new SolidColorBrush(Color.FromRgb(0x98, 0xA2, 0xB3)); _gridText.Freeze();
+        _gridPen = new Pen(new SolidColorBrush(Color.FromRgb(0xD8, 0xCF, 0xBA)), 1); _gridPen.Freeze();
+        _gridText = new SolidColorBrush(Color.FromRgb(0x87, 0x7E, 0x6C)); _gridText.Freeze();
         _idleFill = new SolidColorBrush(Color.FromArgb(0x16, 0x94, 0x9E, 0xAD)); _idleFill.Freeze();
 
         Loaded += (_, _) => CompositionTarget.Rendering += OnFrame;
