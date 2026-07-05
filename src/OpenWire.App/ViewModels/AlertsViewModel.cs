@@ -59,6 +59,11 @@ public partial class AlertsViewModel : ObservableObject
         }
 
         Alerts = new ObservableCollection<Alert>(q);
+
+        bool filtered = SeverityFilter != "All" || !string.IsNullOrWhiteSpace(SearchText);
+        EmptyText = _all.Count > 0 && Alerts.Count == 0 && filtered
+            ? "No alerts match the current filter or search."
+            : "No alerts yet. OpenWire reports new apps, devices and security events here.";
     }
 
     partial void OnSeverityFilterChanged(string value) => ApplyFilter();

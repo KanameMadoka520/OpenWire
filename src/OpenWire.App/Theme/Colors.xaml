@@ -8,7 +8,7 @@
     <Color x:Key="BgAppColor">#FFFFFF</Color>
     <Color x:Key="BgPanelColor">#FFFFFF</Color>
     <Color x:Key="BgSubtleColor">#F4F6F9</Color>
-    <Color x:Key="BgElevatedColor">#F4F6F9</Color>
+    <Color x:Key="BgElevatedColor">#E7ECF3</Color>
     <Color x:Key="BgGraphColor">#FBFCFE</Color>
     <Color x:Key="BorderColor">#E7EAEF</Color>
     <Color x:Key="BorderStrongColor">#D3D8E0</Color>
@@ -16,7 +16,7 @@
     <!-- Text -->
     <Color x:Key="TextPrimaryColor">#1E2530</Color>
     <Color x:Key="TextSecondaryColor">#5B6472</Color>
-    <Color x:Key="TextMutedColor">#98A2B3</Color>
+    <Color x:Key="TextMutedColor">#6B7382</Color>
 
     <!-- Directional graph colors (GlassWire yellow = download, pink = upload) -->
     <Color x:Key="InFillColor">#F7C948</Color>

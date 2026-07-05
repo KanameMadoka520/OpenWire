@@ -24,7 +24,7 @@
                         IsEnabled="{Binding Scanning, Converter={StaticResource BoolVis}, ConverterParameter=invert}" />
                 <TextBlock Text="{Binding LastScanText}" Style="{StaticResource Caption}" VerticalAlignment="Center" Margin="14,0,0,0" />
             </StackPanel>
-            <CheckBox Style="{StaticResource Switch}" Content="Auto-scan" IsChecked="{Binding AutoScan}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+            <TextBlock Text="Rescans automatically every 30 min" Style="{StaticResource Caption}" HorizontalAlignment="Right" VerticalAlignment="Center" />
         </Grid>
 
         <ListView Grid.Row="1" Style="{StaticResource Table}" ItemContainerStyle="{StaticResource Row}" ItemsSource="{Binding Devices}">

@@ -54,6 +54,15 @@ public partial class TrafficViewModel : ObservableObject
     {
         Graph.Range = value;   // triggers Graph reload
         Usage.Range = value;   // triggers Usage reload
+        _ = RefreshBreakdownAsync();
+    }
+
+    /// <summary>Recompute the breakdown strip once the reloaded usage has arrived
+    /// (otherwise the down/up/top-app/top-host totals go stale on a range change).</summary>
+    private async Task RefreshBreakdownAsync()
+    {
+        try { await Usage.LoadAsync(); } catch { return; }
+        UpdateBreakdown();
     }
 
     partial void OnSubViewChanged(TrafficSubView value)

@@ -168,14 +168,6 @@
                     </StackPanel>
                 </Grid>
 
-                <!-- timeline scrubber (decorative) -->
-                <Border Height="30" Background="{StaticResource BgSubtle}" CornerRadius="6" Margin="0,12,0,0">
-                    <Grid>
-                        <Ellipse Width="12" Height="12" Fill="{StaticResource BgPanel}" Stroke="{StaticResource BorderStrong}" StrokeThickness="1.5" HorizontalAlignment="Left" Margin="4,0,0,0" />
-                        <Ellipse Width="12" Height="12" Fill="{StaticResource BgPanel}" Stroke="{StaticResource BorderStrong}" StrokeThickness="1.5" HorizontalAlignment="Right" Margin="0,0,4,0" />
-                        <TextBlock Text="drag to scrub history" Style="{StaticResource Caption}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                    </Grid>
-                </Border>
             </StackPanel>
         </Border>
     </Grid>

@@ -16,7 +16,6 @@ public partial class ThingsViewModel : ObservableObject
     [ObservableProperty] private string _scanLabel = "Scan";
     [ObservableProperty] private string _networkName = "Local network";
     [ObservableProperty] private string _lastScanText = "";
-    [ObservableProperty] private bool _autoScan;
 
     public ThingsViewModel(EngineClient client) => _client = client;
 

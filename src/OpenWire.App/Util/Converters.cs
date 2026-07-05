@@ -14,9 +14,13 @@ public sealed class EnumMatchConverter : IValueConverter
         => value?.ToString() == parameter?.ToString();
 
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
-        => value is true && parameter is not null
-            ? Enum.Parse(targetType, parameter.ToString()!)
-            : Binding.DoNothing;
+    {
+        if (value is not true || parameter is null) return Binding.DoNothing;
+        // The same selector is bound to both enum properties and plain string filters
+        // (e.g. the Alerts severity filter). Only parse when the target is actually an enum.
+        var t = Nullable.GetUnderlyingType(targetType) ?? targetType;
+        return t.IsEnum ? Enum.Parse(t, parameter.ToString()!) : parameter.ToString()!;
+    }
 }
 
 public sealed class BytesConverter : IValueConverter
