@@ -39,11 +39,24 @@ public partial class AnalyticsView : UserControl
     private async void OnCustomChecked(object sender, System.Windows.RoutedEventArgs e)
     {
         if (_vm is null) return;
+        _vm.RefreshCustomDefault(); // fresh "today 00:00 → now" on entry, not a launch-time snapshot
         try { await _vm.ApplyCustomRangeAsync(); } catch { }
         RangePicker.IsOpen = true;
     }
 
     private void OnCustomClicked(object sender, System.Windows.RoutedEventArgs e) => RangePicker.IsOpen = true;
+
+    // Re-selecting the preset that was active *before* Custom leaves Range unchanged, so the
+    // generated setter short-circuits and OnRangeChanged never runs — which would strand the page
+    // in custom mode. Click fires on any user click (after the IsChecked binding has updated), so
+    // it's the reliable place to force an exit back to the preset. A *different* preset already
+    // reloaded via OnRangeChanged (IsCustomRange is false by now), so the guard prevents a double load.
+    private async void OnPresetClicked(object sender, System.Windows.RoutedEventArgs e)
+    {
+        if (_vm is null || !_vm.IsCustomRange) return;
+        _vm.IsCustomRange = false;
+        try { await _vm.LoadAsync(); } catch { }
+    }
 
     private async void OnApplyCustom(object sender, System.Windows.RoutedEventArgs e)
     {
@@ -73,7 +86,7 @@ public partial class AnalyticsView : UserControl
         var dayLabels = r.Daily
             .Select(d => DateTimeOffset.FromUnixTimeSeconds(d.DayStartUnix).ToLocalTime().ToString("M/d"))
             .ToList();
-        var culture = System.Globalization.CultureInfo.GetCultureInfo(LangManager.CultureName(LangManager.Current));
+        var culture = OpenWire.App.Util.AppFormat.Culture;
         var dayDetails = r.Daily
             .Select(d => Detail(DateTimeOffset.FromUnixTimeSeconds(d.DayStartUnix).ToLocalTime().ToString("ddd, MMM d", culture),
                 d.BytesIn, d.BytesOut, d.TopApps))

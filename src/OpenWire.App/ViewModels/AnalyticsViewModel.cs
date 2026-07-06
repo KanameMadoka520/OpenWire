@@ -67,9 +67,17 @@ public partial class AnalyticsViewModel : ObservableObject
     public AnalyticsViewModel(EngineClient client)
     {
         _client = client;
+        Years = Enumerable.Range(DateTime.Now.Year - 2, 3).ToArray(); // last two years + current
+        RefreshCustomDefault();
+    }
+
+    /// <summary>Reset the custom [From, To] pickers to "today 00:00 → now". Called each time the
+    /// Custom segment is freshly entered, so a session left open across midnight doesn't reuse the
+    /// stale snapshot captured when the (lifetime-singleton) view-model was constructed.</summary>
+    public void RefreshCustomDefault()
+    {
         var now = DateTime.Now;
-        Years = Enumerable.Range(now.Year - 2, 3).ToArray(); // last two years + current
-        var start = now.Date;                                // default span: today 00:00 → now
+        var start = now.Date; // default span: today 00:00 → now
         FromY = start.Year; FromMo = start.Month; FromD = start.Day; FromH = 0; FromMin = 0;
         ToY = now.Year; ToMo = now.Month; ToD = now.Day; ToH = now.Hour; ToMin = now.Minute;
     }
@@ -174,9 +182,13 @@ public partial class AnalyticsViewModel : ObservableObject
         var to = SafeDate(ToY, ToMo, ToD, ToH, ToMin);
         if (to < from) (from, to) = (to, from);
         if (to <= from) return;
+        // Reflect any day-clamp (e.g. Feb 31 → Feb 28) or from/to swap back into the pickers, so
+        // the combos always show exactly the span the report covers instead of an unqueried date.
+        FromY = from.Year; FromMo = from.Month; FromD = from.Day; FromH = from.Hour; FromMin = from.Minute;
+        ToY = to.Year; ToMo = to.Month; ToD = to.Day; ToH = to.Hour; ToMin = to.Minute;
         _customFromUnix = new DateTimeOffset(from).ToUnixTimeSeconds();
         _customToUnix = new DateTimeOffset(to).ToUnixTimeSeconds();
-        var c = System.Globalization.CultureInfo.GetCultureInfo(LangManager.CultureName(LangManager.Current));
+        var c = AppFormat.Culture;
         CustomRangeText = $"{from.ToString("MMM d  HH:mm", c)} – {to.ToString("MMM d  HH:mm", c)}";
         IsCustomRange = true;
         await LoadAsync();

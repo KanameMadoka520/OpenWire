@@ -123,9 +123,9 @@
                     <StackPanel.Resources>
                         <Style TargetType="RadioButton" BasedOn="{StaticResource Seg}"><Setter Property="GroupName" Value="arange" /></Style>
                     </StackPanel.Resources>
-                    <RadioButton Content="{StaticResource L.Analytics.Range24h}" IsChecked="{Binding Range, Converter={StaticResource EnumMatch}, ConverterParameter=Day, Mode=TwoWay}" />
-                    <RadioButton Content="{StaticResource L.Analytics.RangeWeek}" IsChecked="{Binding Range, Converter={StaticResource EnumMatch}, ConverterParameter=Week, Mode=TwoWay}" />
-                    <RadioButton Content="{StaticResource L.Analytics.RangeMonth}" IsChecked="{Binding Range, Converter={StaticResource EnumMatch}, ConverterParameter=Month, Mode=TwoWay}" />
+                    <RadioButton Content="{StaticResource L.Analytics.Range24h}" Click="OnPresetClicked" IsChecked="{Binding Range, Converter={StaticResource EnumMatch}, ConverterParameter=Day, Mode=TwoWay}" />
+                    <RadioButton Content="{StaticResource L.Analytics.RangeWeek}" Click="OnPresetClicked" IsChecked="{Binding Range, Converter={StaticResource EnumMatch}, ConverterParameter=Week, Mode=TwoWay}" />
+                    <RadioButton Content="{StaticResource L.Analytics.RangeMonth}" Click="OnPresetClicked" IsChecked="{Binding Range, Converter={StaticResource EnumMatch}, ConverterParameter=Month, Mode=TwoWay}" />
                     <RadioButton x:Name="CustomSeg" AutomationProperties.Name="Custom" IsChecked="{Binding IsCustomRange, Mode=OneWay}" Checked="OnCustomChecked" Click="OnCustomClicked">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="&#xE787;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12.5" VerticalAlignment="Center" Margin="0,0,6,0" />
