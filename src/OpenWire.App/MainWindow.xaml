@@ -52,7 +52,7 @@
 
                 <!-- Brand -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="20,0,0,0" VerticalAlignment="Center">
-                    <Image Source="pack://application:,,,/Assets/logo.png" Width="32" Height="32"
+                    <Image Source="pack://application:,,,/Assets/logo-small.png" Width="32" Height="32"
                            RenderOptions.BitmapScalingMode="HighQuality" />
                     <StackPanel Margin="11,0,0,0" VerticalAlignment="Center">
                         <TextBlock Text="OpenWire" FontFamily="{StaticResource HeadingFont}" FontSize="19" />

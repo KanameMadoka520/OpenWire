@@ -22,9 +22,11 @@
     <None Include="Assets\Flags\NOTICE.md" />
   </ItemGroup>
 
-  <!-- App logo: brand image + multi-size icon (also loaded by the tray). -->
+  <!-- App logo: brand image (small variant — the full logo washes out at 32 px)
+       + multi-size icon (also loaded by the tray). -->
   <ItemGroup>
     <Resource Include="Assets\logo.png" />
+    <Resource Include="Assets\logo-small.png" />
     <Resource Include="Assets\app.ico" />
   </ItemGroup>
 
