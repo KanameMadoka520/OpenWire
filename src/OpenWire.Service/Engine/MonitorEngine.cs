@@ -77,7 +77,11 @@ public sealed class MonitorEngine : IAsyncDisposable
     public MonitorEngine(string dataDir)
     {
         _store = new HistoryStore(Path.Combine(dataDir, "openwire.db"));
-        _geo = new GeoIpResolver(Path.Combine(dataDir, "GeoLite2-Country.mmdb"));
+        // A user-supplied MaxMind GeoLite2 wins; otherwise fall back to the DB-IP
+        // Lite country database bundled beside the engine (CC-BY 4.0, see NOTICE).
+        _geo = new GeoIpResolver(
+            Path.Combine(dataDir, "GeoLite2-Country.mmdb"),
+            Path.Combine(AppContext.BaseDirectory, "Assets", "dbip-country-lite.mmdb"));
         _connections = new ConnectionEnumerator(_processes);
         _scanner = new DeviceScanner(new OuiDatabase(Path.Combine(dataDir, "manuf.txt")));
     }

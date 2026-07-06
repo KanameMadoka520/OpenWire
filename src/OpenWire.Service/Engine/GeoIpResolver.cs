@@ -17,12 +17,15 @@ public sealed class GeoIpResolver : IDisposable
 
     public bool Available => _reader is not null;
 
-    public GeoIpResolver(string? databasePath)
+    /// <summary>Opens the first readable IP-to-country MMDB from the candidate paths
+    /// (a user-supplied database wins; a bundled one is the fallback).</summary>
+    public GeoIpResolver(params string?[] candidatePaths)
     {
-        if (!string.IsNullOrEmpty(databasePath) && File.Exists(databasePath))
+        foreach (var path in candidatePaths)
         {
-            try { _reader = new DatabaseReader(databasePath); }
-            catch (Exception ex) { Console.Error.WriteLine($"[GeoIP] failed to open '{databasePath}': {ex.Message}"); }
+            if (string.IsNullOrEmpty(path) || !File.Exists(path)) continue;
+            try { _reader = new DatabaseReader(path); return; }
+            catch (Exception ex) { Console.Error.WriteLine($"[GeoIP] failed to open '{path}': {ex.Message}"); }
         }
     }
 

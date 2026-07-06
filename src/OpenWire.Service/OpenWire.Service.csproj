@@ -15,6 +15,13 @@
     <ProjectReference Include="..\OpenWire.Core\OpenWire.Core.csproj" />
   </ItemGroup>
 
+  <!-- Bundled DB-IP Lite country database (CC-BY 4.0) for offline GeoIP; copied
+       next to the engine so it works out of the box. See Assets/NOTICE.md. -->
+  <ItemGroup>
+    <Content Include="Assets\dbip-country-lite.mmdb" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Assets\NOTICE.md" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="MaxMind.GeoIP2" Version="6.0.0" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.9" />
