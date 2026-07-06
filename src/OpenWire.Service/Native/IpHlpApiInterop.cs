@@ -89,16 +89,6 @@ internal static class IpHlpApiInterop
         return result;
     }
 
-    private static IntPtr AllocForTable(Func<IntPtr, int, (uint status, int need)> call, out int size)
-    {
-        size = 0;
-        // First call to size the buffer.
-        var probe = call(IntPtr.Zero, size);
-        size = probe.need;
-        if (size <= 0) return IntPtr.Zero;
-        return Marshal.AllocHGlobal(size);
-    }
-
     private static void ReadTcp(int af, List<Endpoint> outList)
     {
         int size = 0;

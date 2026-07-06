@@ -26,11 +26,17 @@ public sealed class GeoIpResolver : IDisposable
         }
     }
 
+    // One entry per unique remote IP with no expiry would grow forever on
+    // endpoint-churn-heavy machines; DB lookups are cheap, so just reset wholesale.
+    private const int MaxEntries = 20_000;
+
     public GeoInfo Resolve(string ip)
     {
         if (string.IsNullOrEmpty(ip)) return GeoInfo.Unknown;
         if (ConnectionEnumerator.IsLocalAddress(ip)) return GeoInfo.Local;
         if (_reader is null) return GeoInfo.Unknown;
+
+        if (_cache.Count >= MaxEntries) _cache.Clear();
 
         return _cache.GetOrAdd(ip, addr =>
         {

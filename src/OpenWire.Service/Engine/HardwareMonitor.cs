@@ -17,11 +17,21 @@ public sealed class HardwareMonitor : IDisposable
     private readonly object _lock = new();
     private readonly Queue<HardwareSample> _history = new();
 
+    /// <summary>How often (in 1 Hz ticks) the GPU counter instance lists are re-enumerated.</summary>
+    private const int GpuRefreshTicks = 5;
+
     private PerformanceCounter? _cpu;
     private PerformanceCounter? _diskRead;
     private PerformanceCounter? _diskWrite;
-    private readonly List<PerformanceCounter> _gpu = new();
-    private readonly List<PerformanceCounter> _gpuMem = new();
+
+    // "GPU Engine" instances are per-process AND per-adapter AND per-engine-type
+    // (pid_1234_luid_0x..._0x..._phys_0_engtype_3D / _Copy / _VideoEncode ...), and they
+    // come and go as processes start and exit, so we key counters by instance name and
+    // periodically re-enumerate instead of freezing the list at construction time.
+    private readonly Dictionary<string, PerformanceCounter> _gpu = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, PerformanceCounter> _gpuMem = new(StringComparer.OrdinalIgnoreCase);
+    private int _gpuTick;
+    private int _sampling;
 
     private double _cpuV, _memPct, _diskR, _diskW, _gpuV;
     private long _memUsed, _memTotal, _gpuMemV;
@@ -32,8 +42,8 @@ public sealed class HardwareMonitor : IDisposable
         TryInit(ref _cpu, "Processor", "% Processor Time", "_Total");
         TryInit(ref _diskRead, "PhysicalDisk", "Disk Read Bytes/sec", "_Total");
         TryInit(ref _diskWrite, "PhysicalDisk", "Disk Write Bytes/sec", "_Total");
-        InitGpu();
-        InitGpuMemory();
+        RefreshGpuInstances();
+        RefreshGpuMemoryInstances();
     }
 
     public void Start() => _timer = new Timer(_ => Sample(), null, 500, 1000);
@@ -44,56 +54,129 @@ public sealed class HardwareMonitor : IDisposable
         catch { counter = null; }
     }
 
-    private void InitGpu()
+    /// <summary>
+    /// Re-enumerates "GPU Engine" instances: disposes counters whose process has exited and
+    /// adds counters for new instances. A freshly created <see cref="PerformanceCounter"/>
+    /// needs two samples for a valid rate, so new instances are primed here and start
+    /// contributing on the next tick.
+    /// </summary>
+    private void RefreshGpuInstances()
     {
         try
         {
             var cat = new PerformanceCounterCategory("GPU Engine");
-            foreach (var inst in cat.GetInstanceNames())
+            var live = new HashSet<string>(cat.GetInstanceNames(), StringComparer.OrdinalIgnoreCase);
+
+            foreach (var stale in _gpu.Keys.Where(k => !live.Contains(k)).ToList())
             {
-                if (!inst.Contains("engtype_3D", StringComparison.OrdinalIgnoreCase)) continue;
+                _gpu[stale].Dispose();
+                _gpu.Remove(stale);
+            }
+
+            foreach (var inst in live)
+            {
+                if (_gpu.ContainsKey(inst)) continue;
+                PerformanceCounter? c = null;
                 try
                 {
-                    var c = new PerformanceCounter("GPU Engine", "Utilization Percentage", inst);
+                    c = new PerformanceCounter("GPU Engine", "Utilization Percentage", inst);
                     c.NextValue();
-                    _gpu.Add(c);
+                    _gpu[inst] = c;
                 }
-                catch { /* skip this instance */ }
+                catch { c?.Dispose(); /* instance vanished mid-enumeration */ }
             }
         }
         catch { /* no GPU counters */ }
     }
 
-    private void InitGpuMemory()
+    /// <summary>Re-enumerates "GPU Adapter Memory" instances (adapters can appear/disappear, e.g. virtual displays).</summary>
+    private void RefreshGpuMemoryInstances()
     {
         try
         {
             var cat = new PerformanceCounterCategory("GPU Adapter Memory");
-            foreach (var inst in cat.GetInstanceNames())
+            var live = new HashSet<string>(cat.GetInstanceNames(), StringComparer.OrdinalIgnoreCase);
+
+            foreach (var stale in _gpuMem.Keys.Where(k => !live.Contains(k)).ToList())
             {
+                _gpuMem[stale].Dispose();
+                _gpuMem.Remove(stale);
+            }
+
+            foreach (var inst in live)
+            {
+                if (_gpuMem.ContainsKey(inst)) continue;
+                PerformanceCounter? c = null;
                 try
                 {
-                    var c = new PerformanceCounter("GPU Adapter Memory", "Dedicated Usage", inst);
+                    c = new PerformanceCounter("GPU Adapter Memory", "Dedicated Usage", inst);
                     c.NextValue();
-                    _gpuMem.Add(c);
+                    _gpuMem[inst] = c;
                 }
-                catch { /* skip */ }
+                catch { c?.Dispose(); /* skip */ }
             }
         }
         catch { /* no GPU memory counters */ }
     }
 
+    /// <summary>
+    /// Reduces an instance name like "pid_1234_luid_0x00000000_0x0000ABCD_phys_0_engtype_3D"
+    /// to its (adapter, engine-type) group key "luid_0x00000000_0x0000ABCD_phys_0_engtype_3D",
+    /// so per-process values can be summed per physical engine.
+    /// </summary>
+    private static string GpuGroupKey(string instance)
+    {
+        int i = instance.IndexOf("luid_", StringComparison.OrdinalIgnoreCase);
+        return i >= 0 ? instance[i..] : instance;
+    }
+
+    /// <summary>
+    /// Overall GPU utilisation with Task Manager semantics: sum the per-process values within
+    /// each (adapter, engine-type) group, then report the busiest group, clamped to 0..100.
+    /// Summing every instance instead would count each engine and each adapter (including
+    /// virtual ones such as remote-desktop encoders) on top of one another and read near 100%
+    /// on an idle machine.
+    /// </summary>
+    private double SampleGpuUtilization()
+    {
+        var groups = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (inst, counter) in _gpu)
+        {
+            double v = SafeNext(counter);
+            if (v <= 0) continue;
+            string key = GpuGroupKey(inst);
+            groups[key] = groups.TryGetValue(key, out double sum) ? sum + v : v;
+        }
+
+        double busiest = 0;
+        foreach (double g in groups.Values) busiest = Math.Max(busiest, g);
+        return Math.Clamp(busiest, 0, 100);
+    }
+
     private void Sample()
     {
+        // The GPU dictionaries are only touched from this callback, but a slow tick could
+        // overlap the next timer fire — skip instead of mutating them concurrently.
+        if (Interlocked.Exchange(ref _sampling, 1) == 1) return;
         try
         {
+            if (++_gpuTick >= GpuRefreshTicks)
+            {
+                _gpuTick = 0;
+                RefreshGpuInstances();
+                RefreshGpuMemoryInstances();
+            }
+
             double cpu = SafeNext(_cpu);
             double dr = SafeNext(_diskRead);
             double dw = SafeNext(_diskWrite);
-            double gpu = 0;
-            foreach (var c in _gpu) gpu += SafeNext(c);
+            double gpu = SampleGpuUtilization();
+
+            // Single-number GPU memory = dedicated usage of the busiest adapter (max, not
+            // sum): summing would mix multiple physical GPUs — and virtual adapters — into
+            // one figure that no single card's VRAM capacity relates to.
             long gpuMem = 0;
-            foreach (var c in _gpuMem) gpuMem += (long)SafeNext(c);
+            foreach (var c in _gpuMem.Values) gpuMem = Math.Max(gpuMem, (long)SafeNext(c));
 
             GetMemory(out long used, out long total);
             double memPct = total > 0 ? used * 100.0 / total : 0;
@@ -114,6 +197,7 @@ public sealed class HardwareMonitor : IDisposable
             }
         }
         catch { /* transient counter error */ }
+        finally { Volatile.Write(ref _sampling, 0); }
     }
 
     private static double SafeNext(PerformanceCounter? c)
@@ -176,7 +260,7 @@ public sealed class HardwareMonitor : IDisposable
         _cpu?.Dispose();
         _diskRead?.Dispose();
         _diskWrite?.Dispose();
-        foreach (var c in _gpu) c.Dispose();
-        foreach (var c in _gpuMem) c.Dispose();
+        foreach (var c in _gpu.Values) c.Dispose();
+        foreach (var c in _gpuMem.Values) c.Dispose();
     }
 }

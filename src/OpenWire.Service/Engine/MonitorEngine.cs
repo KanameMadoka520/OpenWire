@@ -192,6 +192,18 @@ public sealed class MonitorEngine : IAsyncDisposable
         if (_tick % 600 == 0) RunUsageAnomalyChecks();
         if (_tick % 3600 == 0) PruneHistory();
 
+        // 5c) per-minute: drop caches keyed by dead PIDs (process-churn-heavy
+        // machines otherwise grow them forever, and dead flows clog the ETW
+        // endpoint cap). ~15 min: compact the LOH — a long-lived service that
+        // serializes large IPC responses fragments it without this.
+        if (_tick % 60 == 0) PruneProcessCaches();
+        if (_tick > 0 && _tick % 900 == 0)
+        {
+            System.Runtime.GCSettings.LargeObjectHeapCompactionMode =
+                System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
+            GC.Collect(2, GCCollectionMode.Aggressive);
+        }
+
         // 6) scheduled device rescan
         if (now - _lastDeviceScan > TimeSpan.FromMinutes(30))
             _ = RescanDevicesAsync(CancellationToken.None);
@@ -228,6 +240,12 @@ public sealed class MonitorEngine : IAsyncDisposable
             _prevPerPid.TryGetValue(pid, out var prev);
             long di = Math.Max(0, val.In - prev.In);
             long dono = Math.Max(0, val.Out - prev.Out);
+
+            // A PID with history but no delta must not resurrect an app the idle
+            // eviction already dropped (dead PIDs linger in the ETW counters until
+            // the per-minute prune) — that would defeat eviction and re-allocate
+            // its sparkline every tick forever.
+            if (di == 0 && dono == 0 && !_appStore.ContainsKey(app.Id)) continue;
 
             var usage = GetOrCreateApp(app, now);
             if (di > 0 || dono > 0)
@@ -266,6 +284,19 @@ public sealed class MonitorEngine : IAsyncDisposable
             next.Add(rate);
             u.RateHistory = next;
         }
+    }
+
+    /// <summary>Drop PID-keyed caches (resolver + ETW counters) for exited processes.</summary>
+    private void PruneProcessCaches()
+    {
+        var alive = new HashSet<int>();
+        foreach (var p in System.Diagnostics.Process.GetProcesses())
+        {
+            alive.Add(p.Id);
+            p.Dispose();
+        }
+        _processes.PruneDeadPids(alive);
+        _etw.PrunePids(alive);
     }
 
     private void AttributePerHost()

@@ -1,5 +1,6 @@
+using System.Buffers;
 using System.Runtime.InteropServices;
-using System.Text;
+using System.Text.Json;
 
 namespace OpenWire.Core.Ipc;
 
@@ -18,6 +19,13 @@ public sealed class IpcChannel : IDisposable
 
     private readonly byte[] _readBuf = new byte[64 * 1024];
     private readonly List<byte> _pending = new(64 * 1024);
+
+    // Reusable send buffer: per-message string + byte[] allocations put every large
+    // response (usage/hardware snapshots easily exceed the 85 KB LOH threshold) on
+    // the large-object heap once a second, fragmenting it without bound on a
+    // long-lived engine. The writer grows once to the largest response and stays.
+    private readonly ArrayBufferWriter<byte> _sendBuf = new(64 * 1024);
+    private Utf8JsonWriter? _sendJson;
     private bool _disposed;
 
     public IpcChannel(Stream stream) => _stream = stream;
@@ -25,16 +33,17 @@ public sealed class IpcChannel : IDisposable
     /// <summary>Serialize and send one message. Thread-safe against concurrent sends.</summary>
     public async Task SendAsync(IpcMessage message, CancellationToken ct = default)
     {
-        var json = IpcJson.Serialize(message);
-        var payload = Encoding.UTF8.GetBytes(json);
-        var framed = new byte[payload.Length + 1];
-        Buffer.BlockCopy(payload, 0, framed, 0, payload.Length);
-        framed[payload.Length] = Delimiter;
-
         await _writeLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            await _stream.WriteAsync(framed, ct).ConfigureAwait(false);
+            _sendBuf.ResetWrittenCount();
+            _sendJson ??= new Utf8JsonWriter(_sendBuf, new JsonWriterOptions { SkipValidation = true });
+            _sendJson.Reset(_sendBuf);
+            JsonSerializer.Serialize(_sendJson, message, IpcJson.Options);
+            _sendBuf.GetSpan(1)[0] = Delimiter;
+            _sendBuf.Advance(1);
+
+            await _stream.WriteAsync(_sendBuf.WrittenMemory, ct).ConfigureAwait(false);
             await _stream.FlushAsync(ct).ConfigureAwait(false);
         }
         finally
@@ -81,6 +90,7 @@ public sealed class IpcChannel : IDisposable
     {
         if (_disposed) return;
         _disposed = true;
+        _sendJson?.Dispose();
         _writeLock.Dispose();
         _stream.Dispose();
     }

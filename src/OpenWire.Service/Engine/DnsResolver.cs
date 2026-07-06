@@ -18,9 +18,11 @@ public sealed class DnsResolver
     }
 
     private static readonly TimeSpan Ttl = TimeSpan.FromMinutes(30);
+    private static readonly TimeSpan SweepEvery = TimeSpan.FromMinutes(10);
     private readonly ConcurrentDictionary<string, Entry> _cache = new();
     private readonly SemaphoreSlim _gate = new(8);
     private volatile bool _enabled = true;
+    private DateTimeOffset _nextSweep = DateTimeOffset.UtcNow + SweepEvery;
 
     public bool Enabled
     {
@@ -36,6 +38,7 @@ public sealed class DnsResolver
     {
         if (!_enabled || string.IsNullOrEmpty(ip)) return string.Empty;
         if (ConnectionEnumerator.IsLocalAddress(ip)) return string.Empty;
+        MaybeSweep();
 
         if (_cache.TryGetValue(ip, out var e))
         {
@@ -47,6 +50,21 @@ public sealed class DnsResolver
 
         QueueLookup(ip);
         return _cache.TryGetValue(ip, out var cur) ? cur.Host : string.Empty;
+    }
+
+    /// <summary>
+    /// Drop entries that expired a full TTL ago and were never asked about again.
+    /// Without this the cache grows one entry per unique remote IP for the life of
+    /// the process — unbounded on proxy-heavy machines with high endpoint churn.
+    /// </summary>
+    private void MaybeSweep()
+    {
+        var now = DateTimeOffset.UtcNow;
+        if (now < _nextSweep) return;
+        _nextSweep = now + SweepEvery;
+        foreach (var kv in _cache)
+            if (!kv.Value.Pending && kv.Value.Expiry < now - Ttl)
+                _cache.TryRemove(kv.Key, out _);
     }
 
     private void QueueLookup(string ip)

@@ -172,6 +172,19 @@ public sealed class EtwNetworkMonitor : IDisposable
         return result;
     }
 
+    /// <summary>
+    /// Drop per-PID and per-endpoint counters whose owning process is gone. On
+    /// process-churn-heavy machines these otherwise grow without bound — and dead
+    /// flows fill the endpoint cap, silently stopping per-host attribution.
+    /// </summary>
+    public void PrunePids(HashSet<int> alivePids)
+    {
+        foreach (var pid in _perPid.Keys)
+            if (!alivePids.Contains(pid)) _perPid.TryRemove(pid, out _);
+        foreach (var key in _perEndpoint.Keys)
+            if (!alivePids.Contains(key.Pid)) _perEndpoint.TryRemove(key, out _);
+    }
+
     public void Dispose()
     {
         _running = false;
