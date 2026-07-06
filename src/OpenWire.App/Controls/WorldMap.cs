@@ -26,6 +26,12 @@ public sealed class WorldMap : FrameworkElement
 
     private Dictionary<string, long> _traffic = new(StringComparer.OrdinalIgnoreCase);
     private long _max = 1;
+
+    // One-China: mainland + Taiwan + Hong Kong + Macao are shaded together as a single
+    // China whenever ANY of them has traffic. This is the sum of all four, used for the
+    // fill of every China region so they light up as one (hovering still shows each
+    // region's own figure). Kept in sync by SetData.
+    private long _chinaBytes;
     private readonly Typeface _ui = new("Segoe UI Variable Text, Segoe UI");
     private readonly Typeface _mono = new("Cascadia Mono, Consolas");
 
@@ -114,9 +120,25 @@ public sealed class WorldMap : FrameworkElement
         foreach (var c in data ?? Array.Empty<CountryUsage>())
             if (!string.IsNullOrEmpty(c.CountryCode) && c.Total > 0)
                 _traffic[c.CountryCode] = c.Total;
-        _max = 1;
-        foreach (var v in _traffic.Values) if (v > _max) _max = v;
+
+        // Sum the China regions so they shade as one territory.
+        _chinaBytes = 0;
+        foreach (var iso in new[] { "CN", "TW", "HK", "MO" })
+            if (_traffic.TryGetValue(iso, out var v)) _chinaBytes += v;
+
+        _max = Math.Max(1, _chinaBytes);
+        foreach (var (iso, v) in _traffic) if (!IsChinaIso(iso) && v > _max) _max = v;
         InvalidateVisual();
+    }
+
+    /// <summary>Traffic used to <em>shade</em> a region: the China aggregate for any
+    /// China region (so mainland + Taiwan + HK + Macao light up together), otherwise
+    /// the region's own total. 0 means "no traffic → base land colour".</summary>
+    private long FillBytes(string? iso)
+    {
+        if (string.IsNullOrEmpty(iso)) return 0;
+        if (IsChinaIso(iso)) return _chinaBytes;
+        return _traffic.TryGetValue(iso, out var b) ? b : 0;
     }
 
     /// <summary>Recentre / reset zoom for the current mode.</summary>
@@ -329,8 +351,8 @@ public sealed class WorldMap : FrameworkElement
             dc.PushTransform(new MatrixTransform(_fs, 0, 0, _fs, _fox + shift, _foy));
             foreach (var c in WorldGeo.Shapes)
             {
-                Brush fill = _traffic.TryGetValue(c.Iso, out var bytes) && !string.IsNullOrEmpty(c.Iso)
-                    ? Shade(bytes, 0.22, 0.92) : pal.Land;
+                long bytes = FillBytes(c.Iso);
+                Brush fill = bytes > 0 ? Shade(bytes, 0.22, 0.92) : pal.Land;
                 dc.DrawGeometry(fill, coast, c.Geo);
             }
             if (_hover is not null)
@@ -405,7 +427,8 @@ public sealed class WorldMap : FrameworkElement
         {
             var geo = ProjectGlobe(c, slat0, clat0);
             if (geo is null) continue;
-            Brush fill = _traffic.TryGetValue(c.Iso, out var bytes) && !string.IsNullOrEmpty(c.Iso)
+            long bytes = FillBytes(c.Iso);
+            Brush fill = bytes > 0
                 ? LandShade(pal.LandBase, pal.Accent, bytes, lnMax) : pal.LandGlobe;
             dc.DrawGeometry(fill, coast, geo);
         }
