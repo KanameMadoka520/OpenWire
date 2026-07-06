@@ -65,6 +65,14 @@ public partial class HardwareViewModel : ObservableObject
     [ObservableProperty] private bool _sortAscending;
     private List<ProcessResourceRow> _lastProcs = new();
 
+    // Rebuilding the ~40-row process table swaps 40 view-models (icon lookups +
+    // row re-binds) on the UI thread — the same thread that drives the graph
+    // scroll. Doing that every second hitches the scroll right at each 1 s sample
+    // boundary. The numbers and graphs stay at 1 Hz; the table refreshes every
+    // second poll (~2 s, matching GlassWire) so the scroll runs uncontended.
+    private const int ProcRebuildEveryNthTick = 2;
+    private int _tick;
+
     /// <summary>Raised each poll so the view can feed the four metric graphs.</summary>
     public event Action<HardwareSnapshot>? SnapshotUpdated;
 
@@ -86,10 +94,16 @@ public partial class HardwareViewModel : ObservableObject
         GpuText = $"{hw.GpuPercent:0} %";
         GpuMemoryText = ByteFormatter.Bytes(hw.GpuMemoryUsedBytes);
 
-        _lastProcs = hw.Processes;
-        RebuildProcesses();
-
+        // Graphs first (cheap, must stay smooth), then the heavier table on a
+        // slower cadence. The very first poll always builds the table so it
+        // isn't blank while waiting for the second tick.
         SnapshotUpdated?.Invoke(hw);
+
+        if (_tick++ % ProcRebuildEveryNthTick == 0)
+        {
+            _lastProcs = hw.Processes;
+            RebuildProcesses();
+        }
     }
 
     /// <summary>Sort by a column; clicking the active column again reverses it.

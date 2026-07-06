@@ -200,9 +200,12 @@ public sealed class MetricGraph : FrameworkElement
         target = Math.Max(target * 1.15, _floor);
         if (target > _renderPeak) { _renderPeak = target; return true; }
         if (Math.Abs(target - _renderPeak) < _renderPeak * 0.002) return false;
-        if ((DateTime.UtcNow - _lastShrink).TotalMilliseconds < 200) return false;
+        // Each shrink step re-rasterizes the cached series; four graphs share the
+        // UI thread with the scroll, so throttle the (non-urgent) downscale to
+        // ~3 Hz to keep re-raster bursts from stealing scroll frames.
+        if ((DateTime.UtcNow - _lastShrink).TotalMilliseconds < 320) return false;
         _lastShrink = DateTime.UtcNow;
-        _renderPeak += (target - _renderPeak) * 0.25;
+        _renderPeak += (target - _renderPeak) * 0.34;
         if (Math.Abs(target - _renderPeak) < _renderPeak * 0.002) _renderPeak = target;
         return true;
     }
