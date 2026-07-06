@@ -74,17 +74,24 @@ public sealed class MonitorEngine : IAsyncDisposable
     public bool CanEnforceFirewall { get; private set; }
     public bool GeoIpAvailable => _geo.Available;
 
+    private readonly GeoIpUpdater _geoUpdater;
+    private int _geoUpdating; // 0/1 guard so only one download runs at a time
+
     private readonly string _dataDir;
 
     public MonitorEngine(string dataDir)
     {
         _dataDir = dataDir;
         _store = new HistoryStore(Path.Combine(dataDir, "openwire.db"));
-        // A user-supplied MaxMind GeoLite2 wins; otherwise fall back to the DB-IP
-        // Lite country database bundled beside the engine (CC-BY 4.0, see NOTICE).
+        // Priority: an in-app-updated database (writable data dir) wins, then a user-supplied
+        // MaxMind GeoLite2, then the DB-IP Lite database bundled beside the engine (CC-BY 4.0,
+        // see NOTICE). Keeping the download in the data dir decouples the GeoIP database from the
+        // app build, so even an old OpenWire can be kept current.
         _geo = new GeoIpResolver(
+            Path.Combine(dataDir, "geoip-country.mmdb"),
             Path.Combine(dataDir, "GeoLite2-Country.mmdb"),
             Path.Combine(AppContext.BaseDirectory, "Assets", "dbip-country-lite.mmdb"));
+        _geoUpdater = new GeoIpUpdater(dataDir, _geo);
         _connections = new ConnectionEnumerator(_processes);
         _scanner = new DeviceScanner(new OuiDatabase(Path.Combine(dataDir, "manuf.txt")));
     }
@@ -118,6 +125,7 @@ public sealed class MonitorEngine : IAsyncDisposable
         var token = _engineCts.Token;
         _tickLoop = Task.Run(() => TickLoopAsync(token), token);
         _ = Task.Run(() => InitialScanAsync(token), token);
+        if (_settings.GeoIpAutoUpdate) _ = Task.Run(() => AutoUpdateGeoIpAsync(token), token);
         await Task.CompletedTask;
     }
 
@@ -768,7 +776,11 @@ public sealed class MonitorEngine : IAsyncDisposable
             .ToDictionary(g => g.Key, g => Top4(g.Select(a => (a.Name, a.Path, a.In, a.Out))));
         foreach (var du in report.Daily)
         {
-            string key = DateTimeOffset.FromUnixTimeSeconds(du.DayStartUnix).ToLocalTime().ToString("yyyy-MM-dd");
+            // Match SQLite's strftime('%Y-%m-%d') key, which is always proleptic-Gregorian:
+            // format with the invariant culture so a non-Gregorian OS calendar (Thai, Umm-al-Qura)
+            // can't produce a mismatched key that leaves every daily tooltip's app list empty.
+            string key = DateTimeOffset.FromUnixTimeSeconds(du.DayStartUnix).ToLocalTime()
+                .ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
             if (byDay.TryGetValue(key, out var dayTop)) du.TopApps = dayTop;
         }
 
@@ -809,7 +821,13 @@ public sealed class MonitorEngine : IAsyncDisposable
                 Fraction = appGrand > 0 ? (double)a.Total / appGrand : 0,
             });
 
-        report.Anomalies = ComputeAnomalies(nowSec, todayStart, rows);
+        // Anomaly detection compares *today* against a trailing baseline, so it is only
+        // meaningful when the reported window reaches into today. A custom window that ends in
+        // the past would otherwise show today's live anomalies beside unrelated historical data.
+        bool windowIncludesToday = !custom || toBucket >= todayStart / 60 * 60;
+        report.Anomalies = windowIncludesToday
+            ? ComputeAnomalies(nowSec, todayStart, rows)
+            : new List<UsageAnomaly>();
         report.Highlights = BuildHighlights(report);
         return report;
     }
@@ -885,6 +903,80 @@ public sealed class MonitorEngine : IAsyncDisposable
             h.Add($"{r.Anomalies.Count} usage anomal{(r.Anomalies.Count == 1 ? "y" : "ies")} detected — see below.");
 
         return h;
+    }
+
+    // ---------------- GeoIP database ----------------
+
+    /// <summary>Current GeoIP database status for the Settings screen.</summary>
+    public GeoIpStatusResponse GetGeoIpStatus() => new()
+    {
+        Available = _geo.Available,
+        Source = GeoSourceLabel(),
+        DatabaseType = _geo.DatabaseType,
+        BuildDate = _geo.BuildDate?.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) ?? "",
+        LastUpdateUnix = _settings.GeoIpLastUpdateUnix,
+        AutoUpdate = _settings.GeoIpAutoUpdate,
+    };
+
+    private string GeoSourceLabel()
+    {
+        var type = _geo.DatabaseType;
+        if (type.Contains("DBIP", StringComparison.OrdinalIgnoreCase)) return "DB-IP Lite";
+        if (type.Contains("GeoLite", StringComparison.OrdinalIgnoreCase)) return "MaxMind GeoLite2";
+        return _geo.Available ? (string.IsNullOrEmpty(type) ? "GeoIP" : type) : "";
+    }
+
+    /// <summary>Download + install the latest free country database on demand, then return the new
+    /// status. Serialized so concurrent requests don't collide; the active database survives failures.</summary>
+    public async Task<GeoIpStatusResponse> UpdateGeoIpAsync(CancellationToken ct)
+    {
+        if (Interlocked.CompareExchange(ref _geoUpdating, 1, 0) != 0)
+        {
+            var busy = GetGeoIpStatus();
+            busy.Success = false;
+            busy.Message = "An update is already in progress.";
+            return busy;
+        }
+        try
+        {
+            var result = await _geoUpdater.UpdateAsync(DateTimeOffset.UtcNow.UtcDateTime, _geo.BuildDate, ct)
+                .ConfigureAwait(false);
+
+            // A completed check (installed a newer DB or confirmed we're current) stamps the time,
+            // so auto-update won't re-check every launch. A network/validation failure does not.
+            if (result.Success)
+            {
+                lock (_settingsLock)
+                {
+                    _settings.GeoIpLastUpdateUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                    _store.SaveSettings(_settings);
+                }
+            }
+
+            var status = GetGeoIpStatus();
+            status.Success = result.Success;
+            status.Updated = result.Updated;
+            status.Message = result.Message;
+            return status;
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _geoUpdating, 0);
+        }
+    }
+
+    /// <summary>Best-effort auto-update on startup: at most once every ~25 days, silent on failure.</summary>
+    private async Task AutoUpdateGeoIpAsync(CancellationToken ct)
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(15), ct).ConfigureAwait(false); // let startup settle
+            long last = _settings.GeoIpLastUpdateUnix;
+            long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            if (last > 0 && now - last < 25 * 86400L) return; // checked recently
+            await UpdateGeoIpAsync(ct).ConfigureAwait(false);
+        }
+        catch { /* best effort — GeoIP stays on the current database */ }
     }
 
     /// <summary>Periodic scan that raises freshly-detected usage anomalies as alerts

@@ -83,6 +83,29 @@
                     </StackPanel>
                 </Border>
 
+                <TextBlock Text="{StaticResource L.Set.GeoDbTitle}" Style="{StaticResource TableHeaderText}" Margin="2,24,0,10" />
+                <Border Style="{StaticResource Card}" Padding="18">
+                    <StackPanel>
+                        <TextBlock Foreground="{StaticResource TextSecondary}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,14"
+                                   Text="{StaticResource L.Set.GeoDbDesc}" />
+
+                        <!-- current database: source + build date -->
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
+                            <TextBlock Text="{StaticResource L.Set.GeoDbCurrent}" Foreground="{StaticResource TextSecondary}" FontSize="12" VerticalAlignment="Center" Width="120" />
+                            <TextBlock Text="{Binding GeoIpStatusText}" FontSize="12.5" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding GeoIpUpdatedText}" Foreground="{StaticResource TextMuted}" FontSize="11.5" Margin="120,0,0,14" />
+
+                        <!-- update on demand -->
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                            <Button Style="{StaticResource BtnGhost}" Content="{StaticResource L.Set.GeoUpdateNow}" Command="{Binding UpdateGeoIpCommand}" />
+                            <TextBlock Text="{Binding GeoIpResultText}" Foreground="{StaticResource TextSecondary}" FontSize="12" VerticalAlignment="Center" Margin="12,0,0,0" TextWrapping="Wrap" MaxWidth="360" />
+                        </StackPanel>
+
+                        <CheckBox Style="{StaticResource Switch}" Content="{StaticResource L.Set.GeoAutoUpdate}" IsChecked="{Binding GeoIpAutoUpdate}" />
+                    </StackPanel>
+                </Border>
+
                 <TextBlock Text="{StaticResource L.Set.DataPlan}" Style="{StaticResource TableHeaderText}" Margin="2,24,0,10" />
                 <Border Style="{StaticResource Card}" Padding="18">
                     <StackPanel>

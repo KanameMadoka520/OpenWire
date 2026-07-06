@@ -215,6 +215,15 @@ public sealed class IpcServer : IAsyncDisposable
                     _engine.SetSettings(ss.Settings);
                     return new OkResponse();
 
+                case GetGeoIpStatusRequest:
+                    return _engine.GetGeoIpStatus();
+
+                case UpdateGeoIpRequest:
+                    // Downloading is slow; run it off the read loop and enqueue the correlated
+                    // reply when it finishes, so further requests aren't blocked meanwhile.
+                    RunGeoIpUpdate(request.CorrelationId, client, ct);
+                    return null;
+
                 case GetStorageInfoRequest:
                     return new StorageInfoResponse { Storage = _engine.GetStorageInfo() };
 
@@ -232,6 +241,28 @@ public sealed class IpcServer : IAsyncDisposable
         {
             return new ErrorResponse { Error = ex.Message };
         }
+    }
+
+    /// <summary>Runs a GeoIP update off the request read loop and enqueues the correlated reply.</summary>
+    private void RunGeoIpUpdate(string? correlationId, Client client, CancellationToken ct)
+    {
+        _ = Task.Run(async () =>
+        {
+            IpcMessage resp;
+            try
+            {
+                resp = await _engine.UpdateGeoIpAsync(ct).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                var status = _engine.GetGeoIpStatus();
+                status.Success = false;
+                status.Message = ex.Message;
+                resp = status;
+            }
+            resp.CorrelationId = correlationId;
+            client.Enqueue(resp);
+        }, ct);
     }
 
     private void OnEngineEvent(IpcMessage evt)

@@ -76,6 +76,29 @@ public sealed class SettingsResponse : IpcMessage
     public AppSettings Settings { get; set; } = new();
 }
 
+/// <summary>Current GeoIP database status, and — for an update request — the result of the attempt.</summary>
+public sealed class GeoIpStatusResponse : IpcMessage
+{
+    public bool Available { get; set; }
+    /// <summary>Human-readable source, e.g. "DB-IP Lite" or "MaxMind GeoLite2".</summary>
+    public string Source { get; set; } = "";
+    /// <summary>Database build date ("yyyy-MM-dd"), or empty when unknown.</summary>
+    public string BuildDate { get; set; } = "";
+    /// <summary>Raw MaxMind metadata database type (e.g. "DBIP-Country-Lite").</summary>
+    public string DatabaseType { get; set; } = "";
+    /// <summary>Unix seconds of the last successful in-app check/update (0 = never).</summary>
+    public long LastUpdateUnix { get; set; }
+    public bool AutoUpdate { get; set; }
+
+    // Meaningful only on a reply to UpdateGeoIpRequest:
+    /// <summary>False when the update attempt failed (network/validation). A status query is always true.</summary>
+    public bool Success { get; set; } = true;
+    /// <summary>True when a newer database was actually installed (vs. already up to date).</summary>
+    public bool Updated { get; set; }
+    /// <summary>Short human-readable result or error detail.</summary>
+    public string Message { get; set; } = "";
+}
+
 /// <summary>Generic success acknowledgement for commands.</summary>
 public sealed class OkResponse : IpcMessage
 {

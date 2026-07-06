@@ -111,7 +111,7 @@ public sealed class EngineClient : IDisposable
         _pending.Clear();
     }
 
-    private async Task<T> RequestAsync<T>(IpcMessage request, CancellationToken ct = default) where T : IpcMessage
+    private async Task<T> RequestAsync<T>(IpcMessage request, TimeSpan? timeout = null, CancellationToken ct = default) where T : IpcMessage
     {
         var channel = _channel ?? throw new InvalidOperationException("Engine not connected.");
         var id = Guid.NewGuid().ToString("N");
@@ -120,9 +120,9 @@ public sealed class EngineClient : IDisposable
         var tcs = new TaskCompletionSource<IpcMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
         _pending[id] = tcs;
 
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        timeout.CancelAfter(TimeSpan.FromSeconds(20));
-        await using var reg = timeout.Token.Register(() =>
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeoutCts.CancelAfter(timeout ?? TimeSpan.FromSeconds(20));
+        await using var reg = timeoutCts.Token.Register(() =>
         {
             if (_pending.TryRemove(id, out var t)) t.TrySetCanceled();
         });
@@ -165,6 +165,12 @@ public sealed class EngineClient : IDisposable
     public Task<OkResponse> ForgetDeviceAsync(string id) => RequestAsync<OkResponse>(new ForgetDeviceRequest { DeviceId = id });
     public Task<SettingsResponse> GetSettingsAsync() => RequestAsync<SettingsResponse>(new GetSettingsRequest());
     public Task<OkResponse> SetSettingsAsync(AppSettings settings) => RequestAsync<OkResponse>(new SetSettingsRequest { Settings = settings });
+    public Task<GeoIpStatusResponse> GetGeoIpStatusAsync() => RequestAsync<GeoIpStatusResponse>(new GetGeoIpStatusRequest());
+
+    /// <summary>Trigger an on-demand GeoIP database download (a longer timeout than usual — it
+    /// fetches a few MB over the network).</summary>
+    public Task<GeoIpStatusResponse> UpdateGeoIpAsync() =>
+        RequestAsync<GeoIpStatusResponse>(new UpdateGeoIpRequest(), TimeSpan.FromSeconds(90));
 
     public void Dispose()
     {

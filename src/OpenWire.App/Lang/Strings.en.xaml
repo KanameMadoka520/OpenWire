@@ -254,6 +254,16 @@
     <sys:String x:Key="L.Set.Resolution">RESOLUTION</sys:String>
     <sys:String x:Key="L.Set.ResolveHosts">Resolve host names (reverse DNS)</sys:String>
     <sys:String x:Key="L.Set.ResolveGeoIp">Resolve countries (GeoIP)</sys:String>
+    <sys:String x:Key="L.Set.GeoDbTitle">GEOIP DATABASE</sys:String>
+    <sys:String x:Key="L.Set.GeoDbDesc">Country lookups use a local IP-to-country database, refreshed monthly upstream. Update it here over the network to keep attribution accurate — no new OpenWire build needed.</sys:String>
+    <sys:String x:Key="L.Set.GeoDbCurrent">Database</sys:String>
+    <sys:String x:Key="L.Set.GeoUpdateNow">Update now</sys:String>
+    <sys:String x:Key="L.Set.GeoAutoUpdate">Check for updates automatically (about monthly)</sys:String>
+    <sys:String x:Key="L.Set.GeoUpdating">Downloading…</sys:String>
+    <sys:String x:Key="L.Set.GeoUpdatedTo">Updated to {0}.</sys:String>
+    <sys:String x:Key="L.Set.GeoAlreadyLatest">Already up to date.</sys:String>
+    <sys:String x:Key="L.Set.GeoUpdateFailed">Update failed: {0}</sys:String>
+    <sys:String x:Key="L.Set.GeoLastChecked">Last checked {0}</sys:String>
     <sys:String x:Key="L.Set.DataPlan">DATA PLAN</sys:String>
     <sys:String x:Key="L.Set.DataPlanEnable">Enable monthly data plan</sys:String>
     <sys:String x:Key="L.Set.DataPlanLimit">Limit (GB)</sys:String>

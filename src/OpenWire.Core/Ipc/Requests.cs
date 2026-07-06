@@ -148,3 +148,10 @@ public sealed class SetSettingsRequest : IpcMessage
 {
     public AppSettings Settings { get; set; } = new();
 }
+
+/// <summary>Fetch the current GeoIP database status (source, build date, last update).</summary>
+public sealed class GetGeoIpStatusRequest : IpcMessage { }
+
+/// <summary>Download and install the latest free GeoIP country database (DB-IP Lite). The reply is
+/// a <see cref="GeoIpStatusResponse"/> once the download finishes.</summary>
+public sealed class UpdateGeoIpRequest : IpcMessage { }

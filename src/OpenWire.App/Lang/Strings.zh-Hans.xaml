@@ -253,6 +253,16 @@
     <sys:String x:Key="L.Set.Resolution">解析</sys:String>
     <sys:String x:Key="L.Set.ResolveHosts">解析主机名（反向 DNS）</sys:String>
     <sys:String x:Key="L.Set.ResolveGeoIp">解析国家/地区（GeoIP）</sys:String>
+    <sys:String x:Key="L.Set.GeoDbTitle">GEOIP 数据库</sys:String>
+    <sys:String x:Key="L.Set.GeoDbDesc">国家/地区归属使用本地的 IP-国家数据库，上游每月更新一次。在此联网更新即可保持归属准确——无需下载新版 OpenWire。</sys:String>
+    <sys:String x:Key="L.Set.GeoDbCurrent">数据库</sys:String>
+    <sys:String x:Key="L.Set.GeoUpdateNow">立即更新</sys:String>
+    <sys:String x:Key="L.Set.GeoAutoUpdate">自动检查更新（约每月一次）</sys:String>
+    <sys:String x:Key="L.Set.GeoUpdating">正在下载…</sys:String>
+    <sys:String x:Key="L.Set.GeoUpdatedTo">已更新至 {0}。</sys:String>
+    <sys:String x:Key="L.Set.GeoAlreadyLatest">已是最新。</sys:String>
+    <sys:String x:Key="L.Set.GeoUpdateFailed">更新失败：{0}</sys:String>
+    <sys:String x:Key="L.Set.GeoLastChecked">上次检查：{0}</sys:String>
     <sys:String x:Key="L.Set.DataPlan">流量套餐</sys:String>
     <sys:String x:Key="L.Set.DataPlanEnable">启用每月流量套餐</sys:String>
     <sys:String x:Key="L.Set.DataPlanLimit">上限（GB）</sys:String>

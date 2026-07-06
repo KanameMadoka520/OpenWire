@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OpenWire.App.Services;
 using OpenWire.App.Util;
+using OpenWire.Core.Ipc;
 using OpenWire.Core.Models;
 using OpenWire.Core.Util;
 
@@ -15,6 +16,13 @@ public partial class SettingsViewModel : ObservableObject
 
     [ObservableProperty] private bool _resolveHostNames = true;
     [ObservableProperty] private bool _resolveGeoIp = true;
+
+    // ---- GeoIP database (source + build date + in-app update) ----
+    [ObservableProperty] private string _geoIpStatusText = "";   // "DB-IP Lite · 2026-07-01"
+    [ObservableProperty] private string _geoIpUpdatedText = "";  // "Last checked 2026-07-06" / ""
+    [ObservableProperty] private string _geoIpResultText = "";   // transient result of an update
+    [ObservableProperty] private bool _geoIpAutoUpdate;
+    [ObservableProperty] private bool _isUpdatingGeoIp;
     [ObservableProperty] private bool _monitorNewDevices = true;
     [ObservableProperty] private bool _monitorDnsChanges = true;
     [ObservableProperty] private bool _monitorRdp = true;
@@ -78,6 +86,9 @@ public partial class SettingsViewModel : ObservableObject
         DataLimitGb = s.DataPlan.LimitBytes > 0 ? s.DataPlan.LimitBytes / (1024.0 * 1024 * 1024) : 100;
         BillingDay = s.DataPlan.BillingCycleStartDay;
         VirusTotalApiKey = s.VirusTotalApiKey;
+        GeoIpAutoUpdate = s.GeoIpAutoUpdate;
+
+        try { ApplyGeoStatus(await _client.GetGeoIpStatusAsync()); } catch { /* engine busy */ }
 
         var hello = await _client.HelloAsync();
         EngineInfo = string.Format(Loc.S("L.Set.EngineInfoFmt"),
@@ -153,6 +164,50 @@ public partial class SettingsViewModel : ObservableObject
         if (resp.Storage is { } s) ApplyStorage(s);
     }
 
+    /// <summary>Maps a GeoIP status response into the card's display fields.</summary>
+    private void ApplyGeoStatus(GeoIpStatusResponse st)
+    {
+        _settings.GeoIpLastUpdateUnix = st.LastUpdateUnix; // keep our copy in sync so Save won't stale it
+        GeoIpAutoUpdate = st.AutoUpdate;
+
+        GeoIpStatusText = !st.Available
+            ? Loc.S("L.Set.GeoNotInstalled")
+            : string.IsNullOrEmpty(st.BuildDate) ? st.Source : $"{st.Source} · {st.BuildDate}";
+
+        GeoIpUpdatedText = st.LastUpdateUnix > 0
+            ? string.Format(Loc.S("L.Set.GeoLastChecked"),
+                DateTimeOffset.FromUnixTimeSeconds(st.LastUpdateUnix).LocalDateTime.ToString(Loc.S("L.Set.StorageDateFormat")))
+            : "";
+    }
+
+    partial void OnIsUpdatingGeoIpChanged(bool value) => UpdateGeoIpCommand.NotifyCanExecuteChanged();
+
+    private bool CanUpdateGeoIp => !IsUpdatingGeoIp;
+
+    /// <summary>Ask the engine to download + install the latest free country database.</summary>
+    [RelayCommand(CanExecute = nameof(CanUpdateGeoIp))]
+    private async Task UpdateGeoIp()
+    {
+        IsUpdatingGeoIp = true;
+        GeoIpResultText = Loc.S("L.Set.GeoUpdating");
+        try
+        {
+            var st = await _client.UpdateGeoIpAsync();
+            ApplyGeoStatus(st);
+            GeoIpResultText = st.Success
+                ? (st.Updated ? string.Format(Loc.S("L.Set.GeoUpdatedTo"), st.BuildDate) : Loc.S("L.Set.GeoAlreadyLatest"))
+                : string.Format(Loc.S("L.Set.GeoUpdateFailed"), st.Message);
+        }
+        catch (Exception ex)
+        {
+            GeoIpResultText = string.Format(Loc.S("L.Set.GeoUpdateFailed"), ex.Message);
+        }
+        finally
+        {
+            IsUpdatingGeoIp = false;
+        }
+    }
+
     [RelayCommand]
     private async Task Save()
     {
@@ -170,6 +225,7 @@ public partial class SettingsViewModel : ObservableObject
         _settings.DataPlan.LimitBytes = (long)(DataLimitGb * 1024 * 1024 * 1024);
         _settings.DataPlan.BillingCycleStartDay = Math.Clamp(BillingDay, 1, 28);
         _settings.VirusTotalApiKey = (VirusTotalApiKey ?? "").Trim();
+        _settings.GeoIpAutoUpdate = GeoIpAutoUpdate;
 
         await _client.SetSettingsAsync(_settings);
         Saved?.Invoke(_settings);

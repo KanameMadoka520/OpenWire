@@ -55,6 +55,17 @@ public sealed class AppSettings
     public bool ResolveGeoIp { get; set; } = true;
 
     /// <summary>
+    /// Check for a newer free DB-IP Lite country database on startup (at most once every few
+    /// weeks) and install it automatically. Off by default — GeoIP updates are an opt-in network
+    /// call. Users can always update on demand from Settings regardless of this flag.
+    /// </summary>
+    public bool GeoIpAutoUpdate { get; set; } = false;
+
+    /// <summary>Unix seconds of the last successful in-app GeoIP check/update (0 = never). Written
+    /// by the engine; decoupled from the app build, so an old OpenWire keeps a fresh GeoIP DB.</summary>
+    public long GeoIpLastUpdateUnix { get; set; }
+
+    /// <summary>
     /// Optional VirusTotal API key (the user's own free key). When set, the engine
     /// hashes application binaries and shows a per-app reputation column. Empty =
     /// the integration is off. Never bundled — supplied by the user in Settings.
