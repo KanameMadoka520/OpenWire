@@ -217,7 +217,7 @@
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock x:Name="glyph" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="19"
                                            Foreground="{TemplateBinding Foreground}" Text="{TemplateBinding Tag}" VerticalAlignment="Center" />
-                                <ContentPresenter VerticalAlignment="Center" Margin="10,0,0,0" />
+                                <ContentPresenter x:Name="cp" VerticalAlignment="Center" Margin="10,0,0,0" />
                             </StackPanel>
                             <Path x:Name="ul" Data="{StaticResource DoodleSquiggle}" Stretch="Fill" Height="5" Margin="4,0,4,-3"
                                   VerticalAlignment="Bottom" Stroke="{StaticResource TabUnderline}" StrokeThickness="1.7"
@@ -235,6 +235,11 @@
                             <Setter TargetName="ul" Property="Visibility" Value="Visible" />
                             <Setter Property="Foreground" Value="{StaticResource Accent}" />
                         </Trigger>
+                        <!-- Narrow window (MainWindow sets Tag="compact"): icon-only tabs so the bar never clips. -->
+                        <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource AncestorType=Window}}" Value="compact">
+                            <Setter TargetName="cp" Property="Visibility" Value="Collapsed" />
+                            <Setter TargetName="b" Property="Padding" Value="12,6" />
+                        </DataTrigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>

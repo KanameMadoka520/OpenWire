@@ -27,10 +27,10 @@
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                 <Grid Width="220" Margin="0,0,12,0">
                     <TextBox Style="{StaticResource Search}" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
-                    <TextBlock Text="Search devices" Foreground="{StaticResource TextMuted}" FontSize="13" Margin="12,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                    <TextBlock Text="{StaticResource L.Scan.SearchDevices}" Foreground="{StaticResource TextMuted}" FontSize="13" Margin="12,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"
                                Visibility="{Binding SearchText.Length, Converter={StaticResource ZeroVis}, ConverterParameter=invert}" />
                 </Grid>
-                <TextBlock Text="Rescans every 30 min" Style="{StaticResource Caption}" VerticalAlignment="Center" />
+                <TextBlock Text="{StaticResource L.Scan.RescanEvery}" Style="{StaticResource Caption}" VerticalAlignment="Center" />
             </StackPanel>
         </Grid>
 
@@ -39,9 +39,9 @@
                     Visibility="{Binding HasDevices, Converter={StaticResource BoolVis}, ConverterParameter=invert}">
             <TextBlock Text="&#xE701;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="46"
                        Foreground="{StaticResource TextMuted}" HorizontalAlignment="Center" />
-            <TextBlock Text="Curious what's on your network?" Foreground="{StaticResource TextSecondary}" FontSize="15"
+            <TextBlock Text="{StaticResource L.Scan.EmptyTitle}" Foreground="{StaticResource TextSecondary}" FontSize="15"
                        HorizontalAlignment="Center" Margin="0,16,0,2" />
-            <TextBlock Text="Scan to discover every device connected to your local network." Style="{StaticResource Caption}"
+            <TextBlock Text="{StaticResource L.Scan.EmptyHint}" Style="{StaticResource Caption}"
                        HorizontalAlignment="Center" TextAlignment="Center" MaxWidth="360" />
             <Button Content="{Binding ScanLabel}" Style="{StaticResource Btn}" Command="{Binding ScanCommand}"
                     HorizontalAlignment="Center" Margin="0,18,0,0"
@@ -52,7 +52,7 @@
                   Visibility="{Binding HasDevices, Converter={StaticResource BoolVis}}">
             <ListView.View>
                 <GridView ColumnHeaderContainerStyle="{StaticResource ColHeader}">
-                    <GridViewColumn Header="DEVICE" Width="240">
+                    <GridViewColumn Header="{StaticResource L.Scan.ColDevice}" Width="240">
                         <GridViewColumn.CellTemplate><DataTemplate>
                             <StackPanel Orientation="Horizontal">
                                 <Ellipse Width="8" Height="8" VerticalAlignment="Center" Margin="0,0,10,0">
@@ -71,33 +71,33 @@
                             </StackPanel>
                         </DataTemplate></GridViewColumn.CellTemplate>
                     </GridViewColumn>
-                    <GridViewColumn Header="DESCRIPTION" Width="150">
+                    <GridViewColumn Header="{StaticResource L.Scan.ColDescription}" Width="150">
                         <GridViewColumn.CellTemplate><DataTemplate>
                             <TextBlock Text="{Binding Description}" Foreground="{StaticResource TextSecondary}" FontSize="12.5" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                         </DataTemplate></GridViewColumn.CellTemplate>
                     </GridViewColumn>
-                    <GridViewColumn Header="SYSTEM" Width="120">
+                    <GridViewColumn Header="{StaticResource L.Scan.ColSystem}" Width="120">
                         <GridViewColumn.CellTemplate><DataTemplate>
                             <TextBlock Text="{Binding OperatingSystem}" Foreground="{StaticResource TextSecondary}" FontSize="12.5" VerticalAlignment="Center" />
                         </DataTemplate></GridViewColumn.CellTemplate>
                     </GridViewColumn>
-                    <GridViewColumn Header="IP ADDRESS" Width="130">
+                    <GridViewColumn Header="{StaticResource L.Scan.ColIp}" Width="130">
                         <GridViewColumn.CellTemplate><DataTemplate>
                             <TextBlock Style="{StaticResource Mono}" FontSize="12.5" Foreground="{StaticResource TextSecondary}" Text="{Binding IpAddress}" VerticalAlignment="Center" />
                         </DataTemplate></GridViewColumn.CellTemplate>
                     </GridViewColumn>
-                    <GridViewColumn Header="MAC" Width="150">
+                    <GridViewColumn Header="{StaticResource L.Scan.ColMac}" Width="150">
                         <GridViewColumn.CellTemplate><DataTemplate>
                             <TextBlock Style="{StaticResource Mono}" FontSize="12" Foreground="{StaticResource TextMuted}" Text="{Binding MacAddress}" VerticalAlignment="Center" />
                         </DataTemplate></GridViewColumn.CellTemplate>
                     </GridViewColumn>
-                    <GridViewColumn Header="LAST SEEN" Width="130">
+                    <GridViewColumn Header="{StaticResource L.Scan.ColLastSeen}" Width="130">
                         <GridViewColumn.CellTemplate><DataTemplate>
                             <TextBlock Foreground="{StaticResource TextSecondary}" FontSize="12" VerticalAlignment="Center"
                                        Text="{Binding LastSeen, Converter={StaticResource LocalTime}, ConverterParameter='MMM d  HH:mm'}" />
                         </DataTemplate></GridViewColumn.CellTemplate>
                     </GridViewColumn>
-                    <GridViewColumn Header="FIRST SEEN" Width="130">
+                    <GridViewColumn Header="{StaticResource L.Scan.ColFirstSeen}" Width="130">
                         <GridViewColumn.CellTemplate><DataTemplate>
                             <TextBlock Foreground="{StaticResource TextSecondary}" FontSize="12" VerticalAlignment="Center"
                                        Text="{Binding FirstSeen, Converter={StaticResource LocalTime}, ConverterParameter='MMM d  HH:mm'}" />
@@ -105,7 +105,7 @@
                     </GridViewColumn>
                     <GridViewColumn Header="" Width="52">
                         <GridViewColumn.CellTemplate><DataTemplate>
-                            <Button Style="{StaticResource IconBtn}" Width="30" Height="30" Content="&#xE74D;" FontSize="13" ToolTip="Forget device"
+                            <Button Style="{StaticResource IconBtn}" Width="30" Height="30" Content="&#xE74D;" FontSize="13" ToolTip="{StaticResource L.Scan.ForgetDevice}"
                                     Command="{Binding DataContext.ForgetCommand, RelativeSource={RelativeSource AncestorType=ListView}}" CommandParameter="{Binding}" />
                         </DataTemplate></GridViewColumn.CellTemplate>
                     </GridViewColumn>

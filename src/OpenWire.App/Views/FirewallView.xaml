@@ -20,22 +20,22 @@
         <Grid Grid.Row="0">
             <StackPanel>
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="Firewall" Style="{StaticResource H1}" />
+                    <TextBlock Text="{StaticResource L.Fw.Title}" Style="{StaticResource H1}" />
                     <Path Data="{StaticResource DoodleShield}" Style="{StaticResource Doodle}" Width="24" Height="24" VerticalAlignment="Center" Margin="12,2,0,0" />
                 </StackPanel>
                 <TextBlock Text="{Binding StatusText}" Style="{StaticResource Caption}" Margin="0,3,0,0" />
             </StackPanel>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                <TextBlock Text="Mode" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                <TextBlock Text="{StaticResource L.Fw.Mode}" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" Margin="0,0,10,0" />
                 <StackPanel Orientation="Horizontal" Background="{StaticResource BgSubtle}">
                     <StackPanel.Resources>
                         <Style TargetType="RadioButton" BasedOn="{StaticResource Seg}"><Setter Property="GroupName" Value="fwmode" /></Style>
                     </StackPanel.Resources>
-                    <RadioButton Content="Off" Command="{Binding SetModeCommand}" CommandParameter="{x:Static models:FirewallMode.Off}"
+                    <RadioButton Content="{StaticResource L.Fw.ModeOff}" Command="{Binding SetModeCommand}" CommandParameter="{x:Static models:FirewallMode.Off}"
                                  IsChecked="{Binding Mode, Converter={StaticResource EnumMatch}, ConverterParameter=Off, Mode=OneWay}" />
-                    <RadioButton Content="Click to block" Command="{Binding SetModeCommand}" CommandParameter="{x:Static models:FirewallMode.ClickToBlock}"
+                    <RadioButton Content="{StaticResource L.Fw.ModeClickToBlock}" Command="{Binding SetModeCommand}" CommandParameter="{x:Static models:FirewallMode.ClickToBlock}"
                                  IsChecked="{Binding Mode, Converter={StaticResource EnumMatch}, ConverterParameter=ClickToBlock, Mode=OneWay}" />
-                    <RadioButton Content="Ask to connect" Command="{Binding SetModeCommand}" CommandParameter="{x:Static models:FirewallMode.AskToConnect}"
+                    <RadioButton Content="{StaticResource L.Fw.ModeAskToConnect}" Command="{Binding SetModeCommand}" CommandParameter="{x:Static models:FirewallMode.AskToConnect}"
                                  IsChecked="{Binding Mode, Converter={StaticResource EnumMatch}, ConverterParameter=AskToConnect, Mode=OneWay}" />
                 </StackPanel>
             </StackPanel>
@@ -44,7 +44,7 @@
         <!-- Non-elevated warning (own row; collapses to zero height when elevated) -->
         <Border Grid.Row="1" Style="{StaticResource Card}" Padding="12,9" Margin="0,12,0,2" Background="{StaticResource BlockBg}" BorderThickness="0"
                 Visibility="{Binding CanEnforce, Converter={StaticResource BoolVis}, ConverterParameter=invert}">
-            <TextBlock Text="⚠  The engine is not running elevated — blocks can't be enforced and per-app rates are unavailable. Start OpenWire.Service as administrator."
+            <TextBlock Text="{StaticResource L.Fw.NotElevated}"
                        Foreground="{StaticResource BlockText}" FontSize="12" TextWrapping="Wrap" />
         </Border>
 
@@ -53,12 +53,12 @@
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                 <TextBlock Text="&#xE912;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="13"
                            Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" Margin="0,0,8,0" />
-                <TextBlock Text="Profile" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                <TextBlock Text="{StaticResource L.Fw.Profile}" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" Margin="0,0,8,0" />
                 <ComboBox MinWidth="150" VerticalAlignment="Center" ItemsSource="{Binding Profiles}"
                           DisplayMemberPath="Name" SelectedItem="{Binding SelectedProfile, Mode=TwoWay}" />
-                <Button Style="{StaticResource IconBtn}" Content="&#xE710;" ToolTip="New profile from current state"
+                <Button Style="{StaticResource IconBtn}" Content="&#xE710;" ToolTip="{StaticResource L.Fw.NewProfileTip}"
                         Command="{Binding NewProfileCommand}" Margin="6,0,0,0" />
-                <Button Style="{StaticResource IconBtn}" Content="&#xE74D;" ToolTip="Delete this profile"
+                <Button Style="{StaticResource IconBtn}" Content="&#xE74D;" ToolTip="{StaticResource L.Fw.DeleteProfileTip}"
                         Command="{Binding DeleteProfileCommand}" />
                 <Border Background="{StaticResource BgSubtle}" CornerRadius="4" Padding="8,3" Margin="12,0,0,0" VerticalAlignment="Center"
                         Visibility="{Binding NetworkName.Length, Converter={StaticResource ZeroVis}}">
@@ -71,7 +71,7 @@
             </StackPanel>
             <Grid Width="240" HorizontalAlignment="Right" VerticalAlignment="Center">
                 <TextBox Style="{StaticResource Search}" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
-                <TextBlock Text="Search apps" Foreground="{StaticResource TextMuted}" FontSize="13" Margin="12,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                <TextBlock Text="{StaticResource L.Fw.SearchApps}" Foreground="{StaticResource TextMuted}" FontSize="13" Margin="12,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"
                            Visibility="{Binding SearchText.Length, Converter={StaticResource ZeroVis}, ConverterParameter=invert}" />
             </Grid>
         </Grid>
@@ -90,13 +90,13 @@
                 <ColumnDefinition Width="80" />
                 <ColumnDefinition Width="80" />
             </Grid.ColumnDefinitions>
-            <TextBlock Grid.Column="1" Text="APPLICATION" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
-            <TextBlock Grid.Column="2" Text="INCOMING" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
-            <TextBlock Grid.Column="3" Text="OUTGOING" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
-            <TextBlock Grid.Column="4" Text="VERSION" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
-            <TextBlock Grid.Column="5" Text="HOST" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
-            <TextBlock Grid.Column="6" Text="VIRUSTOTAL" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
-            <TextBlock Grid.Column="7" Text="TREND" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="1" Text="{StaticResource L.Fw.ColApplication}" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="2" Text="{StaticResource L.Fw.ColIncoming}" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="3" Text="{StaticResource L.Fw.ColOutgoing}" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="4" Text="{StaticResource L.Fw.ColVersion}" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="5" Text="{StaticResource L.Fw.ColHost}" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="6" Text="{StaticResource L.Fw.ColVirusTotal}" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="7" Text="{StaticResource L.Fw.ColTrend}" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
             <TextBlock Grid.Column="8" Text="↓" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
             <TextBlock Grid.Column="9" Text="↑" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
         </Grid>
@@ -172,7 +172,7 @@
                                                 <ColumnDefinition Width="80" />
                                             </Grid.ColumnDefinitions>
                                             <TextBlock Grid.Column="1" Margin="40,0,0,0" VerticalAlignment="Center" Foreground="{StaticResource TextMuted}" FontSize="12">
-                                                <Run Text="PID" /><Run Text=" " /><Run Text="{Binding Pid, Mode=OneWay}" />
+                                                <Run Text="{StaticResource L.Fw.Pid}" /><Run Text=" " /><Run Text="{Binding Pid, Mode=OneWay}" />
                                             </TextBlock>
                                             <TextBlock Grid.Column="8" Style="{StaticResource Mono}" FontSize="12" Foreground="{StaticResource InLine}" Text="{Binding DownText}" VerticalAlignment="Center" />
                                             <TextBlock Grid.Column="9" Style="{StaticResource Mono}" FontSize="12" Foreground="{StaticResource OutLine}" Text="{Binding UpText}" VerticalAlignment="Center" />

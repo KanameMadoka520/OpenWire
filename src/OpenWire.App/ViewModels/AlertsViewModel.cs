@@ -3,6 +3,7 @@ using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OpenWire.App.Services;
+using OpenWire.App.Util;
 using OpenWire.Core.Models;
 
 namespace OpenWire.App.ViewModels;
@@ -20,7 +21,7 @@ public partial class AlertsViewModel : ObservableObject
     [ObservableProperty] private int _allCount;
     [ObservableProperty] private int _importantCount;
     [ObservableProperty] private int _logCount;
-    [ObservableProperty] private string _emptyText = "No alerts yet. OpenWire reports new apps, devices and security events here.";
+    [ObservableProperty] private string _emptyText = Loc.S("L.Alerts.EmptyNone");
 
     public AlertsViewModel(EngineClient client) => _client = client;
 
@@ -67,8 +68,8 @@ public partial class AlertsViewModel : ObservableObject
 
         bool filtered = SeverityFilter != "All" || !string.IsNullOrWhiteSpace(SearchText);
         EmptyText = _all.Count > 0 && Alerts.Count == 0 && filtered
-            ? "No alerts match the current filter or search."
-            : "No alerts yet. OpenWire reports new apps, devices and security events here.";
+            ? Loc.S("L.Alerts.EmptyFiltered")
+            : Loc.S("L.Alerts.EmptyNone");
     }
 
     partial void OnSeverityFilterChanged(string value) => ApplyFilter();

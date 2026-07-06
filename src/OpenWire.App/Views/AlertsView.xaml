@@ -22,7 +22,7 @@
         </Grid.RowDefinitions>
 
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
-            <TextBlock Text="Alerts" Style="{StaticResource H1}" />
+            <TextBlock Text="{StaticResource L.Alerts.Title}" Style="{StaticResource H1}" />
             <Path Data="{StaticResource DoodleBell}" Style="{StaticResource Doodle}" Width="22" Height="22" VerticalAlignment="Center" Margin="12,2,0,0" />
         </StackPanel>
 
@@ -33,32 +33,32 @@
                     <Style TargetType="RadioButton" BasedOn="{StaticResource Seg}"><Setter Property="GroupName" Value="sev" /></Style>
                 </StackPanel.Resources>
                 <RadioButton IsChecked="{Binding SeverityFilter, Converter={StaticResource EnumMatch}, ConverterParameter=All, Mode=TwoWay}">
-                    <TextBlock><Run Text="All " /><Run Text="{Binding AllCount, Mode=OneWay}" Foreground="{StaticResource TextMuted}" /></TextBlock>
+                    <TextBlock><Run Text="{StaticResource L.Alerts.FilterAll}" /><Run Text=" " /><Run Text="{Binding AllCount, Mode=OneWay}" Foreground="{StaticResource TextMuted}" /></TextBlock>
                 </RadioButton>
                 <RadioButton IsChecked="{Binding SeverityFilter, Converter={StaticResource EnumMatch}, ConverterParameter=Important, Mode=TwoWay}">
-                    <TextBlock><Run Text="Important " /><Run Text="{Binding ImportantCount, Mode=OneWay}" Foreground="{StaticResource TextMuted}" /></TextBlock>
+                    <TextBlock><Run Text="{StaticResource L.Alerts.FilterImportant}" /><Run Text=" " /><Run Text="{Binding ImportantCount, Mode=OneWay}" Foreground="{StaticResource TextMuted}" /></TextBlock>
                 </RadioButton>
                 <RadioButton IsChecked="{Binding SeverityFilter, Converter={StaticResource EnumMatch}, ConverterParameter=Log, Mode=TwoWay}">
-                    <TextBlock><Run Text="Log " /><Run Text="{Binding LogCount, Mode=OneWay}" Foreground="{StaticResource TextMuted}" /></TextBlock>
+                    <TextBlock><Run Text="{StaticResource L.Alerts.FilterLog}" /><Run Text=" " /><Run Text="{Binding LogCount, Mode=OneWay}" Foreground="{StaticResource TextMuted}" /></TextBlock>
                 </RadioButton>
               </StackPanel>
               <StackPanel Orientation="Horizontal" Background="{StaticResource BgSubtle}" Margin="10,0,0,0">
                 <StackPanel.Resources>
                     <Style TargetType="RadioButton" BasedOn="{StaticResource Seg}"><Setter Property="GroupName" Value="atime" /></Style>
                 </StackPanel.Resources>
-                <RadioButton Content="All time" IsChecked="{Binding TimeFilter, Converter={StaticResource EnumMatch}, ConverterParameter=All, Mode=TwoWay}" />
-                <RadioButton Content="Today" IsChecked="{Binding TimeFilter, Converter={StaticResource EnumMatch}, ConverterParameter=Today, Mode=TwoWay}" />
-                <RadioButton Content="Week" IsChecked="{Binding TimeFilter, Converter={StaticResource EnumMatch}, ConverterParameter=Week, Mode=TwoWay}" />
+                <RadioButton Content="{StaticResource L.Alerts.TimeAll}" IsChecked="{Binding TimeFilter, Converter={StaticResource EnumMatch}, ConverterParameter=All, Mode=TwoWay}" />
+                <RadioButton Content="{StaticResource L.Alerts.TimeToday}" IsChecked="{Binding TimeFilter, Converter={StaticResource EnumMatch}, ConverterParameter=Today, Mode=TwoWay}" />
+                <RadioButton Content="{StaticResource L.Alerts.TimeWeek}" IsChecked="{Binding TimeFilter, Converter={StaticResource EnumMatch}, ConverterParameter=Week, Mode=TwoWay}" />
               </StackPanel>
             </StackPanel>
 
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                 <Grid Width="240" Margin="0,0,10,0">
                     <TextBox Style="{StaticResource Search}" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
-                    <TextBlock Text="Search" Foreground="{StaticResource TextMuted}" FontSize="13" Margin="12,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                    <TextBlock Text="{StaticResource L.Alerts.SearchPlaceholder}" Foreground="{StaticResource TextMuted}" FontSize="13" Margin="12,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"
                                Visibility="{Binding SearchText.Length, Converter={StaticResource ZeroVis}, ConverterParameter=invert}" />
                 </Grid>
-                <Button Content="Mark all read" Style="{StaticResource BtnGhost}" Command="{Binding MarkAllReadCommand}" />
+                <Button Content="{StaticResource L.Alerts.MarkAllRead}" Style="{StaticResource BtnGhost}" Command="{Binding MarkAllReadCommand}" />
             </StackPanel>
         </Grid>
 
@@ -89,7 +89,7 @@
                             </Grid.ColumnDefinitions>
                             <Border Grid.Column="0" Background="{StaticResource NewBadge}" CornerRadius="10" Padding="7,2" Height="20" VerticalAlignment="Top" Margin="0,1,12,0"
                                     Visibility="{Binding Acknowledged, Converter={StaticResource BoolVis}, ConverterParameter=invert}">
-                                <TextBlock Text="NEW" Foreground="White" FontSize="10" FontWeight="Bold" VerticalAlignment="Center" />
+                                <TextBlock Text="{StaticResource L.Alerts.NewBadge}" Foreground="White" FontSize="10" FontWeight="Bold" VerticalAlignment="Center" />
                             </Border>
                             <Image Grid.Column="1" Width="22" Height="22" VerticalAlignment="Top" Margin="0,0,12,0" Source="{Binding AppId, Converter={StaticResource AppIcon}}" />
                             <StackPanel Grid.Column="2">

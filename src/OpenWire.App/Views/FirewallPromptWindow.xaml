@@ -12,8 +12,8 @@
                                Foreground="{StaticResource Accent}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
                 <StackPanel VerticalAlignment="Center">
-                    <TextBlock x:Name="NameText" FontSize="16" FontWeight="SemiBold" Text="An application" />
-                    <TextBlock Text="wants to connect to the network" Foreground="{StaticResource TextSecondary}" FontSize="12.5" />
+                    <TextBlock x:Name="NameText" FontSize="16" FontWeight="SemiBold" Text="{StaticResource L.Fw.PromptAppFallback}" />
+                    <TextBlock Text="{StaticResource L.Fw.PromptWantsConnect}" Foreground="{StaticResource TextSecondary}" FontSize="12.5" />
                 </StackPanel>
             </StackPanel>
 
@@ -21,8 +21,8 @@
                        TextWrapping="Wrap" Margin="0,16,0,20" />
 
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button Content="Block" Style="{StaticResource BtnGhost}" Click="OnBlock" Margin="0,0,10,0" MinWidth="96" />
-                <Button Content="Allow" Style="{StaticResource Btn}" Click="OnAllow" MinWidth="96" />
+                <Button Content="{StaticResource L.Fw.Block}" Style="{StaticResource BtnGhost}" Click="OnBlock" Margin="0,0,10,0" MinWidth="96" />
+                <Button Content="{StaticResource L.Fw.Allow}" Style="{StaticResource Btn}" Click="OnAllow" MinWidth="96" />
             </StackPanel>
         </StackPanel>
     </Border>

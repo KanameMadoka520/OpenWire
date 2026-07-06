@@ -8,14 +8,17 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance vm:MainViewModel}"
-        Title="OpenWire" Height="820" Width="1300" MinHeight="620" MinWidth="1000"
+        Title="OpenWire" Height="820" Width="1300" MinHeight="620" MinWidth="900"
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource BgApp}"
         FontFamily="{StaticResource UiFont}"
         TextOptions.TextFormattingMode="Ideal">
 
     <WindowChrome.WindowChrome>
-        <WindowChrome CaptionHeight="60" ResizeBorderThickness="6" CornerRadius="0" GlassFrameThickness="0" UseAeroCaptionButtons="False" />
+        <!-- The 1px bottom glass keeps DWM composition alive so the window gets the
+             system drop shadow (with GlassFrameThickness=0 the frame — and the
+             shadow with it — is stripped entirely). -->
+        <WindowChrome CaptionHeight="60" ResizeBorderThickness="6" CornerRadius="0" GlassFrameThickness="0,0,0,1" UseAeroCaptionButtons="False" />
     </WindowChrome.WindowChrome>
 
     <Window.Resources>
@@ -68,25 +71,25 @@
                     <StackPanel.Resources>
                         <Style TargetType="RadioButton" BasedOn="{StaticResource TopTab}"><Setter Property="GroupName" Value="tabs" /></Style>
                     </StackPanel.Resources>
-                    <RadioButton Content="Traffic" Tag="&#xE9D9;" IsChecked="{Binding CurrentSection, Converter={StaticResource EnumMatch}, ConverterParameter=Traffic, Mode=TwoWay}" />
-                    <RadioButton Content="Analytics" Tag="&#xE9D2;" IsChecked="{Binding CurrentSection, Converter={StaticResource EnumMatch}, ConverterParameter=Analytics, Mode=TwoWay}" />
-                    <RadioButton Content="Firewall" Tag="&#xE83D;" IsChecked="{Binding CurrentSection, Converter={StaticResource EnumMatch}, ConverterParameter=Firewall, Mode=TwoWay}" />
+                    <RadioButton Content="{StaticResource L.Nav.Traffic}" Tag="&#xE9D9;" IsChecked="{Binding CurrentSection, Converter={StaticResource EnumMatch}, ConverterParameter=Traffic, Mode=TwoWay}" />
+                    <RadioButton Content="{StaticResource L.Nav.Analytics}" Tag="&#xE9D2;" IsChecked="{Binding CurrentSection, Converter={StaticResource EnumMatch}, ConverterParameter=Analytics, Mode=TwoWay}" />
+                    <RadioButton Content="{StaticResource L.Nav.Firewall}" Tag="&#xE83D;" IsChecked="{Binding CurrentSection, Converter={StaticResource EnumMatch}, ConverterParameter=Firewall, Mode=TwoWay}" />
                     <RadioButton Tag="&#xEA8F;" AutomationProperties.Name="Alerts" IsChecked="{Binding CurrentSection, Converter={StaticResource EnumMatch}, ConverterParameter=Alerts, Mode=TwoWay}">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="Alerts" VerticalAlignment="Center" />
+                            <TextBlock Text="{StaticResource L.Nav.Alerts}" VerticalAlignment="Center" />
                             <Border Background="{StaticResource AlertNew}" CornerRadius="9" MinWidth="18" Height="18" Padding="5,0" Margin="7,0,0,0"
                                     VerticalAlignment="Center" Visibility="{Binding UnreadAlerts, Converter={StaticResource ZeroVis}}">
                                 <TextBlock Text="{Binding UnreadAlerts}" Foreground="White" FontSize="10" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
                         </StackPanel>
                     </RadioButton>
-                    <RadioButton Content="Scanner" Tag="&#xE968;" IsChecked="{Binding CurrentSection, Converter={StaticResource EnumMatch}, ConverterParameter=Scanner, Mode=TwoWay}" />
-                    <RadioButton Content="Hardware" Tag="&#xE950;" IsChecked="{Binding CurrentSection, Converter={StaticResource EnumMatch}, ConverterParameter=Hardware, Mode=TwoWay}" />
+                    <RadioButton Content="{StaticResource L.Nav.Scanner}" Tag="&#xE968;" IsChecked="{Binding CurrentSection, Converter={StaticResource EnumMatch}, ConverterParameter=Scanner, Mode=TwoWay}" />
+                    <RadioButton Content="{StaticResource L.Nav.Hardware}" Tag="&#xE950;" IsChecked="{Binding CurrentSection, Converter={StaticResource EnumMatch}, ConverterParameter=Hardware, Mode=TwoWay}" />
                 </StackPanel>
 
                 <!-- Right: settings + window buttons -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" shell:WindowChrome.IsHitTestVisibleInChrome="True">
-                    <Button Style="{StaticResource IconBtn}" Content="&#xE713;" ToolTip="Settings" Command="{Binding ShowSettingsCommand}" Margin="0,0,4,0" />
+                    <Button Style="{StaticResource IconBtn}" Content="&#xE713;" ToolTip="{StaticResource L.Shell.Settings}" Command="{Binding ShowSettingsCommand}" Margin="0,0,4,0" />
                     <Button Style="{StaticResource IconBtn}" Content="&#xE921;" Click="OnMinimize" />
                     <Button Style="{StaticResource IconBtn}" Content="&#xE922;" Click="OnMaximize" />
                     <Button Style="{StaticResource IconBtn}" Content="&#xE8BB;" Click="OnClose" />
@@ -102,11 +105,11 @@
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                     <TextBlock Text="&#xE839;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="40"
                                Foreground="{StaticResource TextMuted}" HorizontalAlignment="Center" />
-                    <TextBlock Text="Connecting to the OpenWire engine…" Foreground="{StaticResource TextSecondary}"
+                    <TextBlock Text="{StaticResource L.Shell.ConnectingEngine}" Foreground="{StaticResource TextSecondary}"
                                HorizontalAlignment="Center" Margin="0,18,0,4" FontSize="15" />
-                    <TextBlock Text="The engine must run as administrator to monitor and enforce." Style="{StaticResource Caption}"
+                    <TextBlock Text="{StaticResource L.Shell.EngineAdminHint}" Style="{StaticResource Caption}"
                                HorizontalAlignment="Center" />
-                    <Button Content="Start engine (admin)" Style="{StaticResource Btn}" Command="{Binding StartEngineCommand}"
+                    <Button Content="{StaticResource L.Shell.StartEngine}" Style="{StaticResource Btn}" Command="{Binding StartEngineCommand}"
                             HorizontalAlignment="Center" Margin="0,20,0,0" />
                 </StackPanel>
             </Border>

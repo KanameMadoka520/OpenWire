@@ -1,0 +1,225 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+    <!-- 简体中文界面文案。 -->
+
+    <!-- shared -->
+    <sys:String x:Key="L.Common.OneChina">台湾、香港、澳门都是中国的一部分。如果您不认同，请停止使用本软件。</sys:String>
+
+    <!-- top bar -->
+    <sys:String x:Key="L.Nav.Traffic">流量</sys:String>
+    <sys:String x:Key="L.Nav.Analytics">分析</sys:String>
+    <sys:String x:Key="L.Nav.Firewall">防火墙</sys:String>
+    <sys:String x:Key="L.Nav.Alerts">警报</sys:String>
+    <sys:String x:Key="L.Nav.Scanner">扫描</sys:String>
+    <sys:String x:Key="L.Nav.Hardware">硬件</sys:String>
+    <sys:String x:Key="L.Shell.Settings">设置</sys:String>
+    <sys:String x:Key="L.Shell.ConnectingEngine">正在连接 OpenWire 引擎…</sys:String>
+    <sys:String x:Key="L.Shell.EngineAdminHint">引擎需以管理员身份运行，才能进行监控与拦截。</sys:String>
+    <sys:String x:Key="L.Shell.StartEngine">启动引擎（管理员）</sys:String>
+    <sys:String x:Key="L.Shell.TrayTooltip">OpenWire — 网络监控</sys:String>
+    <sys:String x:Key="L.Shell.TrayOpen">打开 OpenWire</sys:String>
+    <sys:String x:Key="L.Shell.TrayExit">退出</sys:String>
+
+    <!-- traffic screen -->
+    <sys:String x:Key="L.Traffic.Filter">筛选</sys:String>
+    <sys:String x:Key="L.Traffic.PauseLiveGraph">暂停实时图表</sys:String>
+    <sys:String x:Key="L.Traffic.ResumeLiveGraph">恢复实时图表</sys:String>
+    <sys:String x:Key="L.Traffic.TrafficGraph">流量图</sys:String>
+    <sys:String x:Key="L.Traffic.NetworkUsage">网络流量</sys:String>
+    <sys:String x:Key="L.Traffic.WorldMap">世界地图</sys:String>
+    <sys:String x:Key="L.Traffic.Range5Min">5 分钟</sys:String>
+    <sys:String x:Key="L.Traffic.Range3Hours">3 小时</sys:String>
+    <sys:String x:Key="L.Traffic.Range24Hours">24 小时</sys:String>
+    <sys:String x:Key="L.Traffic.RangeWeek">周</sys:String>
+    <sys:String x:Key="L.Traffic.RangeMonth">月</sys:String>
+    <sys:String x:Key="L.Traffic.Hosts">主机</sys:String>
+    <sys:String x:Key="L.Traffic.DrillEmpty">所选时段内没有该地区的主机明细记录。</sys:String>
+    <sys:String x:Key="L.Traffic.DrillFooterOne">{0} 台主机 · {1}</sys:String>
+    <sys:String x:Key="L.Traffic.DrillFooterMany">{0} 台主机 · {1}</sys:String>
+    <sys:String x:Key="L.Traffic.MapFlat">2D</sys:String>
+    <sys:String x:Key="L.Traffic.MapGlobe">地球</sys:String>
+    <sys:String x:Key="L.Traffic.ResetView">重置视图</sys:String>
+    <sys:String x:Key="L.Traffic.Total">总计</sys:String>
+    <sys:String x:Key="L.Traffic.Wan">WAN</sys:String>
+    <sys:String x:Key="L.Traffic.Lan">LAN</sys:String>
+
+    <!-- usage columns -->
+    <sys:String x:Key="L.Usage.Applications">应用程序</sys:String>
+    <sys:String x:Key="L.Usage.Hosts">主机</sys:String>
+    <sys:String x:Key="L.Usage.TrafficTypes">流量类型</sys:String>
+    <sys:String x:Key="L.Usage.CountriesRegions">国家/地区</sys:String>
+
+    <!-- filter panel -->
+    <sys:String x:Key="L.Filter.Applications">应用程序</sys:String>
+    <sys:String x:Key="L.Filter.Hosts">主机</sys:String>
+    <sys:String x:Key="L.Filter.TrafficTypes">流量类型</sys:String>
+    <sys:String x:Key="L.Filter.CountriesRegions">国家/地区</sys:String>
+    <sys:String x:Key="L.Filter.WanLan">WAN 和 LAN</sys:String>
+    <sys:String x:Key="L.Filter.Lan">LAN</sys:String>
+    <sys:String x:Key="L.Filter.Wan">WAN</sys:String>
+    <sys:String x:Key="L.Filter.InAndOut">传入和传出</sys:String>
+    <sys:String x:Key="L.Filter.InboundOnly">仅入站流量</sys:String>
+    <sys:String x:Key="L.Filter.OutboundOnly">仅出站流量</sys:String>
+    <sys:String x:Key="L.Filter.WhatToList">列表内容</sys:String>
+    <sys:String x:Key="L.Filter.NetworkScope">网络范围</sys:String>
+    <sys:String x:Key="L.Filter.TrafficDirection">流量方向</sys:String>
+    <sys:String x:Key="L.Filter.SearchByName">按名称搜索</sys:String>
+    <sys:String x:Key="L.Filter.ClosePanel">关闭筛选面板</sys:String>
+    <sys:String x:Key="L.Filter.NoEntries">没有符合当前筛选条件的条目。</sys:String>
+    <sys:String x:Key="L.Filter.SplitNote">WAN/LAN 拆分按主机记录 — 此处显示合并总量</sys:String>
+    <sys:String x:Key="L.Filter.HeaderApplications">应用程序</sys:String>
+    <sys:String x:Key="L.Filter.HeaderHosts">主机</sys:String>
+    <sys:String x:Key="L.Filter.HeaderTrafficTypes">流量类型</sys:String>
+    <sys:String x:Key="L.Filter.HeaderCountries">国家/地区</sys:String>
+    <sys:String x:Key="L.Filter.LocalNetwork">本地网络</sys:String>
+    <sys:String x:Key="L.Filter.Unknown">未知</sys:String>
+
+    <!-- firewall -->
+    <sys:String x:Key="L.Fw.Title">防火墙</sys:String>
+    <sys:String x:Key="L.Fw.Mode">模式</sys:String>
+    <sys:String x:Key="L.Fw.ModeOff">关闭</sys:String>
+    <sys:String x:Key="L.Fw.ModeClickToBlock">点击拦截</sys:String>
+    <sys:String x:Key="L.Fw.ModeAskToConnect">连接询问</sys:String>
+    <sys:String x:Key="L.Fw.NotElevated">⚠  引擎未以管理员身份运行 — 无法执行拦截，也无法统计每应用速率。请以管理员身份启动 OpenWire.Service。</sys:String>
+    <sys:String x:Key="L.Fw.Profile">配置</sys:String>
+    <sys:String x:Key="L.Fw.NewProfileTip">以当前状态新建配置</sys:String>
+    <sys:String x:Key="L.Fw.DeleteProfileTip">删除此配置</sys:String>
+    <sys:String x:Key="L.Fw.SearchApps">搜索应用</sys:String>
+    <sys:String x:Key="L.Fw.ColApplication">应用程序</sys:String>
+    <sys:String x:Key="L.Fw.ColIncoming">传入</sys:String>
+    <sys:String x:Key="L.Fw.ColOutgoing">传出</sys:String>
+    <sys:String x:Key="L.Fw.ColVersion">版本</sys:String>
+    <sys:String x:Key="L.Fw.ColHost">主机</sys:String>
+    <sys:String x:Key="L.Fw.ColVirusTotal">VIRUSTOTAL</sys:String>
+    <sys:String x:Key="L.Fw.ColTrend">趋势</sys:String>
+    <sys:String x:Key="L.Fw.Pid">PID</sys:String>
+    <sys:String x:Key="L.Fw.Allow">允许</sys:String>
+    <sys:String x:Key="L.Fw.Block">拦截</sys:String>
+    <sys:String x:Key="L.Fw.PromptAppFallback">一个应用程序</sys:String>
+    <sys:String x:Key="L.Fw.PromptWantsConnect">正请求连接网络</sys:String>
+
+    <!-- alerts -->
+    <sys:String x:Key="L.Alerts.Title">警报</sys:String>
+    <sys:String x:Key="L.Alerts.FilterAll">全部</sys:String>
+    <sys:String x:Key="L.Alerts.FilterImportant">重要</sys:String>
+    <sys:String x:Key="L.Alerts.FilterLog">日志</sys:String>
+    <sys:String x:Key="L.Alerts.TimeAll">全部时间</sys:String>
+    <sys:String x:Key="L.Alerts.TimeToday">今天</sys:String>
+    <sys:String x:Key="L.Alerts.TimeWeek">本周</sys:String>
+    <sys:String x:Key="L.Alerts.SearchPlaceholder">搜索</sys:String>
+    <sys:String x:Key="L.Alerts.MarkAllRead">全部标为已读</sys:String>
+    <sys:String x:Key="L.Alerts.NewBadge">新</sys:String>
+    <sys:String x:Key="L.Alerts.EmptyFiltered">没有符合当前筛选或搜索的警报。</sys:String>
+    <sys:String x:Key="L.Alerts.EmptyNone">暂无警报。OpenWire 会在这里报告新应用、新设备与安全事件。</sys:String>
+    <sys:String x:Key="L.Alerts.GroupToday">今天</sys:String>
+    <sys:String x:Key="L.Alerts.GroupYesterday">昨天</sys:String>
+    <sys:String x:Key="L.Alerts.GroupEarlier">更早</sys:String>
+    <sys:String x:Key="L.Alerts.GroupDateFormat">M月d日</sys:String>
+
+    <!-- analytics -->
+    <sys:String x:Key="L.Analytics.Title">分析</sys:String>
+    <sys:String x:Key="L.Analytics.Subtitle">用量规律与异常</sys:String>
+    <sys:String x:Key="L.Analytics.Range24h">24 小时</sys:String>
+    <sys:String x:Key="L.Analytics.RangeWeek">周</sys:String>
+    <sys:String x:Key="L.Analytics.RangeMonth">月</sys:String>
+    <sys:String x:Key="L.Analytics.CardTotal">总量</sys:String>
+    <sys:String x:Key="L.Analytics.CardChange">环比</sys:String>
+    <sys:String x:Key="L.Analytics.PeriodOverPeriod">与上一周期相比</sys:String>
+    <sys:String x:Key="L.Analytics.CardBusiestHour">最忙时段</sys:String>
+    <sys:String x:Key="L.Analytics.LocalTime">本地时间</sys:String>
+    <sys:String x:Key="L.Analytics.CardAvgPerDay">日均</sys:String>
+    <sys:String x:Key="L.Analytics.CardActiveApps">活跃应用</sys:String>
+    <sys:String x:Key="L.Analytics.MovedBytes">产生流量</sys:String>
+    <sys:String x:Key="L.Analytics.HourChartTitle">网络使用时段分布 — 按小时</sys:String>
+    <sys:String x:Key="L.Analytics.DailyUsage">每日用量</sys:String>
+    <sys:String x:Key="L.Analytics.Highlights">要点</sys:String>
+    <sys:String x:Key="L.Analytics.TopApps">流量最高的应用</sys:String>
+    <sys:String x:Key="L.Analytics.AnomaliesDetected">检测到的异常</sys:String>
+    <sys:String x:Key="L.Analytics.NoAnomalies">未检测到异常。</sys:String>
+    <sys:String x:Key="L.Analytics.NoAnomaliesHint">此周期内的用量记录看起来一切正常。</sys:String>
+
+    <!-- hardware -->
+    <sys:String x:Key="L.Hw.Title">硬件资源</sys:String>
+    <sys:String x:Key="L.Hw.Last5Minutes">最近 5 分钟</sys:String>
+    <sys:String x:Key="L.Hw.Cpu">CPU</sys:String>
+    <sys:String x:Key="L.Hw.Memory">内存</sys:String>
+    <sys:String x:Key="L.Hw.DiskTransfer">磁盘传输</sys:String>
+    <sys:String x:Key="L.Hw.Gpu">GPU</sys:String>
+    <sys:String x:Key="L.Hw.CpuUsage">CPU 占用</sys:String>
+    <sys:String x:Key="L.Hw.MemoryUsed">已用内存</sys:String>
+    <sys:String x:Key="L.Hw.DiskRead">磁盘读取</sys:String>
+    <sys:String x:Key="L.Hw.DiskWrite">磁盘写入</sys:String>
+    <sys:String x:Key="L.Hw.GpuUsage">GPU 占用</sys:String>
+    <sys:String x:Key="L.Hw.GpuMemory">GPU 显存</sys:String>
+
+    <!-- scanner -->
+    <sys:String x:Key="L.Scan.SearchDevices">搜索设备</sys:String>
+    <sys:String x:Key="L.Scan.RescanEvery">每 30 分钟自动重扫</sys:String>
+    <sys:String x:Key="L.Scan.EmptyTitle">好奇网络上都有什么？</sys:String>
+    <sys:String x:Key="L.Scan.EmptyHint">扫描一次，发现连接到本地网络的每台设备。</sys:String>
+    <sys:String x:Key="L.Scan.ColDevice">设备</sys:String>
+    <sys:String x:Key="L.Scan.ColDescription">描述</sys:String>
+    <sys:String x:Key="L.Scan.ColSystem">系统</sys:String>
+    <sys:String x:Key="L.Scan.ColIp">IP 地址</sys:String>
+    <sys:String x:Key="L.Scan.ColMac">MAC</sys:String>
+    <sys:String x:Key="L.Scan.ColLastSeen">最后活跃</sys:String>
+    <sys:String x:Key="L.Scan.ColFirstSeen">首次发现</sys:String>
+    <sys:String x:Key="L.Scan.ForgetDevice">移除设备</sys:String>
+    <sys:String x:Key="L.Scan.Scan">扫描</sys:String>
+    <sys:String x:Key="L.Scan.Scanning">正在扫描…</sys:String>
+    <sys:String x:Key="L.Scan.ScannedJustNow">刚刚扫描完成</sys:String>
+    <sys:String x:Key="L.Scan.LocalNetwork">本地网络</sys:String>
+
+    <!-- world map -->
+    <sys:String x:Key="L.Map.SourceCountriesFmt">{0} 个来源国家/地区</sys:String>
+    <sys:String x:Key="L.Map.HintFlat">滚轮：缩放 · 拖动：平移 · 点击国家查看</sys:String>
+    <sys:String x:Key="L.Map.HintGlobe">滚轮：缩放 · 拖动：旋转 · 点击国家查看</sys:String>
+    <sys:String x:Key="L.Map.ReceivedFmt">接收 {0}</sys:String>
+    <sys:String x:Key="L.Map.NoTraffic">暂无流量记录</sys:String>
+    <sys:String x:Key="L.Map.LegendLess">少</sys:String>
+    <sys:String x:Key="L.Map.LegendMore">流量更多</sys:String>
+
+    <!-- settings -->
+    <sys:String x:Key="L.Set.Title">设置</sys:String>
+    <sys:String x:Key="L.Set.Appearance">外观</sys:String>
+    <sys:String x:Key="L.Set.AppearanceDesc">选择界面风格。Minimal 是干净的扁平风；Pencil 是手绘素描本；Berry day / Berry night 是草莓痛车皮肤。切换即时生效，无需重启。</sys:String>
+    <sys:String x:Key="L.Set.ThemeMinimal">简约</sys:String>
+    <sys:String x:Key="L.Set.ThemePencil">铅笔素描</sys:String>
+    <sys:String x:Key="L.Set.ThemeBerryDay">草莓日间</sys:String>
+    <sys:String x:Key="L.Set.ThemeBerryNight">草莓夜间</sys:String>
+    <sys:String x:Key="L.Set.Language">语言</sys:String>
+    <sys:String x:Key="L.Set.LanguageDesc">选择界面语言。切换后窗口原地重建，无需重启。</sys:String>
+    <sys:String x:Key="L.Set.SecurityMonitors">安全监控</sys:String>
+    <sys:String x:Key="L.Set.MonUsageAnomalies">用量异常（流量尖峰、重上传应用、新国家、异常时段）</sys:String>
+    <sys:String x:Key="L.Set.MonNewDevices">网络中出现新设备</sys:String>
+    <sys:String x:Key="L.Set.MonDnsChanges">DNS 服务器变更</sys:String>
+    <sys:String x:Key="L.Set.MonHostsFile">Hosts 文件变更</sys:String>
+    <sys:String x:Key="L.Set.MonArpSpoofing">ARP 欺骗（网关 MAC 变化）</sys:String>
+    <sys:String x:Key="L.Set.MonRdp">远程桌面（RDP）连接</sys:String>
+    <sys:String x:Key="L.Set.ShowNotifications">显示桌面通知</sys:String>
+    <sys:String x:Key="L.Set.Resolution">解析</sys:String>
+    <sys:String x:Key="L.Set.ResolveHosts">解析主机名（反向 DNS）</sys:String>
+    <sys:String x:Key="L.Set.ResolveGeoIp">解析国家/地区（GeoIP）</sys:String>
+    <sys:String x:Key="L.Set.DataPlan">流量套餐</sys:String>
+    <sys:String x:Key="L.Set.DataPlanEnable">启用每月流量套餐</sys:String>
+    <sys:String x:Key="L.Set.DataPlanLimit">上限（GB）</sys:String>
+    <sys:String x:Key="L.Set.DataPlanResetDay">重置日</sys:String>
+    <sys:String x:Key="L.Set.History">历史记录</sys:String>
+    <sys:String x:Key="L.Set.HistoryDesc">分钟级历史保留指定天数后清理，以控制数据库大小；紧凑的按日汇总会保留更久，用于长期趋势与异常基线。设为 0 表示保留全部分钟级历史。</sys:String>
+    <sys:String x:Key="L.Set.HistoryKeepFor">分钟级保留</sys:String>
+    <sys:String x:Key="L.Set.HistoryDays">天</sys:String>
+    <sys:String x:Key="L.Set.Integrations">集成</sys:String>
+    <sys:String x:Key="L.Set.VtTitle">VirusTotal 文件信誉</sys:String>
+    <sys:String x:Key="L.Set.VtDesc">可选。粘贴你自己的免费 VirusTotal API key，即可在防火墙页显示每应用的信誉列。OpenWire 只计算应用文件的哈希并查询该摘要 — 文件本身绝不会被上传。留空表示禁用。</sys:String>
+    <sys:String x:Key="L.Set.VtApiKey">API key</sys:String>
+    <sys:String x:Key="L.Set.VtGetKey">前往 virustotal.com 免费获取 key</sys:String>
+    <sys:String x:Key="L.Set.Engine">引擎</sys:String>
+    <sys:String x:Key="L.Set.EngineInfoFmt">引擎 {0} · {1} · 防火墙{2} · GeoIP {3}</sys:String>
+    <sys:String x:Key="L.Set.FwEnabled">已启用</sys:String>
+    <sys:String x:Key="L.Set.FwUnavailable">不可用</sys:String>
+    <sys:String x:Key="L.Set.GeoLoaded">已加载</sys:String>
+    <sys:String x:Key="L.Set.GeoNotInstalled">未安装</sys:String>
+    <sys:String x:Key="L.Set.Saved">已保存 ✓</sys:String>
+    <sys:String x:Key="L.Set.SaveChanges">保存更改</sys:String>
+</ResourceDictionary>

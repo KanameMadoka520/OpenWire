@@ -173,12 +173,12 @@ public sealed class DayGroupConverter : IValueConverter
 {
     public object Convert(object? value, Type t, object? p, CultureInfo c)
     {
-        if (value is not DateTimeOffset dto) return "Earlier";
+        if (value is not DateTimeOffset dto) return Loc.S("L.Alerts.GroupEarlier");
         var day = dto.ToLocalTime().Date;
         var today = DateTime.Now.Date;
-        if (day == today) return "Today";
-        if (day == today.AddDays(-1)) return "Yesterday";
-        return day.ToString("MMMM d");
+        if (day == today) return Loc.S("L.Alerts.GroupToday");
+        if (day == today.AddDays(-1)) return Loc.S("L.Alerts.GroupYesterday");
+        return day.ToString(Loc.S("L.Alerts.GroupDateFormat"));
     }
     public object ConvertBack(object? v, Type t, object? p, CultureInfo c) => Binding.DoNothing;
 }

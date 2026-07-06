@@ -28,17 +28,17 @@
         <!-- Control strip: title + range -->
         <Grid Grid.Row="0" Margin="24,16,24,6">
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                <TextBlock Text="Analytics" Style="{StaticResource H1}" />
+                <TextBlock Text="{StaticResource L.Analytics.Title}" Style="{StaticResource H1}" />
                 <Path Data="{StaticResource DoodleChart}" Style="{StaticResource Doodle}" Width="24" Height="24" VerticalAlignment="Center" Margin="12,0,0,0" />
-                <TextBlock Text="usage patterns &amp; anomalies" Style="{StaticResource Caption}" VerticalAlignment="Bottom" Margin="12,0,0,3" />
+                <TextBlock Text="{StaticResource L.Analytics.Subtitle}" Style="{StaticResource Caption}" VerticalAlignment="Bottom" Margin="12,0,0,3" />
             </StackPanel>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Background="{StaticResource BgSubtle}">
                 <StackPanel.Resources>
                     <Style TargetType="RadioButton" BasedOn="{StaticResource Seg}"><Setter Property="GroupName" Value="arange" /></Style>
                 </StackPanel.Resources>
-                <RadioButton Content="24 hours" IsChecked="{Binding Range, Converter={StaticResource EnumMatch}, ConverterParameter=Day, Mode=TwoWay}" />
-                <RadioButton Content="Week" IsChecked="{Binding Range, Converter={StaticResource EnumMatch}, ConverterParameter=Week, Mode=TwoWay}" />
-                <RadioButton Content="Month" IsChecked="{Binding Range, Converter={StaticResource EnumMatch}, ConverterParameter=Month, Mode=TwoWay}" />
+                <RadioButton Content="{StaticResource L.Analytics.Range24h}" IsChecked="{Binding Range, Converter={StaticResource EnumMatch}, ConverterParameter=Day, Mode=TwoWay}" />
+                <RadioButton Content="{StaticResource L.Analytics.RangeWeek}" IsChecked="{Binding Range, Converter={StaticResource EnumMatch}, ConverterParameter=Week, Mode=TwoWay}" />
+                <RadioButton Content="{StaticResource L.Analytics.RangeMonth}" IsChecked="{Binding Range, Converter={StaticResource EnumMatch}, ConverterParameter=Month, Mode=TwoWay}" />
             </StackPanel>
         </Grid>
 
@@ -49,37 +49,37 @@
                 <UniformGrid Rows="1" Columns="5" Margin="0,4,0,14">
                     <Border Style="{StaticResource StatCard}">
                         <StackPanel>
-                            <TextBlock Text="TOTAL" Style="{StaticResource TableHeaderText}" />
+                            <TextBlock Text="{StaticResource L.Analytics.CardTotal}" Style="{StaticResource TableHeaderText}" />
                             <TextBlock Text="{Binding TotalText}" Style="{StaticResource StatValue}" Margin="0,4,0,0" />
                             <TextBlock Text="{Binding DownUpText}" Style="{StaticResource Caption}" Margin="0,3,0,0" TextTrimming="CharacterEllipsis" />
                         </StackPanel>
                     </Border>
                     <Border Style="{StaticResource StatCard}">
                         <StackPanel>
-                            <TextBlock Text="CHANGE" Style="{StaticResource TableHeaderText}" />
+                            <TextBlock Text="{StaticResource L.Analytics.CardChange}" Style="{StaticResource TableHeaderText}" />
                             <TextBlock Text="{Binding ChangeText}" Style="{StaticResource StatValue}" FontSize="15" Margin="0,6,0,0" />
-                            <TextBlock Text="period over period" Style="{StaticResource Caption}" Margin="0,3,0,0" />
+                            <TextBlock Text="{StaticResource L.Analytics.PeriodOverPeriod}" Style="{StaticResource Caption}" Margin="0,3,0,0" />
                         </StackPanel>
                     </Border>
                     <Border Style="{StaticResource StatCard}">
                         <StackPanel>
-                            <TextBlock Text="BUSIEST HOUR" Style="{StaticResource TableHeaderText}" />
+                            <TextBlock Text="{StaticResource L.Analytics.CardBusiestHour}" Style="{StaticResource TableHeaderText}" />
                             <TextBlock Text="{Binding BusiestHourText}" Style="{StaticResource StatValue}" Margin="0,4,0,0" />
-                            <TextBlock Text="local time" Style="{StaticResource Caption}" Margin="0,3,0,0" />
+                            <TextBlock Text="{StaticResource L.Analytics.LocalTime}" Style="{StaticResource Caption}" Margin="0,3,0,0" />
                         </StackPanel>
                     </Border>
                     <Border Style="{StaticResource StatCard}">
                         <StackPanel>
-                            <TextBlock Text="AVG / DAY" Style="{StaticResource TableHeaderText}" />
+                            <TextBlock Text="{StaticResource L.Analytics.CardAvgPerDay}" Style="{StaticResource TableHeaderText}" />
                             <TextBlock Text="{Binding PerDayText}" Style="{StaticResource StatValue}" Margin="0,4,0,0" />
                             <TextBlock Text="{Binding ActiveDaysText}" Style="{StaticResource Caption}" Margin="0,3,0,0" TextTrimming="CharacterEllipsis" />
                         </StackPanel>
                     </Border>
                     <Border Style="{StaticResource StatCard}">
                         <StackPanel>
-                            <TextBlock Text="ACTIVE APPS" Style="{StaticResource TableHeaderText}" />
+                            <TextBlock Text="{StaticResource L.Analytics.CardActiveApps}" Style="{StaticResource TableHeaderText}" />
                             <TextBlock Text="{Binding ActiveAppsText}" Style="{StaticResource StatValue}" Margin="0,4,0,0" />
-                            <TextBlock Text="moved bytes" Style="{StaticResource Caption}" Margin="0,3,0,0" />
+                            <TextBlock Text="{StaticResource L.Analytics.MovedBytes}" Style="{StaticResource Caption}" Margin="0,3,0,0" />
                         </StackPanel>
                     </Border>
                 </UniformGrid>
@@ -92,13 +92,13 @@
                     </Grid.ColumnDefinitions>
                     <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0,0,7,0" Height="224">
                         <DockPanel Margin="16,12">
-                            <TextBlock DockPanel.Dock="Top" Text="WHEN YOU USE THE NETWORK — BY HOUR" Style="{StaticResource TableHeaderText}" Margin="0,0,0,6" />
+                            <TextBlock DockPanel.Dock="Top" Text="{StaticResource L.Analytics.HourChartTitle}" Style="{StaticResource TableHeaderText}" Margin="0,0,0,6" />
                             <ctrl:BarChart x:Name="HourChart" />
                         </DockPanel>
                     </Border>
                     <Border Grid.Column="1" Style="{StaticResource Card}" Margin="7,0,0,0" Height="224">
                         <DockPanel Margin="16,12">
-                            <TextBlock DockPanel.Dock="Top" Text="DAILY USAGE" Style="{StaticResource TableHeaderText}" Margin="0,0,0,6" />
+                            <TextBlock DockPanel.Dock="Top" Text="{StaticResource L.Analytics.DailyUsage}" Style="{StaticResource TableHeaderText}" Margin="0,0,0,6" />
                             <ctrl:BarChart x:Name="DayChart" />
                         </DockPanel>
                     </Border>
@@ -115,7 +115,7 @@
                         <!-- Highlights -->
                         <Border Style="{StaticResource Card}" Margin="0,0,0,14">
                             <StackPanel Margin="16,14">
-                                <TextBlock Text="HIGHLIGHTS" Style="{StaticResource TableHeaderText}" Margin="0,0,0,8" />
+                                <TextBlock Text="{StaticResource L.Analytics.Highlights}" Style="{StaticResource TableHeaderText}" Margin="0,0,0,8" />
                                 <ItemsControl ItemsSource="{Binding Highlights}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
@@ -131,7 +131,7 @@
                         <!-- Top apps -->
                         <Border Style="{StaticResource Card}">
                             <StackPanel Margin="16,14">
-                                <TextBlock Text="TOP APPLICATIONS" Style="{StaticResource TableHeaderText}" Margin="0,0,0,8" />
+                                <TextBlock Text="{StaticResource L.Analytics.TopApps}" Style="{StaticResource TableHeaderText}" Margin="0,0,0,8" />
                                 <ItemsControl ItemsSource="{Binding TopApps}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
@@ -162,7 +162,7 @@
                     <Border Grid.Column="1" Style="{StaticResource Card}" Margin="7,0,0,0">
                         <StackPanel Margin="16,14">
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                <TextBlock Text="ANOMALIES DETECTED" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
+                                <TextBlock Text="{StaticResource L.Analytics.AnomaliesDetected}" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
                                 <Border Background="{StaticResource BgSubtle}" CornerRadius="9" Padding="7,1" Margin="8,0,0,0" VerticalAlignment="Center"
                                         Visibility="{Binding HasAnomalies, Converter={StaticResource BoolVis}}">
                                     <TextBlock Text="{Binding Anomalies.Count}" FontSize="10" FontWeight="Bold" Foreground="{StaticResource TextSecondary}" />
@@ -173,8 +173,8 @@
                             <StackPanel Margin="0,14" Visibility="{Binding HasAnomalies, Converter={StaticResource BoolVis}, ConverterParameter=invert}">
                                 <TextBlock Text="&#xE73E;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="26"
                                            Foreground="{StaticResource Success}" HorizontalAlignment="Center" />
-                                <TextBlock Text="No anomalies detected." Foreground="{StaticResource TextSecondary}" HorizontalAlignment="Center" Margin="0,8,0,0" />
-                                <TextBlock Text="Your recorded usage looks normal for this period." Style="{StaticResource Caption}"
+                                <TextBlock Text="{StaticResource L.Analytics.NoAnomalies}" Foreground="{StaticResource TextSecondary}" HorizontalAlignment="Center" Margin="0,8,0,0" />
+                                <TextBlock Text="{StaticResource L.Analytics.NoAnomaliesHint}" Style="{StaticResource Caption}"
                                            HorizontalAlignment="Center" TextAlignment="Center" Margin="0,2,0,0" />
                             </StackPanel>
 

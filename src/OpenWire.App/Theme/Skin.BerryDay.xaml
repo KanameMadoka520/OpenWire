@@ -1,0 +1,112 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+
+    <!-- BERRYDAY skin: strawberry itasha on cream — berry-red accent, leaf-green
+         outbound, ink sticker outlines and a hard berry offset shadow so panels sit
+         like die-cut stickers. Same keys as the Minimal / Pencil skins. -->
+
+    <!-- palette -->
+    <Color x:Key="BgAppColor">#F8F3EC</Color>
+    <Color x:Key="BgPanelColor">#FFFFFF</Color>
+    <Color x:Key="BgSubtleColor">#F3E9DE</Color>
+    <Color x:Key="BgElevatedColor">#EFDFD4</Color>
+    <Color x:Key="BgGraphColor">#FFFDFA</Color>
+    <Color x:Key="BorderColor">#EBDCCF</Color>
+    <Color x:Key="BorderStrongColor">#D9C4B4</Color>
+
+    <Color x:Key="TextPrimaryColor">#2A1518</Color>
+    <Color x:Key="TextSecondaryColor">#6B5054</Color>
+    <Color x:Key="TextMutedColor">#8D7377</Color>
+
+    <Color x:Key="InFillColor">#EF6B72</Color>
+    <Color x:Key="InLineColor">#C2131E</Color>
+    <Color x:Key="OutFillColor">#7CC384</Color>
+    <Color x:Key="OutLineColor">#2F7D33</Color>
+
+    <Color x:Key="AccentColor">#E4232E</Color>
+    <Color x:Key="AccentSoftColor">#FBE3E5</Color>
+
+    <Color x:Key="AllowTextColor">#2F7D33</Color>
+    <Color x:Key="AllowBgColor">#E6F4E7</Color>
+    <Color x:Key="BlockTextColor">#9B0F1B</Color>
+    <Color x:Key="BlockBgColor">#F9DCDF</Color>
+
+    <Color x:Key="FlameBlockedColor">#9B0F1B</Color>
+    <Color x:Key="FlameIdleColor">#C9B5A9</Color>
+    <Color x:Key="AlertNewColor">#E4232E</Color>
+    <Color x:Key="NewBadgeColor">#45A24B</Color>
+    <Color x:Key="AlertDotColor">#E8A020</Color>
+    <Color x:Key="SuccessColor">#45A24B</Color>
+    <Color x:Key="WarningColor">#E8A020</Color>
+    <Color x:Key="DangerColor">#E4232E</Color>
+    <Color x:Key="UpgradeGreenColor">#45A24B</Color>
+    <Color x:Key="GraphiteColor">#2A1518</Color>
+
+    <Color x:Key="GridLineColor">#F0E3D7</Color>
+    <Color x:Key="GridTextColor">#A98F94</Color>
+
+    <!-- brushes -->
+    <SolidColorBrush x:Key="BgApp" Color="{StaticResource BgAppColor}" />
+    <SolidColorBrush x:Key="BgPanel" Color="{StaticResource BgPanelColor}" />
+    <SolidColorBrush x:Key="BgSubtle" Color="{StaticResource BgSubtleColor}" />
+    <SolidColorBrush x:Key="BgElevated" Color="{StaticResource BgElevatedColor}" />
+    <SolidColorBrush x:Key="BgGraph" Color="{StaticResource BgGraphColor}" />
+    <SolidColorBrush x:Key="Border" Color="{StaticResource BorderColor}" />
+    <SolidColorBrush x:Key="BorderStrong" Color="{StaticResource BorderStrongColor}" />
+    <SolidColorBrush x:Key="TextPrimary" Color="{StaticResource TextPrimaryColor}" />
+    <SolidColorBrush x:Key="TextSecondary" Color="{StaticResource TextSecondaryColor}" />
+    <SolidColorBrush x:Key="TextMuted" Color="{StaticResource TextMutedColor}" />
+    <SolidColorBrush x:Key="InFill" Color="{StaticResource InFillColor}" />
+    <SolidColorBrush x:Key="InLine" Color="{StaticResource InLineColor}" />
+    <SolidColorBrush x:Key="OutFill" Color="{StaticResource OutFillColor}" />
+    <SolidColorBrush x:Key="OutLine" Color="{StaticResource OutLineColor}" />
+    <SolidColorBrush x:Key="Accent" Color="{StaticResource AccentColor}" />
+    <SolidColorBrush x:Key="AccentSoft" Color="{StaticResource AccentSoftColor}" />
+    <SolidColorBrush x:Key="AllowText" Color="{StaticResource AllowTextColor}" />
+    <SolidColorBrush x:Key="AllowBg" Color="{StaticResource AllowBgColor}" />
+    <SolidColorBrush x:Key="BlockText" Color="{StaticResource BlockTextColor}" />
+    <SolidColorBrush x:Key="BlockBg" Color="{StaticResource BlockBgColor}" />
+    <SolidColorBrush x:Key="FlameBlocked" Color="{StaticResource FlameBlockedColor}" />
+    <SolidColorBrush x:Key="FlameIdle" Color="{StaticResource FlameIdleColor}" />
+    <SolidColorBrush x:Key="AlertNew" Color="{StaticResource AlertNewColor}" />
+    <SolidColorBrush x:Key="NewBadge" Color="{StaticResource NewBadgeColor}" />
+    <SolidColorBrush x:Key="AlertDot" Color="{StaticResource AlertDotColor}" />
+    <SolidColorBrush x:Key="Success" Color="{StaticResource SuccessColor}" />
+    <SolidColorBrush x:Key="Warning" Color="{StaticResource WarningColor}" />
+    <SolidColorBrush x:Key="Danger" Color="{StaticResource DangerColor}" />
+    <SolidColorBrush x:Key="UpgradeGreen" Color="{StaticResource UpgradeGreenColor}" />
+    <SolidColorBrush x:Key="Graphite" Color="{StaticResource GraphiteColor}" />
+
+    <!-- skin style parameters (consumed by Controls.xaml) -->
+    <FontFamily x:Key="HeadingFont">Segoe UI Black, Segoe UI, Microsoft YaHei UI</FontFamily>
+
+    <!-- doodles hidden: transparent ink -->
+    <SolidColorBrush x:Key="DoodleInk" Color="#00000000" />
+
+    <!-- very subtle berry halftone dots on the cream window ground -->
+    <DrawingBrush x:Key="PaperOverlay" TileMode="Tile" Viewport="0,0,34,34" ViewportUnits="Absolute" Stretch="None">
+        <DrawingBrush.Drawing>
+            <GeometryDrawing Brush="#0C9B0F1B">
+                <GeometryDrawing.Geometry>
+                    <GeometryGroup>
+                        <EllipseGeometry Center="8.5,8.5" RadiusX="1.2" RadiusY="1.2" />
+                        <EllipseGeometry Center="25.5,25.5" RadiusX="1.2" RadiusY="1.2" />
+                    </GeometryGroup>
+                </GeometryDrawing.Geometry>
+            </GeometryDrawing>
+        </DrawingBrush.Drawing>
+    </DrawingBrush>
+
+    <!-- ink sticker outlines on buttons / pills -->
+    <SolidColorBrush x:Key="SketchBorderBrush" Color="#17090C" />
+    <SolidColorBrush x:Key="PillBorderBrush" Color="#17090C" />
+
+    <!-- squiggle underline colour under the selected tab -->
+    <SolidColorBrush x:Key="TabUnderline" Color="#E4232E" />
+
+    <!-- die-cut sticker offset shadows (hard, berry-tinted) -->
+    <DropShadowEffect x:Key="CardEffect" Color="#9B0F1B" BlurRadius="2" ShadowDepth="4" Direction="315" Opacity="0.16" />
+    <DropShadowEffect x:Key="ButtonEffect" Color="#9B0F1B" BlurRadius="2" ShadowDepth="2" Direction="315" Opacity="0.2" />
+
+</ResourceDictionary>

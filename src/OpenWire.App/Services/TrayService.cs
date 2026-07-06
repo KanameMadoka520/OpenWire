@@ -1,5 +1,6 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using OpenWire.App.Util;
 using WinForms = System.Windows.Forms;
 
 namespace OpenWire.App.Services;
@@ -22,13 +23,13 @@ public sealed class TrayService : IDisposable
         {
             Icon = BuildIcon(),
             Visible = true,
-            Text = "OpenWire — network monitor",
+            Text = Loc.S("L.Shell.TrayTooltip"),
         };
 
         var menu = new WinForms.ContextMenuStrip();
-        menu.Items.Add("Open OpenWire", null, (_, _) => OpenRequested?.Invoke());
+        menu.Items.Add(Loc.S("L.Shell.TrayOpen"), null, (_, _) => OpenRequested?.Invoke());
         menu.Items.Add(new WinForms.ToolStripSeparator());
-        menu.Items.Add("Exit", null, (_, _) => ExitRequested?.Invoke());
+        menu.Items.Add(Loc.S("L.Shell.TrayExit"), null, (_, _) => ExitRequested?.Invoke());
         _icon.ContextMenuStrip = menu;
 
         _icon.DoubleClick += (_, _) => OpenRequested?.Invoke();

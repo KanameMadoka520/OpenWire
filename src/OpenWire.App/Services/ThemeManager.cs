@@ -5,15 +5,20 @@ using System.Windows;
 namespace OpenWire.App.Services;
 
 /// <summary>
-/// Chooses and applies the UI skin (Minimal / Pencil). The choice is stored in a small
-/// local file so it can be read synchronously at startup, before any window is created,
-/// and merged as the first resource dictionaries. Switching persists the choice and
-/// restarts the app so the whole visual tree re-skins cleanly (the engine keeps running).
+/// Chooses and applies the UI skin (Minimal / Pencil / BerryDay / BerryNight). The choice
+/// is stored in a small local file so it can be read synchronously at startup, before any
+/// window is created, and merged as the first resource dictionaries. Switching persists the
+/// choice and restarts the app so the whole visual tree re-skins cleanly (the engine keeps running).
 /// </summary>
 public static class ThemeManager
 {
-    public const string Minimal = "Minimal";
-    public const string Pencil = "Pencil";
+    private static readonly Dictionary<string, string> Skins = new()
+    {
+        ["Minimal"] = "Skin.Minimal.xaml",
+        ["Pencil"] = "Skin.Pencil.xaml",
+        ["BerryDay"] = "Skin.BerryDay.xaml",
+        ["BerryNight"] = "Skin.BerryNight.xaml",
+    };
 
     private static string FilePath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OpenWire", "theme.txt");
@@ -23,10 +28,10 @@ public static class ThemeManager
         try
         {
             var t = File.ReadAllText(FilePath).Trim();
-            if (t == Minimal || t == Pencil) return t;
+            if (Skins.ContainsKey(t)) return t;
         }
         catch { /* not set yet */ }
-        return Pencil; // default to the pencil sketchbook
+        return "Pencil"; // default to the pencil sketchbook
     }
 
     public static void Save(string name)
@@ -43,7 +48,7 @@ public static class ThemeManager
     /// resources. Call once at startup before creating any window.</summary>
     public static void Apply(Application app, string theme)
     {
-        string skin = theme == Minimal ? "Skin.Minimal.xaml" : "Skin.Pencil.xaml";
+        string skin = Skins.GetValueOrDefault(theme, Skins["Pencil"]);
         var res = app.Resources.MergedDictionaries;
         void Add(string f) => res.Add(new ResourceDictionary { Source = new Uri($"Theme/{f}", UriKind.Relative) });
         Add("SketchAssets.xaml"); // fonts, geometries (skin-independent) — first
@@ -52,18 +57,12 @@ public static class ThemeManager
         Add("Lists.xaml");
     }
 
-    /// <summary>Persist the theme and relaunch the app so it re-skins from scratch.</summary>
-    public static void SwitchAndRestart(string theme)
+    /// <summary>Persist the theme and rebuild the main window with the new skin
+    /// (live switch — no app restart, the engine and tray keep running).</summary>
+    public static void Switch(string theme)
     {
-        if (theme != Minimal && theme != Pencil) return;
+        if (!Skins.ContainsKey(theme)) return;
         Save(theme);
-        try
-        {
-            var exe = Environment.ProcessPath;
-            if (!string.IsNullOrEmpty(exe))
-                Process.Start(new ProcessStartInfo { FileName = exe, UseShellExecute = true });
-        }
-        catch { /* if relaunch fails, at least the choice is saved for next start */ }
-        Application.Current.Shutdown();
+        (Application.Current as App)?.ReskinMainWindow();
     }
 }

@@ -1,0 +1,226 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+    <!-- English UI strings. Merged first at startup by LangManager; XAML references
+         these via StaticResource, code via Loc.S("key"). Keys are grouped by area. -->
+
+    <!-- shared -->
+    <sys:String x:Key="L.Common.OneChina">Taiwan, Hong Kong and Macao are part of China. If you do not agree, please stop using this software.</sys:String>
+
+    <!-- top bar -->
+    <sys:String x:Key="L.Nav.Traffic">Traffic</sys:String>
+    <sys:String x:Key="L.Nav.Analytics">Analytics</sys:String>
+    <sys:String x:Key="L.Nav.Firewall">Firewall</sys:String>
+    <sys:String x:Key="L.Nav.Alerts">Alerts</sys:String>
+    <sys:String x:Key="L.Nav.Scanner">Scanner</sys:String>
+    <sys:String x:Key="L.Nav.Hardware">Hardware</sys:String>
+    <sys:String x:Key="L.Shell.Settings">Settings</sys:String>
+    <sys:String x:Key="L.Shell.ConnectingEngine">Connecting to the OpenWire engine…</sys:String>
+    <sys:String x:Key="L.Shell.EngineAdminHint">The engine must run as administrator to monitor and enforce.</sys:String>
+    <sys:String x:Key="L.Shell.StartEngine">Start engine (admin)</sys:String>
+    <sys:String x:Key="L.Shell.TrayTooltip">OpenWire — network monitor</sys:String>
+    <sys:String x:Key="L.Shell.TrayOpen">Open OpenWire</sys:String>
+    <sys:String x:Key="L.Shell.TrayExit">Exit</sys:String>
+
+    <!-- traffic screen -->
+    <sys:String x:Key="L.Traffic.Filter">Filter</sys:String>
+    <sys:String x:Key="L.Traffic.PauseLiveGraph">Pause the live graph</sys:String>
+    <sys:String x:Key="L.Traffic.ResumeLiveGraph">Resume the live graph</sys:String>
+    <sys:String x:Key="L.Traffic.TrafficGraph">Traffic graph</sys:String>
+    <sys:String x:Key="L.Traffic.NetworkUsage">Network usage</sys:String>
+    <sys:String x:Key="L.Traffic.WorldMap">World map</sys:String>
+    <sys:String x:Key="L.Traffic.Range5Min">5 min</sys:String>
+    <sys:String x:Key="L.Traffic.Range3Hours">3 hours</sys:String>
+    <sys:String x:Key="L.Traffic.Range24Hours">24 hours</sys:String>
+    <sys:String x:Key="L.Traffic.RangeWeek">Week</sys:String>
+    <sys:String x:Key="L.Traffic.RangeMonth">Month</sys:String>
+    <sys:String x:Key="L.Traffic.Hosts">HOSTS</sys:String>
+    <sys:String x:Key="L.Traffic.DrillEmpty">No per-host detail recorded for this region in the selected window.</sys:String>
+    <sys:String x:Key="L.Traffic.DrillFooterOne">{0} host · {1}</sys:String>
+    <sys:String x:Key="L.Traffic.DrillFooterMany">{0} hosts · {1}</sys:String>
+    <sys:String x:Key="L.Traffic.MapFlat">2D</sys:String>
+    <sys:String x:Key="L.Traffic.MapGlobe">Globe</sys:String>
+    <sys:String x:Key="L.Traffic.ResetView">Reset the view</sys:String>
+    <sys:String x:Key="L.Traffic.Total">total</sys:String>
+    <sys:String x:Key="L.Traffic.Wan">WAN</sys:String>
+    <sys:String x:Key="L.Traffic.Lan">LAN</sys:String>
+
+    <!-- usage columns -->
+    <sys:String x:Key="L.Usage.Applications">APPLICATIONS</sys:String>
+    <sys:String x:Key="L.Usage.Hosts">HOSTS</sys:String>
+    <sys:String x:Key="L.Usage.TrafficTypes">TRAFFIC TYPES</sys:String>
+    <sys:String x:Key="L.Usage.CountriesRegions">COUNTRIES &amp; REGIONS</sys:String>
+
+    <!-- filter panel -->
+    <sys:String x:Key="L.Filter.Applications">Applications</sys:String>
+    <sys:String x:Key="L.Filter.Hosts">Hosts</sys:String>
+    <sys:String x:Key="L.Filter.TrafficTypes">Traffic types</sys:String>
+    <sys:String x:Key="L.Filter.CountriesRegions">Countries &amp; regions</sys:String>
+    <sys:String x:Key="L.Filter.WanLan">WAN &amp; LAN</sys:String>
+    <sys:String x:Key="L.Filter.Lan">LAN</sys:String>
+    <sys:String x:Key="L.Filter.Wan">WAN</sys:String>
+    <sys:String x:Key="L.Filter.InAndOut">In and out</sys:String>
+    <sys:String x:Key="L.Filter.InboundOnly">Inbound only</sys:String>
+    <sys:String x:Key="L.Filter.OutboundOnly">Outbound only</sys:String>
+    <sys:String x:Key="L.Filter.WhatToList">What to list</sys:String>
+    <sys:String x:Key="L.Filter.NetworkScope">Network scope</sys:String>
+    <sys:String x:Key="L.Filter.TrafficDirection">Traffic direction</sys:String>
+    <sys:String x:Key="L.Filter.SearchByName">Search by name</sys:String>
+    <sys:String x:Key="L.Filter.ClosePanel">Close the filter panel</sys:String>
+    <sys:String x:Key="L.Filter.NoEntries">No entries match the current filter.</sys:String>
+    <sys:String x:Key="L.Filter.SplitNote">WAN/LAN split is recorded per host — showing combined totals</sys:String>
+    <sys:String x:Key="L.Filter.HeaderApplications">APPLICATIONS</sys:String>
+    <sys:String x:Key="L.Filter.HeaderHosts">HOSTS</sys:String>
+    <sys:String x:Key="L.Filter.HeaderTrafficTypes">TRAFFIC TYPES</sys:String>
+    <sys:String x:Key="L.Filter.HeaderCountries">COUNTRIES &amp; REGIONS</sys:String>
+    <sys:String x:Key="L.Filter.LocalNetwork">Local network</sys:String>
+    <sys:String x:Key="L.Filter.Unknown">Unknown</sys:String>
+
+    <!-- firewall -->
+    <sys:String x:Key="L.Fw.Title">Firewall</sys:String>
+    <sys:String x:Key="L.Fw.Mode">Mode</sys:String>
+    <sys:String x:Key="L.Fw.ModeOff">Off</sys:String>
+    <sys:String x:Key="L.Fw.ModeClickToBlock">Click to block</sys:String>
+    <sys:String x:Key="L.Fw.ModeAskToConnect">Ask to connect</sys:String>
+    <sys:String x:Key="L.Fw.NotElevated">⚠  The engine is not running elevated — blocks can't be enforced and per-app rates are unavailable. Start OpenWire.Service as administrator.</sys:String>
+    <sys:String x:Key="L.Fw.Profile">Profile</sys:String>
+    <sys:String x:Key="L.Fw.NewProfileTip">New profile from current state</sys:String>
+    <sys:String x:Key="L.Fw.DeleteProfileTip">Delete this profile</sys:String>
+    <sys:String x:Key="L.Fw.SearchApps">Search apps</sys:String>
+    <sys:String x:Key="L.Fw.ColApplication">APPLICATION</sys:String>
+    <sys:String x:Key="L.Fw.ColIncoming">INCOMING</sys:String>
+    <sys:String x:Key="L.Fw.ColOutgoing">OUTGOING</sys:String>
+    <sys:String x:Key="L.Fw.ColVersion">VERSION</sys:String>
+    <sys:String x:Key="L.Fw.ColHost">HOST</sys:String>
+    <sys:String x:Key="L.Fw.ColVirusTotal">VIRUSTOTAL</sys:String>
+    <sys:String x:Key="L.Fw.ColTrend">TREND</sys:String>
+    <sys:String x:Key="L.Fw.Pid">PID</sys:String>
+    <sys:String x:Key="L.Fw.Allow">Allow</sys:String>
+    <sys:String x:Key="L.Fw.Block">Block</sys:String>
+    <sys:String x:Key="L.Fw.PromptAppFallback">An application</sys:String>
+    <sys:String x:Key="L.Fw.PromptWantsConnect">wants to connect to the network</sys:String>
+
+    <!-- alerts -->
+    <sys:String x:Key="L.Alerts.Title">Alerts</sys:String>
+    <sys:String x:Key="L.Alerts.FilterAll">All</sys:String>
+    <sys:String x:Key="L.Alerts.FilterImportant">Important</sys:String>
+    <sys:String x:Key="L.Alerts.FilterLog">Log</sys:String>
+    <sys:String x:Key="L.Alerts.TimeAll">All time</sys:String>
+    <sys:String x:Key="L.Alerts.TimeToday">Today</sys:String>
+    <sys:String x:Key="L.Alerts.TimeWeek">Week</sys:String>
+    <sys:String x:Key="L.Alerts.SearchPlaceholder">Search</sys:String>
+    <sys:String x:Key="L.Alerts.MarkAllRead">Mark all read</sys:String>
+    <sys:String x:Key="L.Alerts.NewBadge">NEW</sys:String>
+    <sys:String x:Key="L.Alerts.EmptyFiltered">No alerts match the current filter or search.</sys:String>
+    <sys:String x:Key="L.Alerts.EmptyNone">No alerts yet. OpenWire reports new apps, devices and security events here.</sys:String>
+    <sys:String x:Key="L.Alerts.GroupToday">Today</sys:String>
+    <sys:String x:Key="L.Alerts.GroupYesterday">Yesterday</sys:String>
+    <sys:String x:Key="L.Alerts.GroupEarlier">Earlier</sys:String>
+    <sys:String x:Key="L.Alerts.GroupDateFormat">MMMM d</sys:String>
+
+    <!-- analytics -->
+    <sys:String x:Key="L.Analytics.Title">Analytics</sys:String>
+    <sys:String x:Key="L.Analytics.Subtitle">usage patterns &amp; anomalies</sys:String>
+    <sys:String x:Key="L.Analytics.Range24h">24 hours</sys:String>
+    <sys:String x:Key="L.Analytics.RangeWeek">Week</sys:String>
+    <sys:String x:Key="L.Analytics.RangeMonth">Month</sys:String>
+    <sys:String x:Key="L.Analytics.CardTotal">TOTAL</sys:String>
+    <sys:String x:Key="L.Analytics.CardChange">CHANGE</sys:String>
+    <sys:String x:Key="L.Analytics.PeriodOverPeriod">period over period</sys:String>
+    <sys:String x:Key="L.Analytics.CardBusiestHour">BUSIEST HOUR</sys:String>
+    <sys:String x:Key="L.Analytics.LocalTime">local time</sys:String>
+    <sys:String x:Key="L.Analytics.CardAvgPerDay">AVG / DAY</sys:String>
+    <sys:String x:Key="L.Analytics.CardActiveApps">ACTIVE APPS</sys:String>
+    <sys:String x:Key="L.Analytics.MovedBytes">moved bytes</sys:String>
+    <sys:String x:Key="L.Analytics.HourChartTitle">WHEN YOU USE THE NETWORK — BY HOUR</sys:String>
+    <sys:String x:Key="L.Analytics.DailyUsage">DAILY USAGE</sys:String>
+    <sys:String x:Key="L.Analytics.Highlights">HIGHLIGHTS</sys:String>
+    <sys:String x:Key="L.Analytics.TopApps">TOP APPLICATIONS</sys:String>
+    <sys:String x:Key="L.Analytics.AnomaliesDetected">ANOMALIES DETECTED</sys:String>
+    <sys:String x:Key="L.Analytics.NoAnomalies">No anomalies detected.</sys:String>
+    <sys:String x:Key="L.Analytics.NoAnomaliesHint">Your recorded usage looks normal for this period.</sys:String>
+
+    <!-- hardware -->
+    <sys:String x:Key="L.Hw.Title">Hardware resources</sys:String>
+    <sys:String x:Key="L.Hw.Last5Minutes">Last 5 minutes</sys:String>
+    <sys:String x:Key="L.Hw.Cpu">CPU</sys:String>
+    <sys:String x:Key="L.Hw.Memory">MEMORY</sys:String>
+    <sys:String x:Key="L.Hw.DiskTransfer">DISK TRANSFER</sys:String>
+    <sys:String x:Key="L.Hw.Gpu">GPU</sys:String>
+    <sys:String x:Key="L.Hw.CpuUsage">CPU usage</sys:String>
+    <sys:String x:Key="L.Hw.MemoryUsed">Memory used</sys:String>
+    <sys:String x:Key="L.Hw.DiskRead">Disk read</sys:String>
+    <sys:String x:Key="L.Hw.DiskWrite">Disk write</sys:String>
+    <sys:String x:Key="L.Hw.GpuUsage">GPU usage</sys:String>
+    <sys:String x:Key="L.Hw.GpuMemory">GPU memory</sys:String>
+
+    <!-- scanner -->
+    <sys:String x:Key="L.Scan.SearchDevices">Search devices</sys:String>
+    <sys:String x:Key="L.Scan.RescanEvery">Rescans every 30 min</sys:String>
+    <sys:String x:Key="L.Scan.EmptyTitle">Curious what's on your network?</sys:String>
+    <sys:String x:Key="L.Scan.EmptyHint">Scan to discover every device connected to your local network.</sys:String>
+    <sys:String x:Key="L.Scan.ColDevice">DEVICE</sys:String>
+    <sys:String x:Key="L.Scan.ColDescription">DESCRIPTION</sys:String>
+    <sys:String x:Key="L.Scan.ColSystem">SYSTEM</sys:String>
+    <sys:String x:Key="L.Scan.ColIp">IP ADDRESS</sys:String>
+    <sys:String x:Key="L.Scan.ColMac">MAC</sys:String>
+    <sys:String x:Key="L.Scan.ColLastSeen">LAST SEEN</sys:String>
+    <sys:String x:Key="L.Scan.ColFirstSeen">FIRST SEEN</sys:String>
+    <sys:String x:Key="L.Scan.ForgetDevice">Forget device</sys:String>
+    <sys:String x:Key="L.Scan.Scan">Scan</sys:String>
+    <sys:String x:Key="L.Scan.Scanning">Scanning…</sys:String>
+    <sys:String x:Key="L.Scan.ScannedJustNow">Scanned just now</sys:String>
+    <sys:String x:Key="L.Scan.LocalNetwork">Local network</sys:String>
+
+    <!-- world map -->
+    <sys:String x:Key="L.Map.SourceCountriesFmt">{0} source countries/regions</sys:String>
+    <sys:String x:Key="L.Map.HintFlat">scroll: zoom · drag: pan · click a country</sys:String>
+    <sys:String x:Key="L.Map.HintGlobe">scroll: zoom · drag: rotate · click a country</sys:String>
+    <sys:String x:Key="L.Map.ReceivedFmt">{0} received</sys:String>
+    <sys:String x:Key="L.Map.NoTraffic">no recorded traffic</sys:String>
+    <sys:String x:Key="L.Map.LegendLess">less</sys:String>
+    <sys:String x:Key="L.Map.LegendMore">more traffic</sys:String>
+
+    <!-- settings -->
+    <sys:String x:Key="L.Set.Title">Settings</sys:String>
+    <sys:String x:Key="L.Set.Appearance">APPEARANCE</sys:String>
+    <sys:String x:Key="L.Set.AppearanceDesc">Choose the interface style. Minimal is a clean flat look; Pencil is a hand-drawn sketchbook; Berry day / Berry night are strawberry-itasha skins. Switching re-skins in place — no restart needed.</sys:String>
+    <sys:String x:Key="L.Set.ThemeMinimal">Minimal</sys:String>
+    <sys:String x:Key="L.Set.ThemePencil">Pencil sketch</sys:String>
+    <sys:String x:Key="L.Set.ThemeBerryDay">Berry day</sys:String>
+    <sys:String x:Key="L.Set.ThemeBerryNight">Berry night</sys:String>
+    <sys:String x:Key="L.Set.Language">LANGUAGE</sys:String>
+    <sys:String x:Key="L.Set.LanguageDesc">Choose the interface language. Switching rebuilds the window in place — no restart needed.</sys:String>
+    <sys:String x:Key="L.Set.SecurityMonitors">SECURITY MONITORS</sys:String>
+    <sys:String x:Key="L.Set.MonUsageAnomalies">Usage anomalies (spikes, upload-heavy apps, new countries, odd hours)</sys:String>
+    <sys:String x:Key="L.Set.MonNewDevices">New device on network</sys:String>
+    <sys:String x:Key="L.Set.MonDnsChanges">DNS server changes</sys:String>
+    <sys:String x:Key="L.Set.MonHostsFile">Hosts file changes</sys:String>
+    <sys:String x:Key="L.Set.MonArpSpoofing">ARP spoofing (gateway MAC changes)</sys:String>
+    <sys:String x:Key="L.Set.MonRdp">Remote Desktop (RDP) connections</sys:String>
+    <sys:String x:Key="L.Set.ShowNotifications">Show desktop notifications</sys:String>
+    <sys:String x:Key="L.Set.Resolution">RESOLUTION</sys:String>
+    <sys:String x:Key="L.Set.ResolveHosts">Resolve host names (reverse DNS)</sys:String>
+    <sys:String x:Key="L.Set.ResolveGeoIp">Resolve countries (GeoIP)</sys:String>
+    <sys:String x:Key="L.Set.DataPlan">DATA PLAN</sys:String>
+    <sys:String x:Key="L.Set.DataPlanEnable">Enable monthly data plan</sys:String>
+    <sys:String x:Key="L.Set.DataPlanLimit">Limit (GB)</sys:String>
+    <sys:String x:Key="L.Set.DataPlanResetDay">Reset day</sys:String>
+    <sys:String x:Key="L.Set.History">HISTORY</sys:String>
+    <sys:String x:Key="L.Set.HistoryDesc">Per-minute history is pruned after this many days to keep the database small; compact daily rollups are kept much longer for long-term trends and anomaly baselines. Set to 0 to keep all minute-level history.</sys:String>
+    <sys:String x:Key="L.Set.HistoryKeepFor">Keep minutes for</sys:String>
+    <sys:String x:Key="L.Set.HistoryDays">days</sys:String>
+    <sys:String x:Key="L.Set.Integrations">INTEGRATIONS</sys:String>
+    <sys:String x:Key="L.Set.VtTitle">VirusTotal file reputation</sys:String>
+    <sys:String x:Key="L.Set.VtDesc">Optional. Paste your own free VirusTotal API key to show a per-app reputation column on the Firewall screen. OpenWire hashes each application binary and looks the digest up — the file itself is never uploaded. Leave empty to disable.</sys:String>
+    <sys:String x:Key="L.Set.VtApiKey">API key</sys:String>
+    <sys:String x:Key="L.Set.VtGetKey">Get a free key at virustotal.com</sys:String>
+    <sys:String x:Key="L.Set.Engine">ENGINE</sys:String>
+    <sys:String x:Key="L.Set.EngineInfoFmt">Engine {0} · {1} · firewall {2} · GeoIP {3}</sys:String>
+    <sys:String x:Key="L.Set.FwEnabled">enabled</sys:String>
+    <sys:String x:Key="L.Set.FwUnavailable">unavailable</sys:String>
+    <sys:String x:Key="L.Set.GeoLoaded">loaded</sys:String>
+    <sys:String x:Key="L.Set.GeoNotInstalled">not installed</sys:String>
+    <sys:String x:Key="L.Set.Saved">Saved ✓</sys:String>
+    <sys:String x:Key="L.Set.SaveChanges">Save changes</sys:String>
+</ResourceDictionary>

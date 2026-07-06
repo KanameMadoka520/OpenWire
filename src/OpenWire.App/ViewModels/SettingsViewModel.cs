@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OpenWire.App.Services;
+using OpenWire.App.Util;
 using OpenWire.Core.Models;
 
 namespace OpenWire.App.ViewModels;
@@ -28,8 +29,11 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private string _engineInfo = "";
     [ObservableProperty] private string _savedText = "";
 
-    /// <summary>UI skin: "Minimal" or "Pencil". Changing it restarts the app to re-skin.</summary>
+    /// <summary>UI skin (Minimal / Pencil / BerryDay / BerryNight). Live-switched.</summary>
     [ObservableProperty] private string _theme = ThemeManager.Read();
+
+    /// <summary>UI language (English / SimplifiedChinese / TraditionalChinese). Live-switched.</summary>
+    [ObservableProperty] private string _language = LangManager.Read();
 
     /// <summary>Raised after settings are persisted, so the shell can react live
     /// (tray notifications / minimize-to-tray preferences).</summary>
@@ -37,9 +41,11 @@ public partial class SettingsViewModel : ObservableObject
 
     public SettingsViewModel(EngineClient client) => _client = client;
 
-    // Fired only when the user actually picks a different skin (EnumMatchConverter.
+    // Fired only when the user actually picks a different skin/language (EnumMatchConverter.
     // ConvertBack never writes on the initial source→target binding sync).
-    partial void OnThemeChanged(string value) => ThemeManager.SwitchAndRestart(value);
+    partial void OnThemeChanged(string value) => ThemeManager.Switch(value);
+
+    partial void OnLanguageChanged(string value) => LangManager.Switch(value);
 
     public async Task LoadAsync()
     {
@@ -61,9 +67,10 @@ public partial class SettingsViewModel : ObservableObject
         VirusTotalApiKey = s.VirusTotalApiKey;
 
         var hello = await _client.HelloAsync();
-        EngineInfo = $"Engine {hello.EngineVersion} · {hello.MachineName} · " +
-                     $"firewall {(hello.CanEnforceFirewall ? "enabled" : "unavailable")} · " +
-                     $"GeoIP {(hello.GeoIpAvailable ? "loaded" : "not installed")}";
+        EngineInfo = string.Format(Loc.S("L.Set.EngineInfoFmt"),
+            hello.EngineVersion, hello.MachineName,
+            hello.CanEnforceFirewall ? Loc.S("L.Set.FwEnabled") : Loc.S("L.Set.FwUnavailable"),
+            hello.GeoIpAvailable ? Loc.S("L.Set.GeoLoaded") : Loc.S("L.Set.GeoNotInstalled"));
     }
 
     [RelayCommand]
@@ -86,7 +93,7 @@ public partial class SettingsViewModel : ObservableObject
 
         await _client.SetSettingsAsync(_settings);
         Saved?.Invoke(_settings);
-        SavedText = "Saved ✓";
+        SavedText = Loc.S("L.Set.Saved");
         await Task.Delay(2000);
         SavedText = "";
     }

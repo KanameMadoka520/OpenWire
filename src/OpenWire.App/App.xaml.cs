@@ -23,7 +23,8 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
-        // Apply the chosen skin (Minimal / Pencil) before any window is created.
+        // Apply the chosen language + skin before any window is created.
+        LangManager.Apply(this, LangManager.Read());
         ThemeManager.Apply(this, ThemeManager.Read());
 
         // Never let a stray background/UI exception take down the whole app.
@@ -39,11 +40,7 @@ public partial class App : Application
         _tray.OpenRequested += () => Dispatcher.Invoke(ShowMainWindow);
         _tray.ExitRequested += () => Dispatcher.Invoke(Shutdown);
 
-        _window.StateChanged += (_, _) =>
-        {
-            if (_window.WindowState == WindowState.Minimized && _minimizeToTray)
-                _window.Hide();
-        };
+        HookWindow(_window);
 
         // Live preferences: read on (re)connect and whenever settings are saved.
         Client.ConnectionChanged += connected => { if (connected) _ = RefreshPrefsAsync(); };
@@ -61,6 +58,55 @@ public partial class App : Application
 
         _window.Show();
         Client.Start();
+    }
+
+    private void HookWindow(MainWindow w)
+    {
+        w.StateChanged += (_, _) =>
+        {
+            if (w.WindowState == WindowState.Minimized && _minimizeToTray)
+                w.Hide();
+        };
+    }
+
+    /// <summary>
+    /// Re-merge the language + skin dictionaries and rebuild the main window in
+    /// place (same view-models, same position). StaticResource lookups resolve at
+    /// XAML load time, so a fresh window is what makes new dictionaries take
+    /// everywhere — this is live theme/language switching without an app restart
+    /// (the engine and the tray keep running).
+    /// </summary>
+    public void ReskinMainWindow() => Dispatcher.BeginInvoke(ReskinMainWindowCore);
+
+    private void ReskinMainWindowCore()
+    {
+        // Deferred to the dispatcher: the switch is triggered from a radio-button
+        // event inside the old window — closing it mid-routed-event is asking for
+        // re-entrancy trouble.
+        if (_window is null) return;
+        var old = _window;
+        var vm = old.DataContext;
+
+        Resources.MergedDictionaries.Clear();
+        LangManager.Apply(this, LangManager.Read());
+        ThemeManager.Apply(this, ThemeManager.Read());
+
+        var w = new MainWindow
+        {
+            DataContext = vm,
+            WindowStartupLocation = WindowStartupLocation.Manual,
+            Left = old.Left,
+            Top = old.Top,
+            Width = old.Width,
+            Height = old.Height,
+        };
+        if (old.WindowState == WindowState.Maximized) w.WindowState = WindowState.Maximized;
+
+        _window = w;
+        MainWindow = w;
+        HookWindow(w);
+        w.Show();
+        old.Close();
     }
 
     private async Task RefreshPrefsAsync()
