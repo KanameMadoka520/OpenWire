@@ -12,7 +12,10 @@ internal static class Program
 {
     private static async Task<int> Main(string[] args)
     {
-        Console.OutputEncoding = System.Text.Encoding.UTF8;
+        // WinExe: no console is attached, so setting OutputEncoding throws — ignore
+        // it and let the WriteLine banner/logs below no-op. When launched from a
+        // terminal (dev / --selftest) a console is present and this succeeds.
+        try { Console.OutputEncoding = System.Text.Encoding.UTF8; } catch { }
         PrintBanner();
 
         string dataDir = ResolveDataDir(args);

@@ -12,13 +12,17 @@ namespace OpenWire.Service.Engine;
 [SupportedOSPlatform("windows")]
 public sealed class HardwareMonitor : IDisposable
 {
-    private const int MaxHistory = 300; // 5 minutes @ 1 Hz
+    /// <summary>Sample period in ms. 4 Hz (250 ms) so the live graphs advance in small,
+    /// frequent steps that read as continuous instead of a once-a-second jump.</summary>
+    private const int SampleIntervalMs = 250;
+
+    private const int MaxHistory = 5 * 60 * 1000 / SampleIntervalMs + 20; // 5 min @ 4 Hz + margin
 
     private readonly object _lock = new();
     private readonly Queue<HardwareSample> _history = new();
 
-    /// <summary>How often (in 1 Hz ticks) the GPU counter instance lists are re-enumerated.</summary>
-    private const int GpuRefreshTicks = 5;
+    /// <summary>How often (in ticks) the GPU counter instance lists are re-enumerated (~5 s).</summary>
+    private const int GpuRefreshTicks = 5000 / SampleIntervalMs;
 
     private PerformanceCounter? _cpu;
     private PerformanceCounter? _diskRead;
@@ -49,7 +53,7 @@ public sealed class HardwareMonitor : IDisposable
 
     public void Start()
     {
-        _timer = new Timer(_ => Sample(), null, 500, 1000);
+        _timer = new Timer(_ => Sample(), null, 500, SampleIntervalMs);
         _procs.Start();
     }
 

@@ -9,7 +9,9 @@ namespace OpenWire.App.Views;
 public partial class HardwareView : UserControl
 {
     private HardwareViewModel? _vm;
-    private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(1) };
+    // 4 Hz to match the engine's sample rate: frequent, fine graph updates read as a
+    // continuous scroll rather than a once-a-second step.
+    private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(250) };
 
     public HardwareView()
     {

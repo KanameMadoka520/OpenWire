@@ -1,7 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
+    <!-- WinExe (Windows subsystem) so the elevated engine runs silently in the
+         background with no console window. It's a headless service started by the
+         app / run.ps1 and stopped by process-kill; the main loop blocks on a
+         CancellationToken, not console input, so losing the console is safe.
+         Console.WriteLine calls become harmless no-ops. -->
+    <OutputType>WinExe</OutputType>
     <TargetFramework>net9.0-windows</TargetFramework>
     <AssemblyName>OpenWire.Service</AssemblyName>
     <RootNamespace>OpenWire.Service</RootNamespace>

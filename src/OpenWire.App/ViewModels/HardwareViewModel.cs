@@ -67,10 +67,10 @@ public partial class HardwareViewModel : ObservableObject
 
     // Rebuilding the ~40-row process table swaps 40 view-models (icon lookups +
     // row re-binds) on the UI thread — the same thread that drives the graph
-    // scroll. Doing that every second hitches the scroll right at each 1 s sample
-    // boundary. The numbers and graphs stay at 1 Hz; the table refreshes every
-    // second poll (~2 s, matching GlassWire) so the scroll runs uncontended.
-    private const int ProcRebuildEveryNthTick = 2;
+    // scroll. Doing that every poll would hitch the scroll. Numbers and graphs
+    // refresh every 4 Hz poll; the table refreshes every 8th (~2 s, matching
+    // GlassWire) so the scroll runs uncontended.
+    private const int ProcRebuildEveryNthTick = 8;
     private int _tick;
 
     /// <summary>Raised each poll so the view can feed the four metric graphs.</summary>

@@ -43,8 +43,9 @@ public sealed class MetricGraph : FrameworkElement
     public const double WindowSeconds = 300;
 
     /// <summary>Seconds the live view trails real time; must exceed the sample
-    /// interval (1 s) plus delivery jitter so the right edge never runs dry.</summary>
-    public const double DisplayDelay = 1.75;
+    /// interval (0.25 s @ 4 Hz) plus delivery jitter so the right edge never runs
+    /// dry. Kept short so the graph stays close to real time.</summary>
+    public const double DisplayDelay = 1.0;
 
     private readonly List<Pt> _points = new();
     private bool _bytes;
