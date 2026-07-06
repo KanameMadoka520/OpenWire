@@ -1,6 +1,6 @@
-using System.Linq;
 using System.Windows.Controls;
 using System.Windows.Threading;
+using OpenWire.App.Controls;
 using OpenWire.App.ViewModels;
 using OpenWire.Core.Models;
 
@@ -36,23 +36,35 @@ public partial class HardwareView : UserControl
 
     private void OnSnapshot(HardwareSnapshot hw)
     {
-        CpuGraph.SetValues(hw.History.Select(h => h.CpuPercent).ToList(), bytes: false);
-        MemGraph.SetValues(hw.History.Select(h => h.MemoryPercent).ToList(), bytes: false);
-        DiskGraph.SetValues(hw.History.Select(h => h.DiskBytesPerSec).ToList(), bytes: true);
-        GpuGraph.SetValues(hw.History.Select(h => h.GpuPercent).ToList(), bytes: false);
-
-        // time axis: 7 evenly-spaced absolute times spanning the history window
-        if (hw.History.Count >= 2)
+        // One shared timestamp array (epoch seconds) feeds all four scrolling graphs.
+        int n = hw.History.Count;
+        var times = new double[n];
+        var cpu = new double[n];
+        var mem = new double[n];
+        var disk = new double[n];
+        var gpu = new double[n];
+        for (int i = 0; i < n; i++)
         {
-            var start = hw.History[0].Time.ToLocalTime();
-            var end = hw.History[^1].Time.ToLocalTime();
-            var labels = new string[7];
-            for (int i = 0; i < 7; i++)
-            {
-                var t = start + (end - start) * (i / 6.0);
-                labels[i] = t.ToString("HH:mm:ss");
-            }
-            TimeAxis.ItemsSource = labels;
+            var s = hw.History[i];
+            times[i] = s.Time.ToUnixTimeMilliseconds() / 1000.0;
+            cpu[i] = s.CpuPercent;
+            mem[i] = s.MemoryPercent;
+            disk[i] = s.DiskBytesPerSec;
+            gpu[i] = s.GpuPercent;
         }
+        CpuGraph.SetSamples(times, cpu, bytes: false);
+        MemGraph.SetSamples(times, mem, bytes: false);
+        DiskGraph.SetSamples(times, disk, bytes: true);
+        GpuGraph.SetSamples(times, gpu, bytes: false);
+
+        // Time axis: 7 evenly-spaced absolute times across the displayed 5-minute
+        // window. The graphs scroll a fixed window ending at now - DisplayDelay,
+        // regardless of how much wall time the sample buffer happens to span.
+        var end = DateTimeOffset.Now - TimeSpan.FromSeconds(MetricGraph.DisplayDelay);
+        var start = end - TimeSpan.FromSeconds(MetricGraph.WindowSeconds);
+        var labels = new string[7];
+        for (int i = 0; i < 7; i++)
+            labels[i] = (start + (end - start) * (i / 6.0)).ToString("HH:mm:ss");
+        TimeAxis.ItemsSource = labels;
     }
 }

@@ -16,8 +16,8 @@
         </Grid.RowDefinitions>
 
         <Grid Grid.Row="0" Margin="0,0,0,8">
-            <TextBlock Text="Hardware resources" Style="{StaticResource H1}" VerticalAlignment="Center" />
-            <TextBlock Text="Last 5 minutes" Foreground="{StaticResource TextSecondary}" FontSize="12" HorizontalAlignment="Right" VerticalAlignment="Center" />
+            <TextBlock Text="{StaticResource L.Hw.Title}" Style="{StaticResource H1}" VerticalAlignment="Center" />
+            <TextBlock Text="{StaticResource L.Hw.Last5Minutes}" Foreground="{StaticResource TextSecondary}" FontSize="12" HorizontalAlignment="Right" VerticalAlignment="Center" />
         </Grid>
 
         <Grid Grid.Row="1">
@@ -28,19 +28,19 @@
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
             <DockPanel Grid.Row="0" Margin="0,0,0,4">
-                <TextBlock DockPanel.Dock="Top" Text="CPU" Style="{StaticResource TableHeaderText}" Margin="2,0,0,2" />
+                <TextBlock DockPanel.Dock="Top" Text="{StaticResource L.Hw.Cpu}" Style="{StaticResource TableHeaderText}" Margin="2,0,0,2" />
                 <ctrl:MetricGraph x:Name="CpuGraph" />
             </DockPanel>
             <DockPanel Grid.Row="1" Margin="0,0,0,4">
-                <TextBlock DockPanel.Dock="Top" Text="MEMORY" Style="{StaticResource TableHeaderText}" Margin="2,0,0,2" />
+                <TextBlock DockPanel.Dock="Top" Text="{StaticResource L.Hw.Memory}" Style="{StaticResource TableHeaderText}" Margin="2,0,0,2" />
                 <ctrl:MetricGraph x:Name="MemGraph" />
             </DockPanel>
             <DockPanel Grid.Row="2" Margin="0,0,0,4">
-                <TextBlock DockPanel.Dock="Top" Text="DISK TRANSFER" Style="{StaticResource TableHeaderText}" Margin="2,0,0,2" />
+                <TextBlock DockPanel.Dock="Top" Text="{StaticResource L.Hw.DiskTransfer}" Style="{StaticResource TableHeaderText}" Margin="2,0,0,2" />
                 <ctrl:MetricGraph x:Name="DiskGraph" />
             </DockPanel>
             <DockPanel Grid.Row="3" Margin="0,0,0,4">
-                <TextBlock DockPanel.Dock="Top" Text="GPU" Style="{StaticResource TableHeaderText}" Margin="2,0,0,2" />
+                <TextBlock DockPanel.Dock="Top" Text="{StaticResource L.Hw.Gpu}" Style="{StaticResource TableHeaderText}" Margin="2,0,0,2" />
                 <ctrl:MetricGraph x:Name="GpuGraph" />
             </DockPanel>
         </Grid>
@@ -61,27 +61,27 @@
             <UniformGrid Rows="1" Columns="6">
                 <StackPanel HorizontalAlignment="Center">
                     <TextBlock Style="{StaticResource Mono}" FontSize="19" FontWeight="SemiBold" HorizontalAlignment="Center" Text="{Binding CpuText}" />
-                    <TextBlock Text="CPU usage" Style="{StaticResource Caption}" HorizontalAlignment="Center" />
+                    <TextBlock Text="{StaticResource L.Hw.CpuUsage}" Style="{StaticResource Caption}" HorizontalAlignment="Center" />
                 </StackPanel>
                 <StackPanel HorizontalAlignment="Center">
                     <TextBlock Style="{StaticResource Mono}" FontSize="19" FontWeight="SemiBold" HorizontalAlignment="Center" Text="{Binding MemoryText}" />
-                    <TextBlock Text="Memory used" Style="{StaticResource Caption}" HorizontalAlignment="Center" />
+                    <TextBlock Text="{StaticResource L.Hw.MemoryUsed}" Style="{StaticResource Caption}" HorizontalAlignment="Center" />
                 </StackPanel>
                 <StackPanel HorizontalAlignment="Center">
                     <TextBlock Style="{StaticResource Mono}" FontSize="19" FontWeight="SemiBold" HorizontalAlignment="Center" Text="{Binding DiskReadText}" />
-                    <TextBlock Text="Disk read" Style="{StaticResource Caption}" HorizontalAlignment="Center" />
+                    <TextBlock Text="{StaticResource L.Hw.DiskRead}" Style="{StaticResource Caption}" HorizontalAlignment="Center" />
                 </StackPanel>
                 <StackPanel HorizontalAlignment="Center">
                     <TextBlock Style="{StaticResource Mono}" FontSize="19" FontWeight="SemiBold" HorizontalAlignment="Center" Text="{Binding DiskWriteText}" />
-                    <TextBlock Text="Disk write" Style="{StaticResource Caption}" HorizontalAlignment="Center" />
+                    <TextBlock Text="{StaticResource L.Hw.DiskWrite}" Style="{StaticResource Caption}" HorizontalAlignment="Center" />
                 </StackPanel>
                 <StackPanel HorizontalAlignment="Center">
                     <TextBlock Style="{StaticResource Mono}" FontSize="19" FontWeight="SemiBold" HorizontalAlignment="Center" Text="{Binding GpuText}" />
-                    <TextBlock Text="GPU usage" Style="{StaticResource Caption}" HorizontalAlignment="Center" />
+                    <TextBlock Text="{StaticResource L.Hw.GpuUsage}" Style="{StaticResource Caption}" HorizontalAlignment="Center" />
                 </StackPanel>
                 <StackPanel HorizontalAlignment="Center">
                     <TextBlock Style="{StaticResource Mono}" FontSize="19" FontWeight="SemiBold" HorizontalAlignment="Center" Text="{Binding GpuMemoryText}" />
-                    <TextBlock Text="GPU memory" Style="{StaticResource Caption}" HorizontalAlignment="Center" />
+                    <TextBlock Text="{StaticResource L.Hw.GpuMemory}" Style="{StaticResource Caption}" HorizontalAlignment="Center" />
                 </StackPanel>
             </UniformGrid>
         </Border>
