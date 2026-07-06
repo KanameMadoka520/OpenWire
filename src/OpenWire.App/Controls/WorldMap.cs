@@ -406,7 +406,7 @@ public sealed class WorldMap : FrameworkElement
             var geo = ProjectGlobe(c, slat0, clat0);
             if (geo is null) continue;
             Brush fill = _traffic.TryGetValue(c.Iso, out var bytes) && !string.IsNullOrEmpty(c.Iso)
-                ? ShadeBrush(pal.Accent, bytes, 0.32, 0.95, lnMax) : pal.LandGlobe;
+                ? LandShade(pal.LandBase, pal.Accent, bytes, lnMax) : pal.LandGlobe;
             dc.DrawGeometry(fill, coast, geo);
         }
         if (_hover is not null)
@@ -538,6 +538,22 @@ public sealed class WorldMap : FrameworkElement
         return b;
     }
 
+    /// <summary>Opaque land fill that deepens from the pale <paramref name="baseColor"/>
+    /// toward the accent as traffic grows — so the globe reads light-red at rest and
+    /// saturates red with more traffic, over the neutral grey ocean.</summary>
+    private static Brush LandShade(Color baseColor, Color accent, long bytes, double lnMax)
+    {
+        double t = lnMax > 0 ? Math.Log(1 + bytes) / lnMax : 0;
+        double f = 0.22 + 0.78 * t; // any traffic is clearly deeper than the base
+        var c = Color.FromRgb(
+            (byte)(baseColor.R + (accent.R - baseColor.R) * f),
+            (byte)(baseColor.G + (accent.G - baseColor.G) * f),
+            (byte)(baseColor.B + (accent.B - baseColor.B) * f));
+        var b = new SolidColorBrush(c);
+        b.Freeze();
+        return b;
+    }
+
     private void DrawLegend(DrawingContext dc, double x, double y, Palette pal, double dpi)
     {
         const double lw = 120, lh = 8;
@@ -577,7 +593,7 @@ public sealed class WorldMap : FrameworkElement
     /// <summary>Skin-aware colours pulled once per render.</summary>
     private sealed class Palette
     {
-        public readonly Color Accent, PanelColor, OceanLight, OceanDark;
+        public readonly Color Accent, PanelColor, OceanLight, OceanDark, LandBase;
         public readonly SolidColorBrush AccentBrush, Land, LandGlobe, Coast, Border, Muted, Strong, Primary;
 
         public Palette(FrameworkElement e)
@@ -586,18 +602,20 @@ public sealed class WorldMap : FrameworkElement
             PanelColor = Res("BgPanelColor", Colors.White);
             AccentBrush = Frozen(Accent);
             Land = Frozen(Res("BgSubtleColor", Color.FromRgb(0xEC, 0xEE, 0xF1)));
-            LandGlobe = Frozen(Res("BgElevatedColor", Color.FromRgb(0xF4, 0xF6, 0xF8)));
+            // Globe land base: a pale tint of the accent (light red in the Berry skins,
+            // light blue elsewhere) that deepens toward the accent with traffic.
+            LandBase = Blend(Colors.White, Accent, 0.16);
+            LandGlobe = Frozen(LandBase);
             Coast = Frozen(Res("BorderStrongColor", Color.FromRgb(0x8B, 0x92, 0x9B)));
             Border = Frozen(Res("BorderColor", Color.FromRgb(0xD3, 0xD8, 0xDE)));
             Muted = Frozen(Res("TextMutedColor", Color.FromRgb(0x79, 0x81, 0x8B)));
             Strong = Frozen(Res("TextSecondaryColor", Color.FromRgb(0x52, 0x59, 0x63)));
             Primary = Frozen(Res("TextPrimaryColor", Color.FromRgb(0x23, 0x27, 0x2D)));
-            // A soft, cool water tint — deliberately NOT derived from the accent, whose
-            // red in the Berry skins turned the globe ocean an alarming red. A gentle
-            // light blue-grey reads as water and stays easy on the eyes in every theme.
-            var water = Color.FromRgb(0xBE, 0xD3, 0xE1);
-            OceanLight = Blend(water, Colors.White, 0.34);
-            OceanDark = water;
+            // A soft, light neutral grey ocean — deliberately NOT derived from the accent
+            // (whose red in the Berry skins made the globe alarming) and kept desaturated
+            // (no blue cast) so it stays quiet under the pale-red land in every theme.
+            OceanLight = Color.FromRgb(0xEC, 0xEC, 0xED);
+            OceanDark = Color.FromRgb(0xDA, 0xDA, 0xDC);
         }
 
         private static SolidColorBrush Frozen(Color c) { var b = new SolidColorBrush(c); b.Freeze(); return b; }
