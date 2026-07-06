@@ -181,8 +181,14 @@
     <sys:String x:Key="L.Hw.Processes">进程</sys:String>
     <sys:String x:Key="L.Hw.ColApplication">应用程序</sys:String>
     <sys:String x:Key="L.Hw.ColDisk">磁盘</sys:String>
-    <sys:String x:Key="L.Hw.TogglePanel">显示或隐藏进程列表</sys:String>
-    <sys:String x:Key="L.Hw.HidePanel">隐藏进程列表</sys:String>
+    <sys:String x:Key="L.Hw.TogglePanel">显示或隐藏侧栏</sys:String>
+    <sys:String x:Key="L.Hw.HidePanel">隐藏侧栏</sys:String>
+    <sys:String x:Key="L.Hw.ModeProcesses">进程资源使用</sys:String>
+    <sys:String x:Key="L.Hw.ModeResources">硬件资源使用情况</sys:String>
+    <sys:String x:Key="L.Hw.ColUsage">使用率</sys:String>
+    <sys:String x:Key="L.Hw.ResCpu">中央处理器</sys:String>
+    <sys:String x:Key="L.Hw.ResMemory">内存</sys:String>
+    <sys:String x:Key="L.Hw.ResDisk">磁盘</sys:String>
 
     <!-- scanner -->
     <sys:String x:Key="L.Scan.SearchDevices">搜索设备</sys:String>

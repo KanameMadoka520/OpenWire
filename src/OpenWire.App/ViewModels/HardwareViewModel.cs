@@ -3,6 +3,7 @@ using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OpenWire.App.Services;
+using OpenWire.App.Util;
 using OpenWire.Core.Models;
 using OpenWire.Core.Util;
 
@@ -41,8 +42,37 @@ public sealed class ProcResRowVM
     }
 }
 
+/// <summary>One physical-component row (CPU / memory / a GPU / a disk) for the
+/// "hardware resource usage" list. Composes a localized category + a model line.</summary>
+public sealed class HwResRowVM
+{
+    public string Kind { get; }
+    public string Category { get; }
+    public string Model { get; }
+    public string PercentText { get; }
+
+    public HwResRowVM(HardwareResourceRow r)
+    {
+        Kind = r.Kind;
+        Category = r.Kind switch
+        {
+            "cpu" => Loc.S("L.Hw.ResCpu"),
+            "memory" => Loc.S("L.Hw.ResMemory"),
+            "gpu" => $"GPU {r.Detail}",
+            "disk" => $"{Loc.S("L.Hw.ResDisk")} {r.Detail}",
+            _ => r.Kind,
+        };
+        // Disk drives shown as "(C: F:)"; CPU/GPU show the hardware model verbatim.
+        Model = r.Kind == "disk"
+            ? (r.Name.Length > 0 ? $"({r.Name})" : "")
+            : r.Name;
+        PercentText = r.Percent.HasValue ? $"{r.Percent.Value:0} %" : "—";
+    }
+}
+
 /// <summary>Hardware Resources tab — CPU / memory / disk / GPU telemetry, plus a
-/// GlassWire-style per-process resource table on the left.</summary>
+/// GlassWire-style per-process resource table on the left (switchable to a per-component
+/// "hardware resource usage" list).</summary>
 public partial class HardwareViewModel : ObservableObject
 {
     private readonly EngineClient _client;
@@ -59,6 +89,12 @@ public partial class HardwareViewModel : ObservableObject
     /// contents are reconciled in place each poll so the list doesn't flash or lose
     /// its scroll position every second.</summary>
     public ObservableCollection<ProcResRowVM> Processes { get; } = new();
+
+    /// <summary>Per-component rows for the "hardware resource usage" list.</summary>
+    public ObservableCollection<HwResRowVM> Resources { get; } = new();
+
+    /// <summary>Left panel mode: false = process list, true = hardware-resource list.</summary>
+    [ObservableProperty] private bool _showResources;
 
     // Column sort. Default: CPU descending (busiest process on top).
     [ObservableProperty] private string _sortKey = "cpu";
@@ -103,7 +139,50 @@ public partial class HardwareViewModel : ObservableObject
         {
             _lastProcs = hw.Processes;
             RebuildProcesses();
+            RebuildResources(hw.Resources);
         }
+    }
+
+    /// <summary>Reconcile the hardware-resource rows in place (short, stable list).
+    /// GPUs that DXGI reports under one model (virtual display adapters share the render
+    /// GPU's name) are collapsed to one row per model — keeping the busiest — and
+    /// re-numbered, so the list reads cleanly instead of repeating "NVIDIA …" five times.</summary>
+    private void RebuildResources(List<HardwareResourceRow> src)
+    {
+        HardwareResourceRow? cpu = null, mem = null;
+        var gpus = new List<HardwareResourceRow>();
+        var seen = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        var disks = new List<HardwareResourceRow>();
+        foreach (var r in src)
+        {
+            switch (r.Kind)
+            {
+                case "cpu": cpu = r; break;
+                case "memory": mem = r; break;
+                case "gpu":
+                    if (seen.TryGetValue(r.Name, out int gi))
+                    {
+                        if ((r.Percent ?? -1) > (gpus[gi].Percent ?? -1)) gpus[gi] = r;
+                    }
+                    else { seen[r.Name] = gpus.Count; gpus.Add(r); }
+                    break;
+                default: disks.Add(r); break;
+            }
+        }
+
+        var flat = new List<HardwareResourceRow>();
+        if (cpu is not null) flat.Add(cpu);
+        if (mem is not null) flat.Add(mem);
+        for (int i = 0; i < gpus.Count; i++) { gpus[i].Detail = i.ToString(); flat.Add(gpus[i]); }
+        flat.AddRange(disks);
+
+        for (int i = 0; i < flat.Count; i++)
+        {
+            var vm = new HwResRowVM(flat[i]);
+            if (i < Resources.Count) Resources[i] = vm;
+            else Resources.Add(vm);
+        }
+        while (Resources.Count > flat.Count) Resources.RemoveAt(Resources.Count - 1);
     }
 
     /// <summary>Sort by a column; clicking the active column again reverses it.

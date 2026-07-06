@@ -42,6 +42,13 @@ public partial class HardwareView : UserControl
         if (_vm is not null) _vm.SnapshotUpdated -= OnSnapshot;
     }
 
+    /// <summary>Switch the left panel between the process list and the hardware-resource
+    /// list. Fires once during InitializeComponent (before the VM is attached) — guarded.</summary>
+    private void OnModeChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_vm is not null) _vm.ShowResources = ModeCombo.SelectedIndex == 1;
+    }
+
     /// <summary>Collapse / restore the left process panel so the graphs can use the
     /// full width. Both the header funnel and the panel's × call this.</summary>
     private void OnTogglePanel(object sender, System.Windows.RoutedEventArgs e)

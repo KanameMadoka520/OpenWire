@@ -182,8 +182,14 @@
     <sys:String x:Key="L.Hw.Processes">Processes</sys:String>
     <sys:String x:Key="L.Hw.ColApplication">APPLICATION</sys:String>
     <sys:String x:Key="L.Hw.ColDisk">DISK</sys:String>
-    <sys:String x:Key="L.Hw.TogglePanel">Show or hide the process list</sys:String>
-    <sys:String x:Key="L.Hw.HidePanel">Hide the process list</sys:String>
+    <sys:String x:Key="L.Hw.TogglePanel">Show or hide the panel</sys:String>
+    <sys:String x:Key="L.Hw.HidePanel">Hide the panel</sys:String>
+    <sys:String x:Key="L.Hw.ModeProcesses">Process resource usage</sys:String>
+    <sys:String x:Key="L.Hw.ModeResources">Hardware resource usage</sys:String>
+    <sys:String x:Key="L.Hw.ColUsage">USAGE</sys:String>
+    <sys:String x:Key="L.Hw.ResCpu">CPU</sys:String>
+    <sys:String x:Key="L.Hw.ResMemory">Memory</sys:String>
+    <sys:String x:Key="L.Hw.ResDisk">Disk</sys:String>
 
     <!-- scanner -->
     <sys:String x:Key="L.Scan.SearchDevices">Search devices</sys:String>

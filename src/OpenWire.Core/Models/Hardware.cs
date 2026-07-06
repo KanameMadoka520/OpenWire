@@ -38,6 +38,23 @@ public sealed class ProcessResourceRow
     public double DiskBytesPerSec { get; set; }
 }
 
+/// <summary>One physical resource (CPU / memory / a GPU / a disk) for the Hardware
+/// screen's "hardware resource usage" list.</summary>
+public sealed class HardwareResourceRow
+{
+    /// <summary>Category: "cpu" · "memory" · "gpu" · "disk". Drives the row icon.</summary>
+    public string Kind { get; set; } = string.Empty;
+
+    /// <summary>Display name, e.g. "AMD Ryzen 9 9950X3D" or "NVIDIA GeForce RTX 5090".</summary>
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>Secondary line, e.g. a GPU index "GPU 4" or a disk "SSD · Fixed".</summary>
+    public string Detail { get; set; } = string.Empty;
+
+    /// <summary>Utilisation 0..100, or null when a component reports no usage figure.</summary>
+    public double? Percent { get; set; }
+}
+
 /// <summary>Current resource readings plus a short rolling history for the graphs.</summary>
 public sealed class HardwareSnapshot
 {
@@ -54,6 +71,10 @@ public sealed class HardwareSnapshot
 
     /// <summary>Top processes by resource use, for the Hardware process table.</summary>
     public List<ProcessResourceRow> Processes { get; set; } = new();
+
+    /// <summary>Physical components (CPU, memory, each GPU, each disk) for the
+    /// "hardware resource usage" list.</summary>
+    public List<HardwareResourceRow> Resources { get; set; } = new();
 }
 
 /// <summary>Where the engine keeps its database, and how much space it uses.</summary>

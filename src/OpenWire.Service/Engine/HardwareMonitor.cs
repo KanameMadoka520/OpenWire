@@ -42,6 +42,15 @@ public sealed class HardwareMonitor : IDisposable
     private Timer? _timer;
     private readonly ProcessResourceMonitor _procs = new();
 
+    // ---- per-component inventory + utilisation for the "hardware resource usage" list ----
+    // "% Disk Time" per physical disk (instances like "0 C:", "1 D:"), busy % clamped 0..100.
+    private readonly Dictionary<string, PerformanceCounter> _diskBusy = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, double> _diskPct = new(StringComparer.OrdinalIgnoreCase);
+    // Utilisation per GPU adapter, keyed by LUID ("0x{high}_0x{low}"), matched to names below.
+    private readonly Dictionary<string, double> _gpuByLuid = new(StringComparer.OrdinalIgnoreCase);
+    // GPU adapters (name + LUID) from DXGI, refreshed with the counter lists.
+    private List<HardwareInventory.GpuAdapter> _gpuAdapters = new();
+
     public HardwareMonitor()
     {
         TryInit(ref _cpu, "Processor", "% Processor Time", "_Total");
@@ -49,6 +58,37 @@ public sealed class HardwareMonitor : IDisposable
         TryInit(ref _diskWrite, "PhysicalDisk", "Disk Write Bytes/sec", "_Total");
         RefreshGpuInstances();
         RefreshGpuMemoryInstances();
+        RefreshDiskInstances();
+        _gpuAdapters = HardwareInventory.EnumerateGpus();
+    }
+
+    /// <summary>Re-enumerate PhysicalDisk instances (per drive, e.g. "0 C:") for the
+    /// per-disk busy% list; "_Total" is excluded (it's the aggregate).</summary>
+    private void RefreshDiskInstances()
+    {
+        try
+        {
+            var cat = new PerformanceCounterCategory("PhysicalDisk");
+            var live = new HashSet<string>(cat.GetInstanceNames(), StringComparer.OrdinalIgnoreCase);
+            foreach (var stale in _diskBusy.Keys.Where(k => !live.Contains(k)).ToList())
+            {
+                _diskBusy[stale].Dispose();
+                _diskBusy.Remove(stale);
+            }
+            foreach (var inst in live)
+            {
+                if (inst.Equals("_Total", StringComparison.OrdinalIgnoreCase)) continue;
+                if (_diskBusy.ContainsKey(inst)) continue;
+                try
+                {
+                    var c = new PerformanceCounter("PhysicalDisk", "% Disk Time", inst);
+                    c.NextValue();
+                    _diskBusy[inst] = c;
+                }
+                catch { /* instance vanished */ }
+            }
+        }
+        catch { /* no disk counters */ }
     }
 
     public void Start()
@@ -139,27 +179,47 @@ public sealed class HardwareMonitor : IDisposable
         return i >= 0 ? instance[i..] : instance;
     }
 
+    /// <summary>Extract the adapter LUID key ("0x{high}_0x{low}") from a GPU Engine
+    /// instance name, to match DXGI's <see cref="HardwareInventory.GpuAdapter.LuidKey"/>.</summary>
+    private static string GpuLuidKey(string instance)
+    {
+        int i = instance.IndexOf("luid_", StringComparison.OrdinalIgnoreCase);
+        if (i < 0) return "";
+        int s = i + 5;
+        int e = instance.IndexOf("_phys", s, StringComparison.OrdinalIgnoreCase);
+        return e > s ? instance[s..e] : instance[s..];
+    }
+
     /// <summary>
     /// Overall GPU utilisation with Task Manager semantics: sum the per-process values within
     /// each (adapter, engine-type) group, then report the busiest group, clamped to 0..100.
-    /// Summing every instance instead would count each engine and each adapter (including
-    /// virtual ones such as remote-desktop encoders) on top of one another and read near 100%
-    /// on an idle machine.
+    /// Also fills <paramref name="perLuid"/> with each adapter's busiest engine group, so the
+    /// resource list can show utilisation per physical GPU.
     /// </summary>
-    private double SampleGpuUtilization()
+    private double SampleGpuUtilization(Dictionary<string, double> perLuid)
     {
         var groups = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+        var groupLuid = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var (inst, counter) in _gpu)
         {
             double v = SafeNext(counter);
             if (v <= 0) continue;
             string key = GpuGroupKey(inst);
             groups[key] = groups.TryGetValue(key, out double sum) ? sum + v : v;
+            groupLuid[key] = GpuLuidKey(inst);
         }
 
         double busiest = 0;
-        foreach (double g in groups.Values) busiest = Math.Max(busiest, g);
-        return Math.Clamp(busiest, 0, 100);
+        perLuid.Clear();
+        foreach (var (key, val) in groups)
+        {
+            double clamped = Math.Clamp(val, 0, 100);
+            busiest = Math.Max(busiest, clamped);
+            string luid = groupLuid[key];
+            if (luid.Length == 0) continue;
+            perLuid[luid] = perLuid.TryGetValue(luid, out double cur) ? Math.Max(cur, clamped) : clamped;
+        }
+        return busiest;
     }
 
     private void Sample()
@@ -174,12 +234,20 @@ public sealed class HardwareMonitor : IDisposable
                 _gpuTick = 0;
                 RefreshGpuInstances();
                 RefreshGpuMemoryInstances();
+                RefreshDiskInstances();
+                _gpuAdapters = HardwareInventory.EnumerateGpus();
             }
 
             double cpu = SafeNext(_cpu);
             double dr = SafeNext(_diskRead);
             double dw = SafeNext(_diskWrite);
-            double gpu = SampleGpuUtilization();
+            var perLuid = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+            double gpu = SampleGpuUtilization(perLuid);
+
+            // Per-disk busy% ("% Disk Time" can briefly exceed 100 under heavy queueing).
+            var diskPct = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+            foreach (var (inst, c) in _diskBusy)
+                diskPct[inst] = Math.Clamp(SafeNext(c), 0, 100);
 
             // Single-number GPU memory = dedicated usage of the busiest adapter (max, not
             // sum): summing would mix multiple physical GPUs — and virtual adapters — into
@@ -194,6 +262,10 @@ public sealed class HardwareMonitor : IDisposable
             {
                 _cpuV = cpu; _diskR = dr; _diskW = dw; _gpuV = gpu; _gpuMemV = gpuMem;
                 _memUsed = used; _memTotal = total; _memPct = memPct;
+                _gpuByLuid.Clear();
+                foreach (var kv in perLuid) _gpuByLuid[kv.Key] = kv.Value;
+                _diskPct.Clear();
+                foreach (var kv in diskPct) _diskPct[kv.Key] = kv.Value;
                 _history.Enqueue(new HardwareSample
                 {
                     Time = DateTimeOffset.UtcNow,
@@ -231,8 +303,44 @@ public sealed class HardwareMonitor : IDisposable
                 GpuMemoryUsedBytes = _gpuMemV,
                 History = _history.ToList(),
                 Processes = _procs.Snapshot(),
+                Resources = BuildResources(),
             };
         }
+    }
+
+    /// <summary>Build the CPU / memory / GPU / disk resource rows. Called under _lock.</summary>
+    private List<HardwareResourceRow> BuildResources()
+    {
+        var rows = new List<HardwareResourceRow>
+        {
+            new() { Kind = "cpu", Name = HardwareInventory.CpuName, Percent = _cpuV },
+            new() { Kind = "memory", Percent = _memPct },
+        };
+
+        // GPUs in DXGI order; utilisation matched by LUID (idle adapters report no figure).
+        if (_gpuAdapters.Count > 0)
+        {
+            for (int i = 0; i < _gpuAdapters.Count; i++)
+            {
+                var a = _gpuAdapters[i];
+                double? pct = _gpuByLuid.TryGetValue(a.LuidKey, out var u) ? u : null;
+                rows.Add(new HardwareResourceRow { Kind = "gpu", Name = a.Name, Detail = i.ToString(), Percent = pct });
+            }
+        }
+        else if (_gpuV > 0)
+        {
+            rows.Add(new HardwareResourceRow { Kind = "gpu", Name = "GPU", Percent = _gpuV });
+        }
+
+        // Physical disks: instance "0 C:" -> number "0", drives "C:".
+        foreach (var inst in _diskPct.Keys.OrderBy(k => k, StringComparer.OrdinalIgnoreCase))
+        {
+            int sp = inst.IndexOf(' ');
+            string num = sp > 0 ? inst[..sp] : inst;
+            string drives = sp > 0 ? inst[(sp + 1)..].Trim() : "";
+            rows.Add(new HardwareResourceRow { Kind = "disk", Name = drives, Detail = num, Percent = _diskPct[inst] });
+        }
+        return rows;
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -273,5 +381,6 @@ public sealed class HardwareMonitor : IDisposable
         _diskWrite?.Dispose();
         foreach (var c in _gpu.Values) c.Dispose();
         foreach (var c in _gpuMem.Values) c.Dispose();
+        foreach (var c in _diskBusy.Values) c.Dispose();
     }
 }

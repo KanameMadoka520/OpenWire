@@ -38,16 +38,25 @@
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
-                <Grid Grid.Row="0" Margin="2,0,0,4">
-                    <TextBlock Text="{StaticResource L.Hw.Processes}" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
+                <Grid Grid.Row="0" Margin="0,0,0,6">
+                    <ComboBox x:Name="ModeCombo" HorizontalAlignment="Left" VerticalAlignment="Center" FontSize="12.5"
+                              SelectedIndex="0" SelectionChanged="OnModeChanged" MinWidth="200">
+                        <ComboBoxItem Content="{StaticResource L.Hw.ModeProcesses}" />
+                        <ComboBoxItem Content="{StaticResource L.Hw.ModeResources}" />
+                    </ComboBox>
                     <Button HorizontalAlignment="Right" VerticalAlignment="Center" Width="26" Height="26" FontSize="12"
                             Style="{StaticResource IconBtn}" Content="&#xE711;" ToolTip="{StaticResource L.Hw.HidePanel}" Click="OnTogglePanel" />
+                </Grid>
+
+                <!-- Resource-list column header ("USAGE") — hardware-resource mode. -->
+                <Grid Grid.Row="1" Margin="0,0,16,0" Visibility="{Binding ShowResources, Converter={StaticResource BoolVis}}">
+                    <TextBlock Text="{StaticResource L.Hw.ColUsage}" Style="{StaticResource TableHeaderText}" HorizontalAlignment="Right" VerticalAlignment="Center" />
                 </Grid>
 
                 <!-- Clickable sort headers (label + a ▲/▼ arrow on the active column).
                      The 16px right margin reserves room for the rows' scrollbar so the
                      header columns stay aligned with the rows below. -->
-                <Grid Grid.Row="1" Margin="0,0,16,0">
+                <Grid Grid.Row="1" Margin="0,0,16,0" Visibility="{Binding ShowResources, Converter={StaticResource BoolVis}, ConverterParameter=invert}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" MinWidth="120" />
                         <ColumnDefinition Width="60" />
@@ -83,6 +92,7 @@
                 <!-- Rows: a ListBox virtualizes + recycles containers, so only the
                      visible slice of the ~40-process list is ever realized. -->
                 <ListBox Grid.Row="2" ItemsSource="{Binding Processes}" Background="Transparent" BorderThickness="0" Padding="0"
+                         Visibility="{Binding ShowResources, Converter={StaticResource BoolVis}, ConverterParameter=invert}"
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto"
                          VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
                          VirtualizingPanel.ScrollUnit="Pixel">
@@ -119,6 +129,43 @@
                                     <TextBlock Grid.Column="2" Style="{StaticResource Mono}" FontSize="12" Text="{Binding GpuText}" VerticalAlignment="Center" />
                                     <TextBlock Grid.Column="3" Style="{StaticResource Mono}" FontSize="12" Foreground="{StaticResource TextSecondary}" Text="{Binding MemoryText}" VerticalAlignment="Center" />
                                     <TextBlock Grid.Column="4" Style="{StaticResource Mono}" FontSize="12" Foreground="{StaticResource TextSecondary}" Text="{Binding DiskText}" VerticalAlignment="Center" />
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <!-- Hardware-resource list: CPU / memory / each GPU / each disk + usage%. -->
+                <ListBox Grid.Row="2" ItemsSource="{Binding Resources}" Background="Transparent" BorderThickness="0" Padding="0"
+                         Visibility="{Binding ShowResources, Converter={StaticResource BoolVis}}"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                            <Setter Property="Padding" Value="0" />
+                            <Setter Property="Focusable" Value="False" />
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ListBoxItem"><ContentPresenter /></ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Border BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1" Padding="0,9">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" MinWidth="120" />
+                                        <ColumnDefinition Width="64" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Category}" VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding Model}" Margin="8,0,0,0" VerticalAlignment="Center"
+                                                   Foreground="{StaticResource TextSecondary}" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="1" Style="{StaticResource Mono}" FontSize="12" HorizontalAlignment="Right"
+                                               Foreground="{StaticResource TextSecondary}" Text="{Binding PercentText}" VerticalAlignment="Center" />
                                 </Grid>
                             </Border>
                         </DataTemplate>

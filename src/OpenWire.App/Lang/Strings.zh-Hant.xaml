@@ -181,8 +181,14 @@
     <sys:String x:Key="L.Hw.Processes">處理程序</sys:String>
     <sys:String x:Key="L.Hw.ColApplication">應用程式</sys:String>
     <sys:String x:Key="L.Hw.ColDisk">磁碟</sys:String>
-    <sys:String x:Key="L.Hw.TogglePanel">顯示或隱藏處理程序清單</sys:String>
-    <sys:String x:Key="L.Hw.HidePanel">隱藏處理程序清單</sys:String>
+    <sys:String x:Key="L.Hw.TogglePanel">顯示或隱藏側欄</sys:String>
+    <sys:String x:Key="L.Hw.HidePanel">隱藏側欄</sys:String>
+    <sys:String x:Key="L.Hw.ModeProcesses">處理程序資源使用</sys:String>
+    <sys:String x:Key="L.Hw.ModeResources">硬體資源使用情況</sys:String>
+    <sys:String x:Key="L.Hw.ColUsage">使用率</sys:String>
+    <sys:String x:Key="L.Hw.ResCpu">中央處理器</sys:String>
+    <sys:String x:Key="L.Hw.ResMemory">記憶體</sys:String>
+    <sys:String x:Key="L.Hw.ResDisk">磁碟</sys:String>
 
     <!-- scanner -->
     <sys:String x:Key="L.Scan.SearchDevices">搜尋裝置</sys:String>
