@@ -36,6 +36,7 @@ public sealed class HardwareMonitor : IDisposable
     private double _cpuV, _memPct, _diskR, _diskW, _gpuV;
     private long _memUsed, _memTotal, _gpuMemV;
     private Timer? _timer;
+    private readonly ProcessResourceMonitor _procs = new();
 
     public HardwareMonitor()
     {
@@ -46,7 +47,11 @@ public sealed class HardwareMonitor : IDisposable
         RefreshGpuMemoryInstances();
     }
 
-    public void Start() => _timer = new Timer(_ => Sample(), null, 500, 1000);
+    public void Start()
+    {
+        _timer = new Timer(_ => Sample(), null, 500, 1000);
+        _procs.Start();
+    }
 
     private static void TryInit(ref PerformanceCounter? counter, string cat, string name, string inst)
     {
@@ -221,6 +226,7 @@ public sealed class HardwareMonitor : IDisposable
                 GpuPercent = _gpuV,
                 GpuMemoryUsedBytes = _gpuMemV,
                 History = _history.ToList(),
+                Processes = _procs.Snapshot(),
             };
         }
     }
@@ -257,6 +263,7 @@ public sealed class HardwareMonitor : IDisposable
     public void Dispose()
     {
         _timer?.Dispose();
+        _procs.Dispose();
         _cpu?.Dispose();
         _diskRead?.Dispose();
         _diskWrite?.Dispose();

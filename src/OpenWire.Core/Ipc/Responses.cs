@@ -49,6 +49,11 @@ public sealed class HardwareResponse : IpcMessage
     public HardwareSnapshot Hardware { get; set; } = new();
 }
 
+public sealed class StorageInfoResponse : IpcMessage
+{
+    public StorageInfo Storage { get; set; } = new();
+}
+
 public sealed class FirewallResponse : IpcMessage
 {
     public FirewallStatus Status { get; set; } = new();

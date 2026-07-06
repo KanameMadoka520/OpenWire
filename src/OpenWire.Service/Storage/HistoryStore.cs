@@ -14,13 +14,71 @@ public sealed class HistoryStore : IDisposable
     private readonly SqliteConnection _conn;
     private readonly object _lock = new();
 
+    /// <summary>Absolute path of the database file backing this store.</summary>
+    public string DbPath { get; }
+
     public HistoryStore(string dbPath)
     {
+        DbPath = dbPath;
         Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
         _conn = new SqliteConnection($"Data Source={dbPath};Cache=Shared");
         _conn.Open();
         Exec("PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA busy_timeout=3000;");
         CreateSchema();
+    }
+
+    /// <summary>Total bytes of the database (main file + WAL + SHM sidecars).</summary>
+    public long DatabaseBytes()
+    {
+        long total = 0;
+        foreach (var suffix in new[] { "", "-wal", "-shm" })
+        {
+            try { var fi = new FileInfo(DbPath + suffix); if (fi.Exists) total += fi.Length; }
+            catch { /* ignore */ }
+        }
+        return total;
+    }
+
+    /// <summary>Oldest retained per-minute record (UTC), or null when empty.</summary>
+    public DateTimeOffset? OldestRecordUtc()
+    {
+        lock (_lock)
+        {
+            try
+            {
+                using var cmd = _conn.CreateCommand();
+                cmd.CommandText = "SELECT MIN(bucket) FROM traffic_min";
+                var v = cmd.ExecuteScalar();
+                if (v is long b && b > 0) return DateTimeOffset.FromUnixTimeSeconds(b);
+            }
+            catch { /* table may not exist yet */ }
+            return null;
+        }
+    }
+
+    /// <summary>Flush the WAL back into the main file so it can be safely copied.</summary>
+    public void Checkpoint()
+    {
+        lock (_lock) { try { Exec("PRAGMA wal_checkpoint(TRUNCATE);"); } catch { } }
+    }
+
+    /// <summary>Delete recorded history (per <paramref name="mode"/>) and compact the file.</summary>
+    public void ClearData(ClearDataMode mode)
+    {
+        lock (_lock)
+        {
+            if (mode == ClearDataMode.MinuteHistory)
+            {
+                Exec("DELETE FROM traffic_min; DELETE FROM usage_app; DELETE FROM usage_host;");
+            }
+            else // AllHistory
+            {
+                Exec(@"DELETE FROM traffic_min;  DELETE FROM usage_app;      DELETE FROM usage_host;
+                       DELETE FROM traffic_day;  DELETE FROM usage_app_day;
+                       DELETE FROM host_meta;    DELETE FROM country_seen;   DELETE FROM devices;");
+            }
+            try { Exec("VACUUM;"); } catch { /* vacuum can fail under WAL; harmless */ }
+        }
     }
 
     private void CreateSchema()

@@ -143,6 +143,9 @@ public sealed class EngineClient : IDisposable
     public Task<InsightsResponse> GetInsightsAsync(GraphRange range) => RequestAsync<InsightsResponse>(new GetInsightsRequest { Range = range });
     public Task<ConnectionsResponse> GetConnectionsAsync() => RequestAsync<ConnectionsResponse>(new GetConnectionsRequest());
     public Task<HardwareResponse> GetHardwareAsync() => RequestAsync<HardwareResponse>(new GetHardwareRequest());
+    public Task<StorageInfoResponse> GetStorageInfoAsync() => RequestAsync<StorageInfoResponse>(new GetStorageInfoRequest());
+    public Task<StorageInfoResponse> SetStorageLocationAsync(string dir) => RequestAsync<StorageInfoResponse>(new SetStorageLocationRequest { NewDirectory = dir });
+    public Task<StorageInfoResponse> ClearDataAsync(ClearDataMode mode) => RequestAsync<StorageInfoResponse>(new ClearDataRequest { Mode = mode });
     public Task<FirewallResponse> GetFirewallAsync() => RequestAsync<FirewallResponse>(new GetFirewallRequest());
     public Task<OkResponse> SetFirewallModeAsync(FirewallMode mode) => RequestAsync<OkResponse>(new SetFirewallModeRequest { Mode = mode });
     public Task<OkResponse> SetAppBlockedAsync(string appId, string path, bool blockIn, bool blockOut)

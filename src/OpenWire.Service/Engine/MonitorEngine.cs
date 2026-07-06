@@ -74,8 +74,11 @@ public sealed class MonitorEngine : IAsyncDisposable
     public bool CanEnforceFirewall { get; private set; }
     public bool GeoIpAvailable => _geo.Available;
 
+    private readonly string _dataDir;
+
     public MonitorEngine(string dataDir)
     {
+        _dataDir = dataDir;
         _store = new HistoryStore(Path.Combine(dataDir, "openwire.db"));
         // A user-supplied MaxMind GeoLite2 wins; otherwise fall back to the DB-IP
         // Lite country database bundled beside the engine (CC-BY 4.0, see NOTICE).
@@ -208,8 +211,8 @@ public sealed class MonitorEngine : IAsyncDisposable
             GC.Collect(2, GCCollectionMode.Aggressive);
         }
 
-        // 6) scheduled device rescan
-        if (now - _lastDeviceScan > TimeSpan.FromMinutes(30))
+        // 6) scheduled device rescan (only when auto-scan is enabled)
+        if (_settings.AutoScanDevices && now - _lastDeviceScan > TimeSpan.FromMinutes(30))
             _ = RescanDevicesAsync(CancellationToken.None);
 
         // 7) rebuild status + broadcast tick
@@ -1193,6 +1196,64 @@ public sealed class MonitorEngine : IAsyncDisposable
         _reputation.SetApiKey(settings.VirusTotalApiKey);
         SetFirewallMode(settings.FirewallMode);
     }
+
+    // ---------------- storage management ----------------
+
+    public StorageInfo GetStorageInfo()
+    {
+        long free = 0;
+        try { free = new DriveInfo(Path.GetPathRoot(_dataDir)!).AvailableFreeSpace; } catch { }
+        return new StorageInfo
+        {
+            DataDirectory = _dataDir,
+            DatabaseBytes = _store.DatabaseBytes(),
+            FreeBytes = free,
+            OldestRecord = _store.OldestRecordUtc(),
+            RestartRequired = false,
+        };
+    }
+
+    /// <summary>Clear recorded history and compact the database in place.</summary>
+    public StorageInfo ClearData(ClearDataMode mode)
+    {
+        _store.ClearData(mode);
+        return GetStorageInfo();
+    }
+
+    /// <summary>
+    /// Stage a move of the database to a new directory. The live engine keeps using
+    /// the current file; the copy + the persisted pointer take effect on restart
+    /// (moving an open SQLite database out from under the engine is not safe).
+    /// </summary>
+    public StorageInfo RelocateStorage(string newDir)
+    {
+        var info = GetStorageInfo();
+        if (string.IsNullOrWhiteSpace(newDir)) return info;
+        newDir = Path.GetFullPath(newDir.Trim());
+        if (string.Equals(newDir, _dataDir, StringComparison.OrdinalIgnoreCase)) return info;
+
+        try
+        {
+            Directory.CreateDirectory(newDir);
+            _store.Checkpoint(); // fold the WAL in so the single .db file is complete
+            File.Copy(Path.Combine(_dataDir, "openwire.db"), Path.Combine(newDir, "openwire.db"), overwrite: true);
+            // Persist the pointer at the FIXED default location so startup finds it.
+            File.WriteAllText(DataDirPointerPath, newDir);
+            info.DataDirectory = newDir;
+            info.RestartRequired = true;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[storage] relocate failed: {ex.Message}");
+        }
+        return info;
+    }
+
+    /// <summary>Fixed pointer file recording where the data directory lives, so the
+    /// engine can find a relocated database on the next launch.</summary>
+    public static string DataDirPointerPath => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+        "OpenWire", "datadir.txt");
 
     // ---------------- helpers ----------------
 

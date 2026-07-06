@@ -215,6 +215,15 @@ public sealed class IpcServer : IAsyncDisposable
                     _engine.SetSettings(ss.Settings);
                     return new OkResponse();
 
+                case GetStorageInfoRequest:
+                    return new StorageInfoResponse { Storage = _engine.GetStorageInfo() };
+
+                case SetStorageLocationRequest sl:
+                    return new StorageInfoResponse { Storage = _engine.RelocateStorage(sl.NewDirectory) };
+
+                case ClearDataRequest cd:
+                    return new StorageInfoResponse { Storage = _engine.ClearData(cd.Mode) };
+
                 default:
                     return new ErrorResponse { Error = $"Unknown request: {request.GetType().Name}" };
             }

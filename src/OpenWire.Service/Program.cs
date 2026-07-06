@@ -92,6 +92,19 @@ internal static class Program
             if (args[i] is "--data" or "-d")
                 return args[i + 1];
 
+        // A datadir.txt pointer (written when the user relocates storage in Settings)
+        // overrides the default location, so a moved database is found on restart.
+        try
+        {
+            var pointer = OpenWire.Service.Engine.MonitorEngine.DataDirPointerPath;
+            if (File.Exists(pointer))
+            {
+                var dir = File.ReadAllText(pointer).Trim();
+                if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir)) return dir;
+            }
+        }
+        catch { /* fall back to the default */ }
+
         return Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
             "OpenWire");

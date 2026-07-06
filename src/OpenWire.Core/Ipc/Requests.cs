@@ -120,6 +120,21 @@ public sealed class ForgetDeviceRequest : IpcMessage
     public string DeviceId { get; set; } = string.Empty;
 }
 
+/// <summary>Fetch the storage location + database size.</summary>
+public sealed class GetStorageInfoRequest : IpcMessage { }
+
+/// <summary>Relocate the database to a new directory (takes effect after restart).</summary>
+public sealed class SetStorageLocationRequest : IpcMessage
+{
+    public string NewDirectory { get; set; } = string.Empty;
+}
+
+/// <summary>Clear recorded data (per-mode) and compact the database.</summary>
+public sealed class ClearDataRequest : IpcMessage
+{
+    public ClearDataMode Mode { get; set; } = ClearDataMode.MinuteHistory;
+}
+
 /// <summary>Fetch persisted settings.</summary>
 public sealed class GetSettingsRequest : IpcMessage { }
 

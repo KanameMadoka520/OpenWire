@@ -31,6 +31,9 @@ namespace OpenWire.Core.Ipc;
 [JsonDerivedType(typeof(ForgetDeviceRequest), "forgetDevice")]
 [JsonDerivedType(typeof(GetSettingsRequest), "getSettings")]
 [JsonDerivedType(typeof(SetSettingsRequest), "setSettings")]
+[JsonDerivedType(typeof(GetStorageInfoRequest), "getStorageInfo")]
+[JsonDerivedType(typeof(SetStorageLocationRequest), "setStorageLocation")]
+[JsonDerivedType(typeof(ClearDataRequest), "clearData")]
 // --- Responses (engine -> UI, correlated) ---
 [JsonDerivedType(typeof(HelloResponse), "helloResp")]
 [JsonDerivedType(typeof(StatusResponse), "statusResp")]
@@ -43,6 +46,7 @@ namespace OpenWire.Core.Ipc;
 [JsonDerivedType(typeof(AlertsResponse), "alertsResp")]
 [JsonDerivedType(typeof(DevicesResponse), "devicesResp")]
 [JsonDerivedType(typeof(SettingsResponse), "settingsResp")]
+[JsonDerivedType(typeof(StorageInfoResponse), "storageInfoResp")]
 [JsonDerivedType(typeof(OkResponse), "okResp")]
 [JsonDerivedType(typeof(ErrorResponse), "errorResp")]
 // --- Events (engine -> UI, unsolicited) ---

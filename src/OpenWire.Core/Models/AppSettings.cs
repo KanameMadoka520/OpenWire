@@ -23,6 +23,9 @@ public sealed class AppSettings
     // Which alert kinds are enabled. Absent key = enabled.
     public Dictionary<AlertKind, bool> EnabledAlerts { get; set; } = new();
 
+    /// <summary>Automatically rescan the LAN on a schedule (the Scanner's auto-scan toggle).</summary>
+    public bool AutoScanDevices { get; set; } = true;
+
     // Security monitors
     public bool MonitorNewDevices { get; set; } = true;
     public bool MonitorDnsChanges { get; set; } = true;
