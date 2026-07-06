@@ -38,3 +38,6 @@ $RECYCLE.BIN/
 *.db-shm
 GeoLite2-*.mmdb
 manuf.txt
+
+# session scratch work
+scratchpad/

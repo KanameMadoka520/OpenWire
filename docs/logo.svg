@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- OpenWire logo — pencil-sketch badge: an open wire rising into a traffic pulse.
+       Palette: paper #F7F4ED · graphite #2E3237 · signal red #E4232E -->
+
+  <!-- paper -->
+  <rect x="14" y="14" width="484" height="484" rx="104" fill="#F7F4ED"/>
+
+  <!-- hand-drawn double border -->
+  <rect x="26" y="26" width="460" height="460" rx="94" fill="none"
+        stroke="#2E3237" stroke-width="7" stroke-linecap="round"/>
+  <rect x="31" y="29" width="452" height="454" rx="90" fill="none"
+        stroke="#2E3237" stroke-width="2.6" opacity="0.30"
+        transform="rotate(0.4 256 256)"/>
+
+  <!-- faint grid: two sketch gridlines like the traffic chart -->
+  <path d="M78 216 C 180 212, 340 219, 434 214" stroke="#2E3237" stroke-width="2.4" opacity="0.14" fill="none" stroke-linecap="round"/>
+  <path d="M78 300 C 190 304, 330 297, 434 302" stroke="#2E3237" stroke-width="2.4" opacity="0.14" fill="none" stroke-linecap="round"/>
+
+  <!-- area wash under the pulse -->
+  <path d="M120 356
+           C 150 356, 162 320, 178 282
+           C 192 248, 204 258, 214 292
+           C 224 326, 232 340, 242 330
+           C 254 318, 258 220, 272 158
+           C 280 122, 292 122, 300 158
+           C 314 224, 320 316, 334 340
+           C 344 356, 356 356, 366 356 Z"
+        fill="#E4232E" opacity="0.14"/>
+
+  <!-- the wire: in from the left, pulse, out to an open curl -->
+  <!-- graphite lead-in -->
+  <path d="M64 356 C 84 353, 102 357, 120 356" stroke="#2E3237" stroke-width="11" fill="none" stroke-linecap="round"/>
+  <!-- red pulse -->
+  <path d="M120 356
+           C 150 356, 162 320, 178 282
+           C 192 248, 204 258, 214 292
+           C 224 326, 232 340, 242 330
+           C 254 318, 258 220, 272 158
+           C 280 122, 292 122, 300 158
+           C 314 224, 320 316, 334 340
+           C 344 356, 356 356, 366 356"
+        stroke="#E4232E" stroke-width="11" fill="none" stroke-linecap="round"/>
+  <!-- sketch ghost of the pulse (offset, thin) -->
+  <path d="M120 356
+           C 150 356, 162 320, 178 282
+           C 192 248, 204 258, 214 292
+           C 224 326, 232 340, 242 330
+           C 254 318, 258 220, 272 158
+           C 280 122, 292 122, 300 158
+           C 314 224, 320 316, 334 340
+           C 344 356, 356 356, 366 356"
+        stroke="#E4232E" stroke-width="3.4" fill="none" stroke-linecap="round"
+        opacity="0.35" transform="translate(3,-4)"/>
+  <!-- graphite tail into an OPEN loop -->
+  <path d="M366 356 C 388 356, 402 356, 414 348
+           C 434 336, 436 306, 416 300
+           C 398 295, 386 312, 396 328"
+        stroke="#2E3237" stroke-width="11" fill="none" stroke-linecap="round"/>
+  <!-- ghost of the tail -->
+  <path d="M366 356 C 388 356, 402 356, 414 348
+           C 434 336, 436 306, 416 300
+           C 398 295, 386 312, 396 328"
+        stroke="#2E3237" stroke-width="3.2" fill="none" stroke-linecap="round"
+        opacity="0.30" transform="translate(-2.5,3.5)"/>
+
+  <!-- wire end dots -->
+  <circle cx="64" cy="356" r="10" fill="#2E3237"/>
+  <circle cx="399" cy="331" r="9" fill="#E4232E"/>
+
+  <!-- signature squiggle (the app's tab underline) -->
+  <path d="M196 420 C 216 410, 232 430, 252 420 C 272 410, 288 430, 316 418"
+        stroke="#E4232E" stroke-width="6.5" fill="none" stroke-linecap="round" opacity="0.9"/>
+
+  <!-- graphite speckles -->
+  <g fill="#2E3237" opacity="0.10">
+    <circle cx="120" cy="120" r="3.4"/>
+    <circle cx="392" cy="104" r="2.8"/>
+    <circle cx="430" cy="180" r="2.2"/>
+    <circle cx="92" cy="260" r="2.4"/>
+    <circle cx="360" cy="120" r="2.0"/>
+    <circle cx="140" cy="400" r="2.6"/>
+  </g>
+</svg>
