@@ -109,4 +109,10 @@
     <DropShadowEffect x:Key="CardEffect" Color="#9B0F1B" BlurRadius="2" ShadowDepth="4" Direction="315" Opacity="0.16" />
     <DropShadowEffect x:Key="ButtonEffect" Color="#9B0F1B" BlurRadius="2" ShadowDepth="2" Direction="315" Opacity="0.2" />
 
+    <!-- dropdown / input chrome (consumed by Controls.xaml): a rounded die-cut sticker —
+         ink keyline, soft radius, hard berry offset shadow -->
+    <CornerRadius x:Key="CtlCorner">9</CornerRadius>
+    <SolidColorBrush x:Key="CtlBorderBrush" Color="#17090C" />
+    <DropShadowEffect x:Key="ComboEffect" Color="#9B0F1B" BlurRadius="2" ShadowDepth="2" Direction="315" Opacity="0.2" />
+
 </ResourceDictionary>

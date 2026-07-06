@@ -98,4 +98,10 @@
     <DropShadowEffect x:Key="CardEffect" Color="#000000" BlurRadius="14" ShadowDepth="3" Direction="270" Opacity="0.45" />
     <DropShadowEffect x:Key="ButtonEffect" Color="#000000" BlurRadius="0" ShadowDepth="0" Opacity="0" />
 
+    <!-- dropdown / input chrome (consumed by Controls.xaml): plum field cut from the night with
+         a near-black keyline and a soft dark drop; the neon pop arrives via the accent-on-open edge -->
+    <CornerRadius x:Key="CtlCorner">9</CornerRadius>
+    <SolidColorBrush x:Key="CtlBorderBrush" Color="#0A0305" />
+    <DropShadowEffect x:Key="ComboEffect" Color="#000000" BlurRadius="10" ShadowDepth="2" Direction="270" Opacity="0.45" />
+
 </ResourceDictionary>

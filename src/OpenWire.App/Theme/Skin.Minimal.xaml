@@ -98,4 +98,10 @@
     <DropShadowEffect x:Key="CardEffect" Color="#1E2530" BlurRadius="6" ShadowDepth="1" Direction="270" Opacity="0.05" />
     <DropShadowEffect x:Key="ButtonEffect" Color="#000000" BlurRadius="0" ShadowDepth="0" Opacity="0" />
 
+    <!-- dropdown / input chrome (consumed by Controls.xaml): clean and flat — hairline edge,
+         small radius, no shadow. Definition comes from the crisp border, not depth -->
+    <CornerRadius x:Key="CtlCorner">6</CornerRadius>
+    <SolidColorBrush x:Key="CtlBorderBrush" Color="{StaticResource BorderStrongColor}" />
+    <DropShadowEffect x:Key="ComboEffect" Color="#000000" BlurRadius="0" ShadowDepth="0" Opacity="0" />
+
 </ResourceDictionary>

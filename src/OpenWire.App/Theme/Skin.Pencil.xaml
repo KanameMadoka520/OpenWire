@@ -126,4 +126,10 @@
     <DropShadowEffect x:Key="CardEffect" Color="{StaticResource GraphiteColor}" BlurRadius="5" ShadowDepth="2" Direction="300" Opacity="0.13" />
     <DropShadowEffect x:Key="ButtonEffect" Color="{StaticResource GraphiteColor}" BlurRadius="0" ShadowDepth="2.2" Direction="300" Opacity="0.26" />
 
+    <!-- dropdown / input chrome (consumed by Controls.xaml): a sketched box lifted off the
+         paper — firm graphite edge, gently rounded, hard offset ink shadow -->
+    <CornerRadius x:Key="CtlCorner">5</CornerRadius>
+    <SolidColorBrush x:Key="CtlBorderBrush" Color="{StaticResource BorderStrongColor}" />
+    <DropShadowEffect x:Key="ComboEffect" Color="{StaticResource GraphiteColor}" BlurRadius="0" ShadowDepth="2" Direction="300" Opacity="0.22" />
+
 </ResourceDictionary>

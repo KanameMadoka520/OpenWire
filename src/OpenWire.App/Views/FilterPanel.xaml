@@ -49,17 +49,19 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="ComboBox">
                         <Grid>
-                            <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="4"
-                                    BorderBrush="{StaticResource Border}" BorderThickness="1" />
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="9,0,0,0">
+                            <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="{StaticResource CtlCorner}"
+                                    BorderBrush="{StaticResource CtlBorderBrush}" BorderThickness="1" Effect="{StaticResource ComboEffect}" />
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="10,0,0,0">
                                 <TextBlock x:Name="dn" Text="&#xE74B;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10"
                                            Foreground="{StaticResource InLine}" VerticalAlignment="Center" />
                                 <TextBlock x:Name="up" Text="&#xE74A;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10"
                                            Foreground="{StaticResource OutLine}" VerticalAlignment="Center" Margin="1,0,0,0" />
                             </StackPanel>
-                            <TextBlock Text="&#xE70D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="9"
+                            <TextBlock x:Name="chev" Text="&#xE70D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="9"
                                        Foreground="{StaticResource TextSecondary}" HorizontalAlignment="Right"
-                                       VerticalAlignment="Center" Margin="0,0,8,0" />
+                                       VerticalAlignment="Center" Margin="0,0,9,0" RenderTransformOrigin="0.5,0.5">
+                                <TextBlock.RenderTransform><RotateTransform Angle="0" /></TextBlock.RenderTransform>
+                            </TextBlock>
                             <ToggleButton Focusable="False" ClickMode="Press"
                                           IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
                                 <ToggleButton.Template>
@@ -69,9 +71,12 @@
                                 </ToggleButton.Template>
                             </ToggleButton>
                             <Popup IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True"
-                                   Focusable="False" PopupAnimation="Slide">
-                                <Border Background="{StaticResource BgElevated}" BorderBrush="{StaticResource Border}"
-                                        BorderThickness="1" CornerRadius="4" MinWidth="150" Margin="0,4,0,0">
+                                   Focusable="False" PopupAnimation="Slide" HorizontalOffset="-10" VerticalOffset="-6">
+                                <Border Margin="10" Background="{StaticResource BgPanel}" BorderBrush="{StaticResource CtlBorderBrush}"
+                                        BorderThickness="1" CornerRadius="{StaticResource CtlCorner}" MinWidth="150" Padding="3">
+                                    <Border.Effect>
+                                        <DropShadowEffect Color="#000000" BlurRadius="9" ShadowDepth="2" Direction="270" Opacity="0.24" />
+                                    </Border.Effect>
                                     <ScrollViewer MaxHeight="320">
                                         <ItemsPresenter />
                                     </ScrollViewer>
@@ -80,7 +85,15 @@
                         </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="b" Property="BorderBrush" Value="{StaticResource BorderStrong}" />
+                                <Setter TargetName="chev" Property="Foreground" Value="{StaticResource TextPrimary}" />
+                            </Trigger>
+                            <Trigger Property="IsDropDownOpen" Value="True">
+                                <Setter TargetName="b" Property="BorderBrush" Value="{StaticResource Accent}" />
+                                <Setter TargetName="b" Property="BorderThickness" Value="1.4" />
+                                <Setter TargetName="chev" Property="Foreground" Value="{StaticResource Accent}" />
+                                <Setter TargetName="chev" Property="RenderTransform">
+                                    <Setter.Value><RotateTransform Angle="180" /></Setter.Value>
+                                </Setter>
                             </Trigger>
                             <Trigger Property="SelectedIndex" Value="1">
                                 <Setter TargetName="up" Property="Visibility" Value="Collapsed" />

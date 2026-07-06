@@ -282,26 +282,35 @@
         </Setter>
     </Style>
 
-    <!-- ============ ComboBox ============ -->
-    <Style x:Key="Combo" TargetType="ComboBox">
+    <!-- ============ ComboBox (skin-driven chrome) ============
+         One template, four personalities: the corner radius, resting border and drop shadow
+         come from the skin (CtlCorner / CtlBorderBrush / ComboEffect) — a sketched box in
+         Pencil, a flat hairline in Minimal, a die-cut sticker in BerryDay, a plum field in
+         BerryNight. Shared modern behaviour: the chevron flips and the edge lights up in the
+         accent on open, the popup floats as a rounded card, and the selected row is checked.
+         Implicit (keyless) so every ComboBox in the app is themed — including data-bound ones
+         with no explicit style; the keyed aliases below keep existing Style references working. -->
+    <Style TargetType="ComboBox">
         <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
         <Setter Property="Background" Value="{StaticResource BgElevated}" />
         <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
         <Setter Property="FontSize" Value="13" />
         <Setter Property="Height" Value="34" />
-        <Setter Property="Padding" Value="10,0" />
+        <Setter Property="Padding" Value="12,0" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ComboBox">
                     <Grid>
-                        <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="4"
-                                BorderBrush="{StaticResource Border}" BorderThickness="1" />
-                        <ContentPresenter Margin="10,0,28,0" VerticalAlignment="Center"
+                        <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="{StaticResource CtlCorner}"
+                                BorderBrush="{StaticResource CtlBorderBrush}" BorderThickness="1" Effect="{StaticResource ComboEffect}" />
+                        <ContentPresenter Margin="11,0,27,0" VerticalAlignment="Center"
                                           Content="{TemplateBinding SelectionBoxItem}"
                                           ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" />
-                        <TextBlock Text="&#xE70D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10"
+                        <TextBlock x:Name="chev" Text="&#xE70D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10"
                                    Foreground="{StaticResource TextSecondary}" HorizontalAlignment="Right"
-                                   VerticalAlignment="Center" Margin="0,0,12,0" />
+                                   VerticalAlignment="Center" Margin="0,0,13,0" RenderTransformOrigin="0.5,0.5">
+                            <TextBlock.RenderTransform><RotateTransform Angle="0" /></TextBlock.RenderTransform>
+                        </TextBlock>
                         <ToggleButton x:Name="tb" Focusable="False" ClickMode="Press"
                                       IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
                             <ToggleButton.Template>
@@ -311,9 +320,15 @@
                             </ToggleButton.Template>
                         </ToggleButton>
                         <Popup IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True"
-                               Focusable="False" PopupAnimation="Slide">
-                            <Border Background="{StaticResource BgElevated}" BorderBrush="{StaticResource Border}"
-                                    BorderThickness="1" CornerRadius="4" MinWidth="{TemplateBinding ActualWidth}" Margin="0,4,0,0">
+                               Focusable="False" PopupAnimation="Slide" HorizontalOffset="-10" VerticalOffset="-6">
+                            <!-- 10px margin gives the drop shadow room inside the transparent popup;
+                                 the -10 horizontal offset re-aligns the card's left edge to the field. -->
+                            <Border Margin="10" Background="{StaticResource BgPanel}" BorderBrush="{StaticResource CtlBorderBrush}"
+                                    BorderThickness="1" CornerRadius="{StaticResource CtlCorner}"
+                                    MinWidth="{TemplateBinding ActualWidth}" Padding="3">
+                                <Border.Effect>
+                                    <DropShadowEffect Color="#000000" BlurRadius="9" ShadowDepth="2" Direction="270" Opacity="0.24" />
+                                </Border.Effect>
                                 <ScrollViewer MaxHeight="320">
                                     <ItemsPresenter />
                                 </ScrollViewer>
@@ -322,7 +337,18 @@
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="b" Property="BorderBrush" Value="{StaticResource BorderStrong}" />
+                            <Setter TargetName="chev" Property="Foreground" Value="{StaticResource TextPrimary}" />
+                        </Trigger>
+                        <Trigger Property="IsDropDownOpen" Value="True">
+                            <Setter TargetName="b" Property="BorderBrush" Value="{StaticResource Accent}" />
+                            <Setter TargetName="b" Property="BorderThickness" Value="1.4" />
+                            <Setter TargetName="chev" Property="Foreground" Value="{StaticResource Accent}" />
+                            <Setter TargetName="chev" Property="RenderTransform">
+                                <Setter.Value><RotateTransform Angle="180" /></Setter.Value>
+                            </Setter>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="b" Property="Opacity" Value="0.45" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -330,25 +356,45 @@
         </Setter>
     </Style>
 
-    <Style x:Key="ComboItem" TargetType="ComboBoxItem">
+    <Style TargetType="ComboBoxItem">
         <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
         <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
-        <Setter Property="Padding" Value="10,8" />
+        <Setter Property="Padding" Value="10,7" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ComboBoxItem">
-                    <Border x:Name="b" Background="Transparent" Padding="{TemplateBinding Padding}">
-                        <ContentPresenter />
+                    <Border x:Name="b" Background="Transparent" CornerRadius="5" Padding="{TemplateBinding Padding}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <ContentPresenter VerticalAlignment="Center" />
+                            <!-- check on the current selection (modern menu affordance) -->
+                            <TextBlock x:Name="chk" Grid.Column="1" Text="&#xE73E;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                       FontSize="11" Foreground="{StaticResource Accent}" Margin="10,0,0,0"
+                                       VerticalAlignment="Center" Visibility="Collapsed" />
+                        </Grid>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsHighlighted" Value="True">
-                            <Setter TargetName="b" Property="Background" Value="{StaticResource BgApp}" />
+                            <Setter TargetName="b" Property="Background" Value="{StaticResource AccentSoft}" />
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="b" Property="Background" Value="{StaticResource AccentSoft}" />
+                            <Setter TargetName="chk" Property="Visibility" Value="Visible" />
+                            <Setter Property="Foreground" Value="{StaticResource Accent}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
     </Style>
+
+    <!-- Keyed aliases: existing markup says Style="{StaticResource Combo}" / ItemContainerStyle=
+         "{StaticResource ComboItem}"; keep those working by inheriting the implicit styles above. -->
+    <Style x:Key="Combo" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}" />
+    <Style x:Key="ComboItem" TargetType="ComboBoxItem" BasedOn="{StaticResource {x:Type ComboBoxItem}}" />
 
     <!-- ============ Allow/Block pill (ToggleButton) ============ -->
     <Style x:Key="Pill" TargetType="ToggleButton">
@@ -427,8 +473,8 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="TextBox">
-                    <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="4"
-                            BorderBrush="{StaticResource Border}" BorderThickness="1">
+                    <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="{StaticResource CtlCorner}"
+                            BorderBrush="{StaticResource CtlBorderBrush}" BorderThickness="1">
                         <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}" VerticalAlignment="Center" />
                     </Border>
                     <ControlTemplate.Triggers>
