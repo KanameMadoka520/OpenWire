@@ -36,6 +36,9 @@
     <sys:String x:Key="L.Traffic.RangeWeek">Week</sys:String>
     <sys:String x:Key="L.Traffic.RangeMonth">Month</sys:String>
     <sys:String x:Key="L.Traffic.Hosts">HOSTS</sys:String>
+    <sys:String x:Key="L.Traffic.MoreFmt">+{0} more</sys:String>
+    <sys:String x:Key="L.Traffic.AllApps">All applications</sys:String>
+    <sys:String x:Key="L.Traffic.AllHosts">All hosts</sys:String>
     <sys:String x:Key="L.Traffic.DrillEmpty">No per-host detail recorded for this region in the selected window.</sys:String>
     <sys:String x:Key="L.Traffic.DrillFooterOne">{0} host · {1}</sys:String>
     <sys:String x:Key="L.Traffic.DrillFooterMany">{0} hosts · {1}</sys:String>
@@ -125,6 +128,12 @@
     <sys:String x:Key="L.Analytics.Range24h">24 hours</sys:String>
     <sys:String x:Key="L.Analytics.RangeWeek">Week</sys:String>
     <sys:String x:Key="L.Analytics.RangeMonth">Month</sys:String>
+    <sys:String x:Key="L.Analytics.RangeCustom">Custom</sys:String>
+    <sys:String x:Key="L.Analytics.CustomTitle">Custom range</sys:String>
+    <sys:String x:Key="L.Analytics.From">From</sys:String>
+    <sys:String x:Key="L.Analytics.To">To</sys:String>
+    <sys:String x:Key="L.Common.Apply">Apply</sys:String>
+    <sys:String x:Key="L.Common.Cancel">Cancel</sys:String>
     <sys:String x:Key="L.Analytics.CardTotal">TOTAL</sys:String>
     <sys:String x:Key="L.Analytics.CardChange">CHANGE</sys:String>
     <sys:String x:Key="L.Analytics.PeriodOverPeriod">period over period</sys:String>
@@ -140,6 +149,10 @@
     <sys:String x:Key="L.Analytics.AnomaliesDetected">ANOMALIES DETECTED</sys:String>
     <sys:String x:Key="L.Analytics.NoAnomalies">No anomalies detected.</sys:String>
     <sys:String x:Key="L.Analytics.NoAnomaliesHint">Your recorded usage looks normal for this period.</sys:String>
+    <sys:String x:Key="L.Analytics.ShowMoreFmt">+{0} more…</sys:String>
+    <sys:String x:Key="L.Analytics.AllAnomaliesFmt">All {0} anomalies</sys:String>
+    <sys:String x:Key="L.Analytics.AllAppsFmt">All {0} applications</sys:String>
+    <sys:String x:Key="L.Common.Close">Close</sys:String>
     <!-- analytics · summary-card + change text (view-model) -->
     <sys:String x:Key="L.Analytics.DownUpFmt">{0} down · {1} up</sys:String>
     <sys:String x:Key="L.Analytics.BusiestNone">—</sys:String>
