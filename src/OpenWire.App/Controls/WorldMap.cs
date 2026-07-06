@@ -594,6 +594,7 @@ public sealed class WorldMap : FrameworkElement
     private sealed class Palette
     {
         public readonly Color Accent, PanelColor, OceanLight, OceanDark, LandBase;
+        private readonly Color _oceanBase;
         public readonly SolidColorBrush AccentBrush, Land, LandGlobe, Coast, Border, Muted, Strong, Primary;
 
         public Palette(FrameworkElement e)
@@ -602,23 +603,36 @@ public sealed class WorldMap : FrameworkElement
             PanelColor = Res("BgPanelColor", Colors.White);
             AccentBrush = Frozen(Accent);
             Land = Frozen(Res("BgSubtleColor", Color.FromRgb(0xEC, 0xEE, 0xF1)));
-            // Globe land base: a pale tint of the accent (light red in the Berry skins,
-            // light blue elsewhere) that deepens toward the accent with traffic.
-            LandBase = Blend(Colors.White, Accent, 0.16);
+            // Ocean = the theme's subtle background DESATURATED to a neutral grey — this
+            // drops the accent's red (which made the globe alarming) while tracking the
+            // theme's darkness, so it's a light grey in day skins and a dark grey in the
+            // Berry-night dark skin instead of an out-of-place bright disc.
+            _oceanBase = Desaturate(Res("BgSubtleColor", Color.FromRgb(0xE1, 0xE5, 0xEA)), 0.88);
+            OceanDark = _oceanBase;
+            OceanLight = Blend(_oceanBase, Colors.White, 0.10);
+            // Globe land base: the ocean tone nudged toward the accent (a muted red in the
+            // Berry skins, muted blue elsewhere) that deepens toward the accent with
+            // traffic — so it tracks the theme's darkness rather than glowing pale.
+            LandBase = Blend(_oceanBase, Accent, 0.30);
             LandGlobe = Frozen(LandBase);
             Coast = Frozen(Res("BorderStrongColor", Color.FromRgb(0x8B, 0x92, 0x9B)));
             Border = Frozen(Res("BorderColor", Color.FromRgb(0xD3, 0xD8, 0xDE)));
             Muted = Frozen(Res("TextMutedColor", Color.FromRgb(0x79, 0x81, 0x8B)));
             Strong = Frozen(Res("TextSecondaryColor", Color.FromRgb(0x52, 0x59, 0x63)));
             Primary = Frozen(Res("TextPrimaryColor", Color.FromRgb(0x23, 0x27, 0x2D)));
-            // A soft, light neutral grey ocean — deliberately NOT derived from the accent
-            // (whose red in the Berry skins made the globe alarming) and kept desaturated
-            // (no blue cast) so it stays quiet under the pale-red land in every theme.
-            OceanLight = Color.FromRgb(0xEC, 0xEC, 0xED);
-            OceanDark = Color.FromRgb(0xDA, 0xDA, 0xDC);
         }
 
         private static SolidColorBrush Frozen(Color c) { var b = new SolidColorBrush(c); b.Freeze(); return b; }
+
+        /// <summary>Pull a colour toward its own grey (luminance), dropping saturation.</summary>
+        private static Color Desaturate(Color c, double amount)
+        {
+            byte g = (byte)(0.299 * c.R + 0.587 * c.G + 0.114 * c.B);
+            return Color.FromRgb(
+                (byte)(c.R + (g - c.R) * amount),
+                (byte)(c.G + (g - c.G) * amount),
+                (byte)(c.B + (g - c.B) * amount));
+        }
 
         private static Color Blend(Color a, Color b, double t) => Color.FromRgb(
             (byte)(a.R + (b.R - a.R) * t), (byte)(a.G + (b.G - a.G) * t), (byte)(a.B + (b.B - a.B) * t));
