@@ -107,6 +107,10 @@ public partial class FirewallViewModel : ObservableObject
     [ObservableProperty] private string _statusText = "";
     [ObservableProperty] private bool _canEnforce;
     [ObservableProperty] private string _searchText = "";
+
+    // Column sort: empty key = natural order (by total, as the engine returned it).
+    [ObservableProperty] private string _sortKey = "";
+    [ObservableProperty] private bool _sortAscending;
     private List<AppRowVM> _allApps = new();
 
     // Profiles + active network.
@@ -144,6 +148,23 @@ public partial class FirewallViewModel : ObservableObject
 
     partial void OnSearchTextChanged(string value) => ApplyAppFilter();
 
+    /// <summary>Sort by a column; clicking the active column again reverses it.
+    /// Sorting happens on click (and survives reloads) — not on every live tick,
+    /// so rows don't jump around while rates update.</summary>
+    [RelayCommand]
+    private void SortBy(string key)
+    {
+        if (string.Equals(key, SortKey, StringComparison.Ordinal))
+            SortAscending = !SortAscending;
+        else
+        {
+            SortKey = key;
+            // Text columns default A→Z; rate/state columns default high→low.
+            SortAscending = key is "name" or "version" or "host";
+        }
+        ApplyAppFilter();
+    }
+
     private void ApplyAppFilter()
     {
         IEnumerable<AppRowVM> q = _allApps;
@@ -152,7 +173,37 @@ public partial class FirewallViewModel : ObservableObject
             q = q.Where(a => (a.Name?.Contains(s, StringComparison.OrdinalIgnoreCase) ?? false)
                           || (a.HostText?.Contains(s, StringComparison.OrdinalIgnoreCase) ?? false)
                           || (a.Path?.Contains(s, StringComparison.OrdinalIgnoreCase) ?? false));
+        q = ApplySort(q);
         Apps = new ObservableCollection<AppRowVM>(q);
+    }
+
+    private IEnumerable<AppRowVM> ApplySort(IEnumerable<AppRowVM> q)
+    {
+        if (string.IsNullOrEmpty(SortKey)) return q;
+        Func<AppRowVM, object> key = SortKey switch
+        {
+            "name" => a => a.Name ?? "",
+            "in" => a => a.BlockIn,           // blocked sorts before allowed when descending
+            "out" => a => a.BlockOut,
+            "version" => a => a.Usage.App.Version ?? "",
+            "host" => a => a.Usage.PrimaryHost ?? "",
+            "vt" => a => (int)a.RepState,
+            "trend" => a => a.Usage.DownRate + a.Usage.UpRate,
+            "down" => a => a.Usage.DownRate,
+            "up" => a => a.Usage.UpRate,
+            _ => a => a.Name ?? "",
+        };
+        var cmp = SortKey is "name" or "version" or "host"
+            ? (IComparer<object>)StringKeyComparer.Instance
+            : Comparer<object>.Default;
+        return SortAscending ? q.OrderBy(key, cmp) : q.OrderByDescending(key, cmp);
+    }
+
+    private sealed class StringKeyComparer : IComparer<object>
+    {
+        public static readonly StringKeyComparer Instance = new();
+        public int Compare(object? x, object? y) =>
+            string.Compare(x as string, y as string, StringComparison.OrdinalIgnoreCase);
     }
 
     partial void OnSelectedProfileChanged(FirewallProfile? value)

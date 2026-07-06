@@ -100,15 +100,46 @@
                         <ColumnDefinition Width="80" />
                         <ColumnDefinition Width="80" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="1" Text="{StaticResource L.Fw.ColApplication}" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
-                    <TextBlock Grid.Column="2" Text="{StaticResource L.Fw.ColIncoming}" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
-                    <TextBlock Grid.Column="3" Text="{StaticResource L.Fw.ColOutgoing}" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
-                    <TextBlock Grid.Column="4" Text="{StaticResource L.Fw.ColVersion}" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
-                    <TextBlock Grid.Column="5" Text="{StaticResource L.Fw.ColHost}" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
-                    <TextBlock Grid.Column="6" Text="{StaticResource L.Fw.ColVirusTotal}" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
-                    <TextBlock Grid.Column="7" Text="{StaticResource L.Fw.ColTrend}" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
-                    <TextBlock Grid.Column="8" Text="↓" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
-                    <TextBlock Grid.Column="9" Text="↑" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
+                    <!-- Clickable sort headers: label + a ▲/▼ arrow on the active column. -->
+                    <Grid.Resources>
+                        <Style x:Key="HdrText" TargetType="TextBlock" BasedOn="{StaticResource TableHeaderText}" />
+                    </Grid.Resources>
+                    <Button Grid.Column="1" Style="{StaticResource SortHeaderBtn}" Command="{Binding SortByCommand}" CommandParameter="name">
+                        <TextBlock Style="{StaticResource HdrText}"><Run Text="{StaticResource L.Fw.ColApplication}" /><Run>
+                            <Run.Text><MultiBinding Converter="{StaticResource SortArrow}" ConverterParameter="name"><Binding Path="SortKey" /><Binding Path="SortAscending" /></MultiBinding></Run.Text></Run></TextBlock>
+                    </Button>
+                    <Button Grid.Column="2" Style="{StaticResource SortHeaderBtn}" Command="{Binding SortByCommand}" CommandParameter="in">
+                        <TextBlock Style="{StaticResource HdrText}"><Run Text="{StaticResource L.Fw.ColIncoming}" /><Run>
+                            <Run.Text><MultiBinding Converter="{StaticResource SortArrow}" ConverterParameter="in"><Binding Path="SortKey" /><Binding Path="SortAscending" /></MultiBinding></Run.Text></Run></TextBlock>
+                    </Button>
+                    <Button Grid.Column="3" Style="{StaticResource SortHeaderBtn}" Command="{Binding SortByCommand}" CommandParameter="out">
+                        <TextBlock Style="{StaticResource HdrText}"><Run Text="{StaticResource L.Fw.ColOutgoing}" /><Run>
+                            <Run.Text><MultiBinding Converter="{StaticResource SortArrow}" ConverterParameter="out"><Binding Path="SortKey" /><Binding Path="SortAscending" /></MultiBinding></Run.Text></Run></TextBlock>
+                    </Button>
+                    <Button Grid.Column="4" Style="{StaticResource SortHeaderBtn}" Command="{Binding SortByCommand}" CommandParameter="version">
+                        <TextBlock Style="{StaticResource HdrText}"><Run Text="{StaticResource L.Fw.ColVersion}" /><Run>
+                            <Run.Text><MultiBinding Converter="{StaticResource SortArrow}" ConverterParameter="version"><Binding Path="SortKey" /><Binding Path="SortAscending" /></MultiBinding></Run.Text></Run></TextBlock>
+                    </Button>
+                    <Button Grid.Column="5" Style="{StaticResource SortHeaderBtn}" Command="{Binding SortByCommand}" CommandParameter="host">
+                        <TextBlock Style="{StaticResource HdrText}"><Run Text="{StaticResource L.Fw.ColHost}" /><Run>
+                            <Run.Text><MultiBinding Converter="{StaticResource SortArrow}" ConverterParameter="host"><Binding Path="SortKey" /><Binding Path="SortAscending" /></MultiBinding></Run.Text></Run></TextBlock>
+                    </Button>
+                    <Button Grid.Column="6" Style="{StaticResource SortHeaderBtn}" Command="{Binding SortByCommand}" CommandParameter="vt">
+                        <TextBlock Style="{StaticResource HdrText}"><Run Text="{StaticResource L.Fw.ColVirusTotal}" /><Run>
+                            <Run.Text><MultiBinding Converter="{StaticResource SortArrow}" ConverterParameter="vt"><Binding Path="SortKey" /><Binding Path="SortAscending" /></MultiBinding></Run.Text></Run></TextBlock>
+                    </Button>
+                    <Button Grid.Column="7" Style="{StaticResource SortHeaderBtn}" Command="{Binding SortByCommand}" CommandParameter="trend">
+                        <TextBlock Style="{StaticResource HdrText}"><Run Text="{StaticResource L.Fw.ColTrend}" /><Run>
+                            <Run.Text><MultiBinding Converter="{StaticResource SortArrow}" ConverterParameter="trend"><Binding Path="SortKey" /><Binding Path="SortAscending" /></MultiBinding></Run.Text></Run></TextBlock>
+                    </Button>
+                    <Button Grid.Column="8" Style="{StaticResource SortHeaderBtn}" Command="{Binding SortByCommand}" CommandParameter="down">
+                        <TextBlock Style="{StaticResource HdrText}"><Run Text="↓" /><Run>
+                            <Run.Text><MultiBinding Converter="{StaticResource SortArrow}" ConverterParameter="down"><Binding Path="SortKey" /><Binding Path="SortAscending" /></MultiBinding></Run.Text></Run></TextBlock>
+                    </Button>
+                    <Button Grid.Column="9" Style="{StaticResource SortHeaderBtn}" Command="{Binding SortByCommand}" CommandParameter="up">
+                        <TextBlock Style="{StaticResource HdrText}"><Run Text="↑" /><Run>
+                            <Run.Text><MultiBinding Converter="{StaticResource SortArrow}" ConverterParameter="up"><Binding Path="SortKey" /><Binding Path="SortAscending" /></MultiBinding></Run.Text></Run></TextBlock>
+                    </Button>
                 </Grid>
 
                 <!-- Rows: a ListBox virtualizes + recycles containers, so only the

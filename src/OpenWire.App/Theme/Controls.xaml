@@ -50,6 +50,34 @@
         <Setter Property="TextOptions.TextFormattingMode" Value="Ideal" />
     </Style>
 
+    <!-- Clickable column header: a table header label that sorts on click. The
+         template shows the label followed by a sort arrow when this column is
+         active (bind the arrow via SortArrowConverter on the caller side, or use
+         the SortHeader helper below). Kept visually identical to TableHeaderText. -->
+    <Style x:Key="SortHeaderBtn" TargetType="Button">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+        <Setter Property="Foreground" Value="{StaticResource TextSecondary}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter x:Name="cp" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="cp" Property="TextElement.Foreground" Value="{StaticResource TextPrimary}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style x:Key="Mono" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
         <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
@@ -214,13 +242,17 @@
                 <ControlTemplate TargetType="RadioButton">
                     <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="10" Padding="16,6" Margin="3,0">
                         <Grid>
-                            <StackPanel x:Name="sp" Orientation="Horizontal">
+                            <!-- Center-aligned so its ActualWidth reflects the content (glyph +
+                                 optional text) rather than the cell width. If it stretched, the
+                                 squiggle below (whose Width binds to it) would feed its own width
+                                 back into the cell — a latch that never shrinks on window resize. -->
+                            <StackPanel x:Name="sp" Orientation="Horizontal" HorizontalAlignment="Center">
                                 <TextBlock x:Name="glyph" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="19"
                                            Foreground="{TemplateBinding Foreground}" Text="{TemplateBinding Tag}" VerticalAlignment="Center" />
                                 <ContentPresenter x:Name="cp" VerticalAlignment="Center" Margin="10,0,0,0" />
                             </StackPanel>
-                            <!-- Width is pinned to the tab's actual content so the squiggle's natural
-                                 geometry size never inflates the tab (it dwarfed icon-only tabs). -->
+                            <!-- Width tracks the content so the squiggle never inflates the tab and
+                                 follows the tab shrinking (text → icon-only) on window resize. -->
                             <Path x:Name="ul" Data="{StaticResource DoodleSquiggle}" Stretch="Fill" Height="5" Margin="0,0,0,-3"
                                   Width="{Binding ActualWidth, ElementName=sp}"
                                   HorizontalAlignment="Center" VerticalAlignment="Bottom"
