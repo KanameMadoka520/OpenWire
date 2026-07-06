@@ -1,10 +1,42 @@
 using System.Collections.ObjectModel;
+using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using OpenWire.App.Services;
 using OpenWire.Core.Models;
 using OpenWire.Core.Util;
 
 namespace OpenWire.App.ViewModels;
+
+/// <summary>Per-column sort state for a single-metric Usage list: which metric
+/// ("total" or "name") and the direction. Observable so the header arrow updates
+/// live. Toggling cycles a column through total↓ → name↑ → name↓ → total↑ → total↓,
+/// so every ordering is reachable and the arrow always reflects the direction.</summary>
+public partial class ColumnSort : ObservableObject
+{
+    [ObservableProperty] private string _key;
+    [ObservableProperty] private bool _ascending;
+
+    public ColumnSort(string key, bool ascending)
+    {
+        _key = key;
+        _ascending = ascending;
+    }
+
+    public void Toggle()
+    {
+        if (Key == "total")
+        {
+            if (!Ascending) { Key = "name"; Ascending = true; } // total↓ (default) → name↑ (A→Z)
+            else Ascending = false;                             // total↑ → total↓ (back to default)
+        }
+        else // name
+        {
+            if (Ascending) Ascending = false;                   // name↑ → name↓ (reverse)
+            else { Key = "total"; Ascending = true; }           // name↓ → total↑
+        }
+    }
+}
 
 /// <summary>Usage screen: byte totals grouped by apps / hosts / traffic type over
 /// a chosen window.</summary>
@@ -20,17 +52,69 @@ public partial class UsageViewModel : ObservableObject
     [ObservableProperty] private ObservableCollection<CountryUsage> _countries = new();
     [ObservableProperty] private string _totalText = "";
 
+    // Kept sort state per column (default: total, high→low — matches the engine order).
+    // Held state so re-sorting happens on header click and survives range reloads,
+    // rather than re-sorting on every live tick.
+    public ColumnSort AppsSort { get; } = new("total", false);
+    public ColumnSort HostsSort { get; } = new("total", false);
+    public ColumnSort TypesSort { get; } = new("total", false);
+    public ColumnSort CountriesSort { get; } = new("total", false);
+
+    // Unsorted source rows for each column, so a header click re-sorts without a re-fetch.
+    private List<AppUsage> _appsRaw = new();
+    private List<HostUsage> _hostsRaw = new();
+    private List<TrafficTypeUsage> _typesRaw = new();
+    private List<CountryUsage> _countriesRaw = new();
+
     public UsageViewModel(EngineClient client) => _client = client;
 
     public async Task LoadAsync()
     {
         var u = await _client.GetUsageAsync(Range, GroupBy);
-        Apps = new ObservableCollection<AppUsage>(u.Apps.Take(60));
-        Hosts = new ObservableCollection<HostUsage>(u.Hosts.Take(60));
-        Types = new ObservableCollection<TrafficTypeUsage>(u.Types);
-        Countries = new ObservableCollection<CountryUsage>(u.Countries.Take(40));
+        _appsRaw = u.Apps.Take(60).ToList();
+        _hostsRaw = u.Hosts.Take(60).ToList();
+        _typesRaw = u.Types.ToList();
+        _countriesRaw = u.Countries.Take(40).ToList();
+
+        // Re-apply the kept sort state so reloads don't reset the user's column choices.
+        ApplyAppsSort();
+        ApplyHostsSort();
+        ApplyTypesSort();
+        ApplyCountriesSort();
+
         TotalText = $"{ByteFormatter.Bytes(u.TotalBytesIn + u.TotalBytesOut)} · " +
                     $"down {ByteFormatter.Bytes(u.TotalBytesIn)} · up {ByteFormatter.Bytes(u.TotalBytesOut)}";
+    }
+
+    /// <summary>Toggle a column's sort (name ↔ total, reversing on repeat clicks)
+    /// and rebuild only that column's collection. Sort state is kept so it survives
+    /// range reloads.</summary>
+    [RelayCommand]
+    private void SortColumn(string column)
+    {
+        switch (column)
+        {
+            case "apps": AppsSort.Toggle(); ApplyAppsSort(); break;
+            case "hosts": HostsSort.Toggle(); ApplyHostsSort(); break;
+            case "types": TypesSort.Toggle(); ApplyTypesSort(); break;
+            case "countries": CountriesSort.Toggle(); ApplyCountriesSort(); break;
+        }
+    }
+
+    private void ApplyAppsSort() => Apps = Sort(_appsRaw, AppsSort, a => a.App.Name, a => a.Total);
+    private void ApplyHostsSort() => Hosts = Sort(_hostsRaw, HostsSort, h => h.Host, h => h.Total);
+    private void ApplyTypesSort() => Types = Sort(_typesRaw, TypesSort, t => t.TypeName, t => t.Total);
+    private void ApplyCountriesSort() => Countries = Sort(_countriesRaw, CountriesSort, c => c.DisplayName, c => c.Total);
+
+    private static ObservableCollection<T> Sort<T>(IEnumerable<T> src, ColumnSort s,
+        Func<T, string> name, Func<T, long> total)
+    {
+        IEnumerable<T> q = s.Key == "name"
+            ? (s.Ascending ? src.OrderBy(name, StringComparer.OrdinalIgnoreCase)
+                           : src.OrderByDescending(name, StringComparer.OrdinalIgnoreCase))
+            : (s.Ascending ? src.OrderBy(total)
+                           : src.OrderByDescending(total));
+        return new ObservableCollection<T>(q);
     }
 
     partial void OnGroupByChanged(UsageGroupBy value) => _ = LoadAsync();

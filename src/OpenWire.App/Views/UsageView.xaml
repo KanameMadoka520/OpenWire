@@ -27,7 +27,13 @@
         <!-- APPLICATIONS -->
         <Border Grid.Column="0" Style="{StaticResource ColCard}">
             <DockPanel>
-                <TextBlock DockPanel.Dock="Top" Text="{StaticResource L.Usage.Applications}" Style="{StaticResource TableHeaderText}" Margin="14,12,14,8" />
+                <!-- Clickable header: toggles this column between total (high→low) and name (A→Z); arrow shows the active direction. -->
+                <Button DockPanel.Dock="Top" Style="{StaticResource SortHeaderBtn}" Margin="14,12,14,8"
+                        Command="{Binding SortColumnCommand}" CommandParameter="apps">
+                    <TextBlock Style="{StaticResource TableHeaderText}"><Run Text="{StaticResource L.Usage.Applications}" /><Run>
+                        <Run.Text><MultiBinding Converter="{StaticResource SortArrow}" ConverterParameter="name"><Binding Path="AppsSort.Key" /><Binding Path="AppsSort.Ascending" /></MultiBinding></Run.Text></Run><Run>
+                        <Run.Text><MultiBinding Converter="{StaticResource SortArrow}" ConverterParameter="total"><Binding Path="AppsSort.Key" /><Binding Path="AppsSort.Ascending" /></MultiBinding></Run.Text></Run></TextBlock>
+                </Button>
                 <ListBox Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource PlainRow}" ItemsSource="{Binding Apps}">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
@@ -49,7 +55,12 @@
         <!-- HOSTS -->
         <Border Grid.Column="1" Style="{StaticResource ColCard}">
             <DockPanel>
-                <TextBlock DockPanel.Dock="Top" Text="{StaticResource L.Usage.Hosts}" Style="{StaticResource TableHeaderText}" Margin="14,12,14,8" />
+                <Button DockPanel.Dock="Top" Style="{StaticResource SortHeaderBtn}" Margin="14,12,14,8"
+                        Command="{Binding SortColumnCommand}" CommandParameter="hosts">
+                    <TextBlock Style="{StaticResource TableHeaderText}"><Run Text="{StaticResource L.Usage.Hosts}" /><Run>
+                        <Run.Text><MultiBinding Converter="{StaticResource SortArrow}" ConverterParameter="name"><Binding Path="HostsSort.Key" /><Binding Path="HostsSort.Ascending" /></MultiBinding></Run.Text></Run><Run>
+                        <Run.Text><MultiBinding Converter="{StaticResource SortArrow}" ConverterParameter="total"><Binding Path="HostsSort.Key" /><Binding Path="HostsSort.Ascending" /></MultiBinding></Run.Text></Run></TextBlock>
+                </Button>
                 <ListBox Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource PlainRow}" ItemsSource="{Binding Hosts}">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
@@ -72,7 +83,12 @@
         <!-- TRAFFIC TYPES -->
         <Border Grid.Column="2" Style="{StaticResource ColCard}">
             <DockPanel>
-                <TextBlock DockPanel.Dock="Top" Text="{StaticResource L.Usage.TrafficTypes}" Style="{StaticResource TableHeaderText}" Margin="14,12,14,8" />
+                <Button DockPanel.Dock="Top" Style="{StaticResource SortHeaderBtn}" Margin="14,12,14,8"
+                        Command="{Binding SortColumnCommand}" CommandParameter="types">
+                    <TextBlock Style="{StaticResource TableHeaderText}"><Run Text="{StaticResource L.Usage.TrafficTypes}" /><Run>
+                        <Run.Text><MultiBinding Converter="{StaticResource SortArrow}" ConverterParameter="name"><Binding Path="TypesSort.Key" /><Binding Path="TypesSort.Ascending" /></MultiBinding></Run.Text></Run><Run>
+                        <Run.Text><MultiBinding Converter="{StaticResource SortArrow}" ConverterParameter="total"><Binding Path="TypesSort.Key" /><Binding Path="TypesSort.Ascending" /></MultiBinding></Run.Text></Run></TextBlock>
+                </Button>
                 <ListBox Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource PlainRow}" ItemsSource="{Binding Types}">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
@@ -96,7 +112,12 @@
         <Border Grid.Column="3" Style="{StaticResource ColCard}" Margin="0">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="14,12,14,8">
-                    <TextBlock Text="{StaticResource L.Usage.CountriesRegions}" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
+                    <Button Style="{StaticResource SortHeaderBtn}" VerticalAlignment="Center"
+                            Command="{Binding SortColumnCommand}" CommandParameter="countries">
+                        <TextBlock Style="{StaticResource TableHeaderText}"><Run Text="{StaticResource L.Usage.CountriesRegions}" /><Run>
+                            <Run.Text><MultiBinding Converter="{StaticResource SortArrow}" ConverterParameter="name"><Binding Path="CountriesSort.Key" /><Binding Path="CountriesSort.Ascending" /></MultiBinding></Run.Text></Run><Run>
+                            <Run.Text><MultiBinding Converter="{StaticResource SortArrow}" ConverterParameter="total"><Binding Path="CountriesSort.Key" /><Binding Path="CountriesSort.Ascending" /></MultiBinding></Run.Text></Run></TextBlock>
+                    </Button>
                     <TextBlock Text="&#xE946;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12"
                                Foreground="{StaticResource TextMuted}" Margin="6,0,0,0" VerticalAlignment="Center"
                                ToolTipService.InitialShowDelay="150" ToolTipService.ShowDuration="30000"
