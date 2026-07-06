@@ -234,7 +234,9 @@ public sealed class BarChart : FrameworkElement
 
         // box size
         double contentW = Math.Max(Math.Max(head.Width, total.Width), Math.Max(splitW, rowsW));
-        double boxW = Math.Min(w - 6, contentW + pad * 2);
+        // Never let the width go non-positive (a 5–6px-wide plot makes w-6 ≤ 0), which would throw
+        // when constructing the Rect below.
+        double boxW = Math.Max(1, Math.Min(w - 6, contentW + pad * 2));
         double boxH = pad + head.Height + 3 + total.Height
                     + (detail is not null ? 6 + splitH : 0)
                     + (rows.Count > 0 ? 8 + rows.Count * (rowH + rowGap) - rowGap : 0)
