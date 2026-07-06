@@ -22,6 +22,11 @@ public static class LangManager
     private static string FilePath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OpenWire", "lang.txt");
 
+    /// <summary>The language key currently applied ("English" / "SimplifiedChinese" /
+    /// "TraditionalChinese"). Kept in sync by <see cref="Apply"/> so non-XAML code
+    /// (e.g. localized country names) can pick the right column without file IO.</summary>
+    public static string Current { get; private set; } = "English";
+
     public static string Read()
     {
         try
@@ -47,7 +52,9 @@ public static class LangManager
     /// resources. Call before the theme dictionaries so skins could override strings.</summary>
     public static void Apply(Application app, string lang)
     {
-        string file = Langs.GetValueOrDefault(lang, Langs["English"]);
+        if (!Langs.ContainsKey(lang)) lang = "English";
+        Current = lang;
+        string file = Langs[lang];
         app.Resources.MergedDictionaries.Add(
             new ResourceDictionary { Source = new Uri($"Lang/{file}", UriKind.Relative) });
         ApplyCulture(lang);

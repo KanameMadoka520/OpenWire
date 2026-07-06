@@ -33,6 +33,10 @@
   <!-- Public-domain world country polygons (Natural Earth 1:110m), projected + embedded. -->
   <ItemGroup>
     <EmbeddedResource Include="Controls\WorldCountries.txt" />
+    <!-- CLDR country/region names (en / zh-Hans / zh-Hant) so map + usage lists show
+         every region in the app's language, never its native name. Generated from
+         Unicode CLDR via scratchpad/gen_names2.py. -->
+    <EmbeddedResource Include="Util\CountryNames.txt" />
   </ItemGroup>
 
   <PropertyGroup>
