@@ -123,6 +123,21 @@ public sealed class TrafficGraph : FrameworkElement
     /// <summary>The drag-selection was dismissed (click, or a new series arrived).</summary>
     public event Action? SelectionCleared;
 
+    /// <summary>Raised when the visible time window changes (range switch, zoom, live advance),
+    /// so the host can label the graph's current span. Args are (fromSec, toSec) unix seconds.</summary>
+    public event Action<double, double>? ViewChanged;
+
+    /// <summary>The time span currently drawn: [from, to] in unix seconds.</summary>
+    public (double From, double To) VisibleWindow()
+    {
+        double to = _zoomed ? _viewTo
+            : LiveScroll ? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0 - DisplayDelay
+            : _anchorSec;
+        return (to - WindowSeconds, to);
+    }
+
+    private void NotifyView() { var (f, t) = VisibleWindow(); ViewChanged?.Invoke(f, t); }
+
     public TrafficGraph()
     {
         ClipToBounds = true; // the cached series is rasterized past the right edge and shifted in
@@ -320,6 +335,7 @@ public sealed class TrafficGraph : FrameworkElement
         if (_selFrom is double sf) keep = Math.Min(keep, sf - 5); // selection stats stay valid
         while (_points.Count > 0 && _points[0].TimeSec < keep) _points.RemoveAt(0);
         _seriesDirty = true; // picked up by the next live frame
+        NotifyView();        // live edge advanced → refresh the range label
     }
 
     /// <summary>Load a full historical series (switches to static layout for long ranges).</summary>
@@ -345,10 +361,12 @@ public sealed class TrafficGraph : FrameworkElement
         double anchor = _points.Count > 0
             ? _points[^1].TimeSec
             : (live ? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0 - DisplayDelay : 0);
+        _anchorSec = anchor;
         UpdatePeak(anchor - WindowSeconds, double.MaxValue);
         _renderPeak = _peak; // new range, new scale: easing from the old range's peak is meaningless
         RenderSeries(anchor);
         RefreshStatic(force: true);
+        NotifyView();
     }
 
     /// <summary>
@@ -399,6 +417,7 @@ public sealed class TrafficGraph : FrameworkElement
         _renderPeak = _peak;
         RenderSeries(toSec);
         RefreshStatic(force: true);
+        NotifyView();
     }
 
     /// <summary>Narrow the live window (strip selection pinned to the right edge) — keeps scrolling.</summary>
@@ -409,6 +428,7 @@ public sealed class TrafficGraph : FrameworkElement
         WindowSeconds = Math.Max(30, Math.Min(seconds, _rangeSeconds));
         _seriesDirty = true;
         _lastFrame = DateTime.MinValue; // re-render on the very next frame
+        NotifyView();
     }
 
     /// <summary>Back to the full range (live scroll resumes on the live range).</summary>
@@ -421,6 +441,7 @@ public sealed class TrafficGraph : FrameworkElement
         {
             _seriesDirty = true;
             _lastFrame = DateTime.MinValue;
+            NotifyView();
             return;
         }
         double anchor = _points.Count > 0 ? _points[^1].TimeSec : _anchorSec;
@@ -428,6 +449,7 @@ public sealed class TrafficGraph : FrameworkElement
         _renderPeak = _peak;
         RenderSeries(anchor);
         RefreshStatic(force: true);
+        NotifyView();
     }
 
     public void Clear()

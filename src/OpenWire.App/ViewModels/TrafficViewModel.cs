@@ -1,6 +1,7 @@
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using OpenWire.App.Services;
+using OpenWire.App.Util;
 using OpenWire.Core.Models;
 using OpenWire.Core.Util;
 
@@ -24,9 +25,19 @@ public partial class TrafficViewModel : ObservableObject
     [ObservableProperty] private string _topApp = "";
     [ObservableProperty] private string _topHost = "";
 
-    // Drag-selection on the graph: the bar shows the band's totals + time range.
-    [ObservableProperty] private string _selectionRange = "";
+    // The top app/host, split from the "+N more" affordance so the overflow can open a popup.
+    [ObservableProperty] private string _topAppName = "";
+    [ObservableProperty] private string _topHostName = "";
+    [ObservableProperty] private string _moreAppsText = "";
+    [ObservableProperty] private string _moreHostsText = "";
+    [ObservableProperty] private bool _hasMoreApps;
+    [ObservableProperty] private bool _hasMoreHosts;
+
+    // The time range shown at the graph's corner — the drag-selected band when selecting,
+    // otherwise the currently-visible window.
+    [ObservableProperty] private string _rangeLabel = "";
     private bool _selectionActive;
+    private string _viewRangeText = "";
 
     public TrafficViewModel(EngineClient client)
     {
@@ -47,11 +58,7 @@ public partial class TrafficViewModel : ObservableObject
         _selectionActive = true;
         BreakdownDown = ByteFormatter.Bytes((long)downBytes);
         BreakdownUp = ByteFormatter.Bytes((long)upBytes);
-        var f = DateTimeOffset.FromUnixTimeSeconds((long)fromSec).ToLocalTime();
-        var t = DateTimeOffset.FromUnixTimeSeconds((long)toSec).ToLocalTime();
-        SelectionRange = f.Date == t.Date
-            ? $"{f:MMM d}  {f:HH:mm} – {t:HH:mm}"
-            : $"{f:MMM d HH:mm} – {t:MMM d HH:mm}";
+        RangeLabel = FormatRange(fromSec, toSec);
     }
 
     /// <summary>Back to whole-view totals once the band is dismissed.</summary>
@@ -59,8 +66,27 @@ public partial class TrafficViewModel : ObservableObject
     {
         if (!_selectionActive) return;
         _selectionActive = false;
-        SelectionRange = "";
+        RangeLabel = _viewRangeText;
         UpdateBreakdown();
+    }
+
+    /// <summary>The graph's currently-visible time window, shown at the graph corner when no
+    /// band is selected.</summary>
+    public void SetViewRange(double fromSec, double toSec)
+    {
+        _viewRangeText = FormatRange(fromSec, toSec);
+        if (!_selectionActive) RangeLabel = _viewRangeText;
+    }
+
+    private static string FormatRange(double fromSec, double toSec)
+    {
+        // Month name in the app's language (not the OS locale); the 24h clock is culture-neutral.
+        var c = System.Globalization.CultureInfo.GetCultureInfo(LangManager.CultureName(LangManager.Current));
+        var f = DateTimeOffset.FromUnixTimeSeconds((long)fromSec).ToLocalTime();
+        var t = DateTimeOffset.FromUnixTimeSeconds((long)toSec).ToLocalTime();
+        return f.Date == t.Date
+            ? $"{f.ToString("MMM d", c)}  {f:HH:mm} – {t:HH:mm}"
+            : $"{f.ToString("MMM d HH:mm", c)} – {t.ToString("MMM d HH:mm", c)}";
     }
 
     private void UpdateBreakdown()
@@ -70,8 +96,17 @@ public partial class TrafficViewModel : ObservableObject
         var hosts = Usage.Hosts;
         BreakdownDown = ByteFormatter.Bytes(apps.Sum(a => a.BytesIn));
         BreakdownUp = ByteFormatter.Bytes(apps.Sum(a => a.BytesOut));
-        TopApp = apps.Count > 0 ? apps[0].App.Name + (apps.Count > 1 ? $"  +{apps.Count - 1} more" : "") : "";
-        TopHost = hosts.Count > 0 ? hosts[0].Host + (hosts.Count > 1 ? $"  +{hosts.Count - 1} more" : "") : "";
+
+        TopAppName = apps.Count > 0 ? apps[0].App.Name : "";
+        HasMoreApps = apps.Count > 1;
+        MoreAppsText = HasMoreApps ? string.Format(Loc.S("L.Traffic.MoreFmt"), apps.Count - 1) : "";
+        TopHostName = hosts.Count > 0 ? hosts[0].Host : "";
+        HasMoreHosts = hosts.Count > 1;
+        MoreHostsText = HasMoreHosts ? string.Format(Loc.S("L.Traffic.MoreFmt"), hosts.Count - 1) : "";
+
+        // Kept for any legacy binding; the split name + "+N more" above is what the bar shows.
+        TopApp = TopAppName + (HasMoreApps ? "  " + MoreAppsText : "");
+        TopHost = TopHostName + (HasMoreHosts ? "  " + MoreHostsText : "");
     }
 
     public void PushTick(DateTimeOffset time, double inBytes, double outBytes)

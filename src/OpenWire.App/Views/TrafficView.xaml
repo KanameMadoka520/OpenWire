@@ -8,6 +8,63 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              mc:Ignorable="d"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
+    <UserControl.Resources>
+        <!-- "+N more" link that opens the overflow popup -->
+        <Style x:Key="MoreLink" TargetType="Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Foreground" Value="{StaticResource Accent}" />
+            <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Padding" Value="6,2" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="Transparent" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter Property="Opacity" Value="0.75" /></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Overflow popup card (shared look for the "show all" floats) -->
+        <Style x:Key="OverflowCard" TargetType="Border">
+            <Setter Property="Margin" Value="10" />
+            <Setter Property="Background" Value="{StaticResource BgPanel}" />
+            <Setter Property="BorderBrush" Value="{StaticResource CtlBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="{StaticResource CtlCorner}" />
+            <Setter Property="Effect">
+                <Setter.Value><DropShadowEffect Color="#000000" BlurRadius="16" ShadowDepth="3" Direction="270" Opacity="0.3" /></Setter.Value>
+            </Setter>
+        </Style>
+
+        <DataTemplate x:Key="OverflowAppTemplate">
+            <Grid Margin="14,6">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <Image Grid.Column="0" Width="16" Height="16" Margin="0,0,9,0" VerticalAlignment="Center" Source="{Binding App.ExecutablePath, Converter={StaticResource AppIcon}}" />
+                <TextBlock Grid.Column="1" Text="{Binding App.Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="2" Style="{StaticResource Mono}" FontSize="12" Foreground="{StaticResource TextSecondary}" Margin="10,0,0,0"
+                           Text="{Binding Total, Converter={StaticResource Bytes}}" VerticalAlignment="Center" />
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate x:Key="OverflowHostTemplate">
+            <Grid Margin="14,6">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <Image Grid.Column="0" Width="16" Height="11" Margin="0,0,8,0" VerticalAlignment="Center" Source="{Binding Geo.CountryCode, Converter={StaticResource Flag}}" />
+                <TextBlock Grid.Column="1" Text="{Binding Host}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="2" Style="{StaticResource Mono}" FontSize="12" Foreground="{StaticResource TextSecondary}" Margin="10,0,0,0"
+                           Text="{Binding Total, Converter={StaticResource Bytes}}" VerticalAlignment="Center" />
+            </Grid>
+        </DataTemplate>
+    </UserControl.Resources>
     <Grid Margin="0">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -73,19 +130,59 @@
                     <!-- breakdown bar: down/up totals + top app + top host for the view (or the drag-selected band) -->
                     <Border Grid.Row="1" BorderBrush="{StaticResource Border}" BorderThickness="0,1,0,0" Padding="14,7" Background="{StaticResource BgPanel}">
                         <Grid>
+                        <!-- currently-visible time window (or the drag-selected band's range) -->
                         <TextBlock HorizontalAlignment="Right" VerticalAlignment="Center" Style="{StaticResource Mono}"
-                                   FontSize="12" Foreground="{StaticResource TextSecondary}" Text="{Binding SelectionRange}" />
+                                   FontSize="12" Foreground="{StaticResource TextSecondary}" Text="{Binding RangeLabel}" />
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="&#xE74B;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11" Foreground="{StaticResource InLine}" VerticalAlignment="Center" />
                             <TextBlock Style="{StaticResource Mono}" FontSize="12" Margin="5,0,0,0" VerticalAlignment="Center" Text="{Binding BreakdownDown}" />
                             <TextBlock Text="&#xE74A;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11" Foreground="{StaticResource OutLine}" VerticalAlignment="Center" Margin="16,0,0,0" />
                             <TextBlock Style="{StaticResource Mono}" FontSize="12" Margin="5,0,0,0" VerticalAlignment="Center" Text="{Binding BreakdownUp}" />
                             <Border Width="1" Background="{StaticResource Border}" Margin="16,2,16,2" />
+
+                            <!-- top app + "+N more" popup -->
                             <TextBlock Text="&#xE71D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" />
-                            <TextBlock FontSize="12" Foreground="{StaticResource TextSecondary}" Margin="6,0,0,0" VerticalAlignment="Center" Text="{Binding TopApp}" TextTrimming="CharacterEllipsis" MaxWidth="260" />
+                            <TextBlock FontSize="12" Foreground="{StaticResource TextSecondary}" Margin="6,0,0,0" VerticalAlignment="Center" Text="{Binding TopAppName}" TextTrimming="CharacterEllipsis" MaxWidth="220" />
+                            <Button x:Name="MoreAppsBtn" Style="{StaticResource MoreLink}" Margin="4,0,0,0" Content="{Binding MoreAppsText}"
+                                    Visibility="{Binding HasMoreApps, Converter={StaticResource BoolVis}}" Click="OnShowAllApps" />
+                            <Popup x:Name="AppsPopup" PlacementTarget="{Binding ElementName=MoreAppsBtn}" Placement="Top"
+                                   StaysOpen="False" AllowsTransparency="True" PopupAnimation="Fade" VerticalOffset="-2">
+                                <Border Style="{StaticResource OverflowCard}" Width="360">
+                                    <DockPanel>
+                                        <Grid DockPanel.Dock="Top" Margin="14,12,8,6">
+                                            <TextBlock Text="{StaticResource L.Traffic.AllApps}" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
+                                            <Button HorizontalAlignment="Right" Style="{StaticResource IconBtn}" Width="30" Height="28"
+                                                    Content="&#xE711;" ToolTip="{StaticResource L.Common.Close}" Click="OnCloseApps" />
+                                        </Grid>
+                                        <ScrollViewer MaxHeight="420" VerticalScrollBarVisibility="Auto" Margin="0,0,0,10">
+                                            <ItemsControl ItemsSource="{Binding Usage.Apps}" ItemTemplate="{StaticResource OverflowAppTemplate}" />
+                                        </ScrollViewer>
+                                    </DockPanel>
+                                </Border>
+                            </Popup>
+
                             <Border Width="1" Background="{StaticResource Border}" Margin="16,2,16,2" />
+
+                            <!-- top host + "+N more" popup -->
                             <TextBlock Text="&#xE968;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" />
-                            <TextBlock FontSize="12" Foreground="{StaticResource TextSecondary}" Margin="6,0,0,0" VerticalAlignment="Center" Text="{Binding TopHost}" TextTrimming="CharacterEllipsis" MaxWidth="260" />
+                            <TextBlock FontSize="12" Foreground="{StaticResource TextSecondary}" Margin="6,0,0,0" VerticalAlignment="Center" Text="{Binding TopHostName}" TextTrimming="CharacterEllipsis" MaxWidth="220" />
+                            <Button x:Name="MoreHostsBtn" Style="{StaticResource MoreLink}" Margin="4,0,0,0" Content="{Binding MoreHostsText}"
+                                    Visibility="{Binding HasMoreHosts, Converter={StaticResource BoolVis}}" Click="OnShowAllHosts" />
+                            <Popup x:Name="HostsPopup" PlacementTarget="{Binding ElementName=MoreHostsBtn}" Placement="Top"
+                                   StaysOpen="False" AllowsTransparency="True" PopupAnimation="Fade" VerticalOffset="-2">
+                                <Border Style="{StaticResource OverflowCard}" Width="380">
+                                    <DockPanel>
+                                        <Grid DockPanel.Dock="Top" Margin="14,12,8,6">
+                                            <TextBlock Text="{StaticResource L.Traffic.AllHosts}" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
+                                            <Button HorizontalAlignment="Right" Style="{StaticResource IconBtn}" Width="30" Height="28"
+                                                    Content="&#xE711;" ToolTip="{StaticResource L.Common.Close}" Click="OnCloseHosts" />
+                                        </Grid>
+                                        <ScrollViewer MaxHeight="420" VerticalScrollBarVisibility="Auto" Margin="0,0,0,10">
+                                            <ItemsControl ItemsSource="{Binding Usage.Hosts}" ItemTemplate="{StaticResource OverflowHostTemplate}" />
+                                        </ScrollViewer>
+                                    </DockPanel>
+                                </Border>
+                            </Popup>
                         </StackPanel>
                         </Grid>
                     </Border>

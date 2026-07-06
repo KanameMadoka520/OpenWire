@@ -27,13 +27,28 @@ public partial class TrafficView : UserControl
         // Control events (not VM events): safe to wire once for the view's lifetime.
         Graph.RangeSelected += OnGraphRangeSelected;
         Graph.SelectionCleared += OnGraphSelectionCleared;
-        Filter.CloseRequested += () => Filter.Visibility = System.Windows.Visibility.Collapsed;
+        Graph.ViewChanged += (f, t) => _vm?.SetViewRange(f, t);
+        Filter.CloseRequested += () => { Filter.Visibility = System.Windows.Visibility.Collapsed; SyncFilterColumn(); };
+        // While the panel is open, hide whichever Usage column it's already listing.
+        Filter.DimensionChanged += _ => SyncFilterColumn();
     }
 
     private void OnToggleFilter(object sender, System.Windows.RoutedEventArgs e)
-        => Filter.Visibility = Filter.Visibility == System.Windows.Visibility.Visible
+    {
+        Filter.Visibility = Filter.Visibility == System.Windows.Visibility.Visible
             ? System.Windows.Visibility.Collapsed
             : System.Windows.Visibility.Visible;
+        SyncFilterColumn();
+    }
+
+    /// <summary>Tells the Usage columns which dimension the open filter panel is listing (so that
+    /// column hides), or -1 when the panel is closed (all columns show).</summary>
+    private void SyncFilterColumn()
+    {
+        if (_vm is null) return;
+        _vm.Usage.FilterDimension = Filter.Visibility == System.Windows.Visibility.Visible
+            ? Filter.CurrentDimension : -1;
+    }
 
     private void OnGraphRangeSelected(double fromSec, double toSec, double downBytes, double upBytes)
         => _vm?.ApplySelection(fromSec, toSec, downBytes, upBytes);
@@ -141,6 +156,12 @@ public partial class TrafficView : UserControl
         DrillPanel.Visibility = System.Windows.Visibility.Collapsed;
         _drillIso = null;
     }
+
+    // "+N more" overflow popups on the graph breakdown bar (StaysOpen=False → outside click closes).
+    private void OnShowAllApps(object sender, System.Windows.RoutedEventArgs e) => AppsPopup.IsOpen = true;
+    private void OnCloseApps(object sender, System.Windows.RoutedEventArgs e) => AppsPopup.IsOpen = false;
+    private void OnShowAllHosts(object sender, System.Windows.RoutedEventArgs e) => HostsPopup.IsOpen = true;
+    private void OnCloseHosts(object sender, System.Windows.RoutedEventArgs e) => HostsPopup.IsOpen = false;
 
     private void OnTogglePause(object sender, System.Windows.RoutedEventArgs e)
     {
