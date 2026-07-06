@@ -50,6 +50,27 @@ public static class LangManager
         string file = Langs.GetValueOrDefault(lang, Langs["English"]);
         app.Resources.MergedDictionaries.Add(
             new ResourceDictionary { Source = new Uri($"Lang/{file}", UriKind.Relative) });
+        ApplyCulture(lang);
+    }
+
+    /// <summary>Culture name for a language, driving localized country names (RegionInfo)
+    /// and default date/number formatting.</summary>
+    public static string CultureName(string lang) => lang switch
+    {
+        "SimplifiedChinese" => "zh-Hans",
+        "TraditionalChinese" => "zh-Hant",
+        _ => "en-US",
+    };
+
+    private static void ApplyCulture(string lang)
+    {
+        try
+        {
+            var c = System.Globalization.CultureInfo.GetCultureInfo(CultureName(lang));
+            System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = c;
+            System.Threading.Thread.CurrentThread.CurrentUICulture = c;
+        }
+        catch { /* culture unavailable — keep the default */ }
     }
 
     /// <summary>Persist the language and rebuild the main window with the new strings.</summary>

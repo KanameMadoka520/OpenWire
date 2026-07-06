@@ -125,7 +125,7 @@ public partial class TrafficView : UserControl
         var country = _vm.Usage.Countries.FirstOrDefault(c => string.Equals(c.CountryCode, iso, System.StringComparison.OrdinalIgnoreCase));
 
         DrillCode.Text = OneChina.DisplayCode(iso);
-        DrillName.Text = OneChina.DisplayName(iso, country?.CountryName ?? "");
+        DrillName.Text = CountryName.Localized(iso, country?.CountryName ?? "");
         DrillFlag.Source = new CountryFlagConverter().Convert(iso, typeof(ImageSource), null, CultureInfo.InvariantCulture) as ImageSource;
         DrillHosts.ItemsSource = hosts;
         DrillEmpty.Visibility = hosts.Count == 0 ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;

@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using OpenWire.App.Services;
 using OpenWire.App.Util;
 using OpenWire.Core.Models;
+using OpenWire.Core.Util;
 
 namespace OpenWire.App.ViewModels;
 
@@ -28,6 +29,14 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private string _virusTotalApiKey = "";
     [ObservableProperty] private string _engineInfo = "";
     [ObservableProperty] private string _savedText = "";
+
+    // ---- Storage / database (relocatable DB + space used + clear history) ----
+    [ObservableProperty] private string _storageLocation = "";
+    [ObservableProperty] private string _storageSizeText = "";
+    [ObservableProperty] private string _storageDetailText = "";
+
+    /// <summary>Non-empty only after a relocation that needs an engine restart to take effect.</summary>
+    [ObservableProperty] private string _restartNote = "";
 
     /// <summary>Shown in the About card (assembly version, set via Directory.Build.props).</summary>
     public string AppVersion { get; } =
@@ -75,6 +84,73 @@ public partial class SettingsViewModel : ObservableObject
             hello.EngineVersion, hello.MachineName,
             hello.CanEnforceFirewall ? Loc.S("L.Set.FwEnabled") : Loc.S("L.Set.FwUnavailable"),
             hello.GeoIpAvailable ? Loc.S("L.Set.GeoLoaded") : Loc.S("L.Set.GeoNotInstalled"));
+
+        await LoadStorageAsync();
+    }
+
+    /// <summary>Fetches the current database location/size and mirrors it into the STORAGE card.</summary>
+    public async Task LoadStorageAsync()
+    {
+        var resp = await _client.GetStorageInfoAsync();
+        if (resp.Storage is { } s) ApplyStorage(s);
+    }
+
+    private void ApplyStorage(StorageInfo s)
+    {
+        StorageLocation = s.DataDirectory;
+        StorageSizeText = ByteFormatter.Bytes(s.DatabaseBytes);
+
+        StorageDetailText = s.OldestRecord is { } oldest
+            ? string.Format(Loc.S("L.Set.StorageDetailFmt"),
+                ByteFormatter.Bytes(s.FreeBytes),
+                oldest.LocalDateTime.ToString(Loc.S("L.Set.StorageDateFormat")))
+            : string.Format(Loc.S("L.Set.StorageFreeFmt"), ByteFormatter.Bytes(s.FreeBytes));
+
+        RestartNote = s.RestartRequired ? Loc.S("L.Set.StorageRestartNote") : "";
+    }
+
+    /// <summary>Pick a new folder for the database (guards cancel) and relocate it.</summary>
+    [RelayCommand]
+    private async Task ChangeLocation()
+    {
+        using var dlg = new System.Windows.Forms.FolderBrowserDialog
+        {
+            Description = Loc.S("L.Set.StorageChooseFolder"),
+            UseDescriptionForTitle = true,
+            ShowNewFolderButton = true,
+        };
+        if (!string.IsNullOrWhiteSpace(StorageLocation) && System.IO.Directory.Exists(StorageLocation))
+            dlg.SelectedPath = StorageLocation;
+
+        if (dlg.ShowDialog() != System.Windows.Forms.DialogResult.OK) return;
+        var chosen = dlg.SelectedPath;
+        if (string.IsNullOrWhiteSpace(chosen)) return;
+
+        var resp = await _client.SetStorageLocationAsync(chosen);
+        if (resp.Storage is { } s) ApplyStorage(s);
+    }
+
+    /// <summary>Drop per-minute history but keep daily rollups + settings, then refresh the size.</summary>
+    [RelayCommand]
+    private async Task ClearMinutes()
+    {
+        var resp = await _client.ClearDataAsync(ClearDataMode.MinuteHistory);
+        if (resp.Storage is { } s) ApplyStorage(s);
+    }
+
+    /// <summary>Wipe all history (destructive) after an explicit confirmation, then refresh the size.</summary>
+    [RelayCommand]
+    private async Task ClearAll()
+    {
+        var confirm = System.Windows.MessageBox.Show(
+            Loc.S("L.Set.StorageClearAllConfirm"),
+            Loc.S("L.Set.StorageClearAll"),
+            System.Windows.MessageBoxButton.OKCancel,
+            System.Windows.MessageBoxImage.Warning);
+        if (confirm != System.Windows.MessageBoxResult.OK) return;
+
+        var resp = await _client.ClearDataAsync(ClearDataMode.AllHistory);
+        if (resp.Storage is { } s) ApplyStorage(s);
     }
 
     [RelayCommand]

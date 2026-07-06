@@ -170,9 +170,9 @@ public partial class FilterPanel : UserControl
                 .Where(c => MatchesWanLan(wanLan, c.IsLocal || string.IsNullOrEmpty(c.CountryCode)))
                 .Select(c => new Row
                 {
-                    Name = string.IsNullOrEmpty(c.DisplayName)
+                    Name = string.IsNullOrEmpty(c.CountryCode)
                         ? Loc.S(c.IsLocal ? "L.Filter.LocalNetwork" : "L.Filter.Unknown")
-                        : c.DisplayName,
+                        : CountryName.Localized(c.CountryCode, c.DisplayName),
                     FlagCode = c.CountryCode, HasFlagSlot = true, CodeBadge = c.DisplayCode,
                     BytesIn = c.BytesIn, BytesOut = c.BytesOut,
                 }),

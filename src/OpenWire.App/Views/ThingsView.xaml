@@ -31,7 +31,20 @@
                     <TextBlock Text="{StaticResource L.Scan.SearchDevices}" Foreground="{StaticResource TextMuted}" FontSize="13" Margin="12,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"
                                Visibility="{Binding SearchText.Length, Converter={StaticResource ZeroVis}, ConverterParameter=invert}" />
                 </Grid>
-                <TextBlock Text="{StaticResource L.Scan.RescanEvery}" Style="{StaticResource Caption}" VerticalAlignment="Center" />
+                <CheckBox Style="{StaticResource Switch}" Content="{StaticResource L.Scan.AutoScan}" IsChecked="{Binding AutoScan}"
+                          VerticalAlignment="Center" Margin="0,0,14,0" />
+                <TextBlock VerticalAlignment="Center">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock" BasedOn="{StaticResource Caption}">
+                            <Setter Property="Text" Value="{StaticResource L.Scan.RescanEvery}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding AutoScan}" Value="False">
+                                    <Setter Property="Text" Value="{StaticResource L.Scan.AutoScanOff}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
             </StackPanel>
         </Grid>
 

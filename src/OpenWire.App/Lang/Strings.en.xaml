@@ -5,6 +5,7 @@
          these via StaticResource, code via Loc.S("key"). Keys are grouped by area. -->
 
     <!-- shared -->
+    <sys:String x:Key="L.Common.ChinaRegionFmt">{0}, China</sys:String>
     <sys:String x:Key="L.Common.OneChina">Taiwan, Hong Kong and Macao are part of China. If you do not agree, please stop using this software.</sys:String>
 
     <!-- top bar -->
@@ -139,6 +140,31 @@
     <sys:String x:Key="L.Analytics.AnomaliesDetected">ANOMALIES DETECTED</sys:String>
     <sys:String x:Key="L.Analytics.NoAnomalies">No anomalies detected.</sys:String>
     <sys:String x:Key="L.Analytics.NoAnomaliesHint">Your recorded usage looks normal for this period.</sys:String>
+    <!-- analytics · summary-card + change text (view-model) -->
+    <sys:String x:Key="L.Analytics.DownUpFmt">{0} down · {1} up</sys:String>
+    <sys:String x:Key="L.Analytics.BusiestNone">—</sys:String>
+    <sys:String x:Key="L.Analytics.ActiveDaysOneFmt">over {0} active day</sys:String>
+    <sys:String x:Key="L.Analytics.ActiveDaysManyFmt">over {0} active days</sys:String>
+    <sys:String x:Key="L.Analytics.ChangeFmt">{0}{1} vs previous</sys:String>
+    <sys:String x:Key="L.Analytics.NoPriorPeriod">no prior period</sys:String>
+    <!-- analytics · highlights (regenerated app-side from the report fields) -->
+    <sys:String x:Key="L.Analytics.HlNoActivity">No recorded network activity in this period yet.</sys:String>
+    <sys:String x:Key="L.Analytics.HlBusiest">Your network is busiest around {0}:00.</sys:String>
+    <sys:String x:Key="L.Analytics.HlTopApp">{0} accounts for {1} of traffic ({2}).</sys:String>
+    <sys:String x:Key="L.Analytics.HlAvgPerDay">Averaging {0} per active day over {1} day(s).</sys:String>
+    <sys:String x:Key="L.Analytics.HlSplit">Split: {0} down · {1} up.</sys:String>
+    <sys:String x:Key="L.Analytics.HlAnomaliesOne">{0} usage anomaly detected — see below.</sys:String>
+    <sys:String x:Key="L.Analytics.HlAnomaliesMany">{0} usage anomalies detected — see below.</sys:String>
+
+    <!-- anomaly cards (regenerated app-side from each anomaly's structured fields) -->
+    <sys:String x:Key="L.Anom.SpikeTitleFmt">{0} traffic spike</sys:String>
+    <sys:String x:Key="L.Anom.SpikeDetailFmt">{0} moved {1} today — about {2}× its daily average of {3}/day.</sys:String>
+    <sys:String x:Key="L.Anom.UploadTitleFmt">{0} is upload-heavy</sys:String>
+    <sys:String x:Key="L.Anom.UploadDetailFmt">{0} uploaded {1} today but only downloaded {2} ({3}× more up than down).</sys:String>
+    <sys:String x:Key="L.Anom.NewCountryTitleFmt">New country: {0}</sys:String>
+    <sys:String x:Key="L.Anom.NewCountryDetailFmt">First traffic exchanged with {0} in the recorded history.</sys:String>
+    <sys:String x:Key="L.Anom.OddHourTitleFmt">Activity at an unusual hour ({0}:00)</sys:String>
+    <sys:String x:Key="L.Anom.OddHourDetailFmt">{0} of traffic around {1}:00 today — a time your network is normally quiet.</sys:String>
 
     <!-- hardware -->
     <sys:String x:Key="L.Hw.Title">Hardware resources</sys:String>
@@ -153,6 +179,9 @@
     <sys:String x:Key="L.Hw.DiskWrite">Disk write</sys:String>
     <sys:String x:Key="L.Hw.GpuUsage">GPU usage</sys:String>
     <sys:String x:Key="L.Hw.GpuMemory">GPU memory</sys:String>
+    <sys:String x:Key="L.Hw.Processes">Processes</sys:String>
+    <sys:String x:Key="L.Hw.ColApplication">APPLICATION</sys:String>
+    <sys:String x:Key="L.Hw.ColDisk">DISK</sys:String>
 
     <!-- scanner -->
     <sys:String x:Key="L.Scan.SearchDevices">Search devices</sys:String>
@@ -171,6 +200,8 @@
     <sys:String x:Key="L.Scan.Scanning">Scanning…</sys:String>
     <sys:String x:Key="L.Scan.ScannedJustNow">Scanned just now</sys:String>
     <sys:String x:Key="L.Scan.LocalNetwork">Local network</sys:String>
+    <sys:String x:Key="L.Scan.AutoScan">Auto-scan</sys:String>
+    <sys:String x:Key="L.Scan.AutoScanOff">Auto-scan off</sys:String>
 
     <!-- world map -->
     <sys:String x:Key="L.Map.SourceCountriesFmt">{0} source countries/regions</sys:String>
@@ -206,6 +237,19 @@
     <sys:String x:Key="L.Set.DataPlanEnable">Enable monthly data plan</sys:String>
     <sys:String x:Key="L.Set.DataPlanLimit">Limit (GB)</sys:String>
     <sys:String x:Key="L.Set.DataPlanResetDay">Reset day</sys:String>
+    <sys:String x:Key="L.Set.Storage">STORAGE</sys:String>
+    <sys:String x:Key="L.Set.StorageDesc">Where OpenWire keeps its traffic database.</sys:String>
+    <sys:String x:Key="L.Set.StorageDbLocation">Database location</sys:String>
+    <sys:String x:Key="L.Set.StorageChange">Change…</sys:String>
+    <sys:String x:Key="L.Set.StorageRestartNote">The database will move to the new location the next time the engine restarts.</sys:String>
+    <sys:String x:Key="L.Set.StorageSpaceUsed">Space used</sys:String>
+    <sys:String x:Key="L.Set.StorageDetailFmt">{0} free on disk  ·  oldest record {1}</sys:String>
+    <sys:String x:Key="L.Set.StorageFreeFmt">{0} free on disk</sys:String>
+    <sys:String x:Key="L.Set.StorageDateFormat">MMM d, yyyy</sys:String>
+    <sys:String x:Key="L.Set.StorageClearMinutes">Clear minute history</sys:String>
+    <sys:String x:Key="L.Set.StorageClearAll">Clear all history</sys:String>
+    <sys:String x:Key="L.Set.StorageChooseFolder">Choose a folder for the OpenWire database</sys:String>
+    <sys:String x:Key="L.Set.StorageClearAllConfirm">This permanently deletes all traffic, usage and device history. Firewall rules and settings are kept. Continue?</sys:String>
     <sys:String x:Key="L.Set.History">HISTORY</sys:String>
     <sys:String x:Key="L.Set.HistoryDesc">Per-minute history is pruned after this many days to keep the database small; compact daily rollups are kept much longer for long-term trends and anomaly baselines. Set to 0 to keep all minute-level history.</sys:String>
     <sys:String x:Key="L.Set.HistoryKeepFor">Keep minutes for</sys:String>

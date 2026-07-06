@@ -96,6 +96,46 @@
                     </StackPanel>
                 </Border>
 
+                <TextBlock Text="{StaticResource L.Set.Storage}" Style="{StaticResource TableHeaderText}" Margin="2,24,0,10" />
+                <Border Style="{StaticResource Card}" Padding="18">
+                    <StackPanel>
+                        <TextBlock Foreground="{StaticResource TextSecondary}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,14"
+                                   Text="{StaticResource L.Set.StorageDesc}" />
+
+                        <!-- Database location: read-only path + folder picker -->
+                        <TextBlock Text="{StaticResource L.Set.StorageDbLocation}" Foreground="{StaticResource TextSecondary}" FontSize="12" Margin="0,0,0,5" />
+                        <Grid Margin="0,0,0,14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.Column="0" Background="{StaticResource BgSubtle}" CornerRadius="4" Padding="10,7" VerticalAlignment="Center" Margin="0,0,10,0">
+                                <TextBlock Style="{StaticResource Mono}" FontSize="12" Foreground="{StaticResource TextPrimary}"
+                                           Text="{Binding StorageLocation}" ToolTip="{Binding StorageLocation}" TextTrimming="CharacterEllipsis" />
+                            </Border>
+                            <Button Grid.Column="1" Style="{StaticResource BtnGhost}" Content="{StaticResource L.Set.StorageChange}"
+                                    Command="{Binding ChangeLocationCommand}" VerticalAlignment="Center" />
+                        </Grid>
+
+                        <!-- Relocation note (collapses to nothing until a restart is pending) -->
+                        <TextBlock Text="{Binding RestartNote}" Foreground="{StaticResource TextMuted}" FontSize="11.5" TextWrapping="Wrap" Margin="0,0,0,14"
+                                   Visibility="{Binding RestartNote.Length, Converter={StaticResource ZeroVis}}" />
+
+                        <!-- Space used + free/oldest detail -->
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
+                            <TextBlock Text="{StaticResource L.Set.StorageSpaceUsed}" Foreground="{StaticResource TextSecondary}" FontSize="12" VerticalAlignment="Center" Width="120" />
+                            <TextBlock Text="{Binding StorageSizeText}" Style="{StaticResource Mono}" FontSize="13" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding StorageDetailText}" Foreground="{StaticResource TextMuted}" FontSize="11.5" TextWrapping="Wrap" Margin="120,0,0,16" />
+
+                        <!-- Clear history: the "all" button confirms before wiping -->
+                        <StackPanel Orientation="Horizontal">
+                            <Button Style="{StaticResource BtnGhost}" Content="{StaticResource L.Set.StorageClearMinutes}" Command="{Binding ClearMinutesCommand}" Margin="0,0,10,0" />
+                            <Button Style="{StaticResource BtnGhost}" Content="{StaticResource L.Set.StorageClearAll}" Command="{Binding ClearAllCommand}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
                 <TextBlock Text="{StaticResource L.Set.History}" Style="{StaticResource TableHeaderText}" Margin="2,24,0,10" />
                 <Border Style="{StaticResource Card}" Padding="18">
                     <StackPanel>

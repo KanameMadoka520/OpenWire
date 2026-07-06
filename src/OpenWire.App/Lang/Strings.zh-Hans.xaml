@@ -4,6 +4,7 @@
     <!-- 简体中文界面文案。 -->
 
     <!-- shared -->
+    <sys:String x:Key="L.Common.ChinaRegionFmt">中国{0}</sys:String>
     <sys:String x:Key="L.Common.OneChina">台湾、香港、澳门都是中国的一部分。如果您不认同，请停止使用本软件。</sys:String>
 
     <!-- top bar -->
@@ -138,6 +139,31 @@
     <sys:String x:Key="L.Analytics.AnomaliesDetected">检测到的异常</sys:String>
     <sys:String x:Key="L.Analytics.NoAnomalies">未检测到异常。</sys:String>
     <sys:String x:Key="L.Analytics.NoAnomaliesHint">此周期内的用量记录看起来一切正常。</sys:String>
+    <!-- analytics · summary-card + change text (view-model) -->
+    <sys:String x:Key="L.Analytics.DownUpFmt">下载 {0} · 上传 {1}</sys:String>
+    <sys:String x:Key="L.Analytics.BusiestNone">—</sys:String>
+    <sys:String x:Key="L.Analytics.ActiveDaysOneFmt">共 {0} 个活跃日</sys:String>
+    <sys:String x:Key="L.Analytics.ActiveDaysManyFmt">共 {0} 个活跃日</sys:String>
+    <sys:String x:Key="L.Analytics.ChangeFmt">{0}{1} 较上期</sys:String>
+    <sys:String x:Key="L.Analytics.NoPriorPeriod">暂无上一周期</sys:String>
+    <!-- analytics · highlights (regenerated app-side from the report fields) -->
+    <sys:String x:Key="L.Analytics.HlNoActivity">此周期内暂无网络活动记录。</sys:String>
+    <sys:String x:Key="L.Analytics.HlBusiest">网络在 {0}:00 前后最为繁忙。</sys:String>
+    <sys:String x:Key="L.Analytics.HlTopApp">{0} 占总流量的 {1}（{2}）。</sys:String>
+    <sys:String x:Key="L.Analytics.HlAvgPerDay">日均流量 {0}，共 {1} 天。</sys:String>
+    <sys:String x:Key="L.Analytics.HlSplit">分布：下载 {0} · 上传 {1}。</sys:String>
+    <sys:String x:Key="L.Analytics.HlAnomaliesOne">检测到 {0} 项用量异常 — 详见下方。</sys:String>
+    <sys:String x:Key="L.Analytics.HlAnomaliesMany">检测到 {0} 项用量异常 — 详见下方。</sys:String>
+
+    <!-- anomaly cards (regenerated app-side from each anomaly's structured fields) -->
+    <sys:String x:Key="L.Anom.SpikeTitleFmt">{0} 流量激增</sys:String>
+    <sys:String x:Key="L.Anom.SpikeDetailFmt">{0} 今日产生 {1} 流量 — 约为其日均 {3}/天 的 {2} 倍。</sys:String>
+    <sys:String x:Key="L.Anom.UploadTitleFmt">{0} 上传偏高</sys:String>
+    <sys:String x:Key="L.Anom.UploadDetailFmt">{0} 今日上传 {1}，但仅下载 {2}（上传是下载的 {3} 倍）。</sys:String>
+    <sys:String x:Key="L.Anom.NewCountryTitleFmt">新国家/地区：{0}</sys:String>
+    <sys:String x:Key="L.Anom.NewCountryDetailFmt">记录历史中首次与 {0} 产生流量往来。</sys:String>
+    <sys:String x:Key="L.Anom.OddHourTitleFmt">异常时段活动（{0}:00）</sys:String>
+    <sys:String x:Key="L.Anom.OddHourDetailFmt">今日 {1}:00 前后产生 {0} 流量 — 此时段网络通常空闲。</sys:String>
 
     <!-- hardware -->
     <sys:String x:Key="L.Hw.Title">硬件资源</sys:String>
@@ -152,6 +178,9 @@
     <sys:String x:Key="L.Hw.DiskWrite">磁盘写入</sys:String>
     <sys:String x:Key="L.Hw.GpuUsage">GPU 占用</sys:String>
     <sys:String x:Key="L.Hw.GpuMemory">GPU 显存</sys:String>
+    <sys:String x:Key="L.Hw.Processes">进程</sys:String>
+    <sys:String x:Key="L.Hw.ColApplication">应用程序</sys:String>
+    <sys:String x:Key="L.Hw.ColDisk">磁盘</sys:String>
 
     <!-- scanner -->
     <sys:String x:Key="L.Scan.SearchDevices">搜索设备</sys:String>
@@ -170,6 +199,8 @@
     <sys:String x:Key="L.Scan.Scanning">正在扫描…</sys:String>
     <sys:String x:Key="L.Scan.ScannedJustNow">刚刚扫描完成</sys:String>
     <sys:String x:Key="L.Scan.LocalNetwork">本地网络</sys:String>
+    <sys:String x:Key="L.Scan.AutoScan">自动扫描</sys:String>
+    <sys:String x:Key="L.Scan.AutoScanOff">自动扫描已关闭</sys:String>
 
     <!-- world map -->
     <sys:String x:Key="L.Map.SourceCountriesFmt">{0} 个来源国家/地区</sys:String>
@@ -205,6 +236,19 @@
     <sys:String x:Key="L.Set.DataPlanEnable">启用每月流量套餐</sys:String>
     <sys:String x:Key="L.Set.DataPlanLimit">上限（GB）</sys:String>
     <sys:String x:Key="L.Set.DataPlanResetDay">重置日</sys:String>
+    <sys:String x:Key="L.Set.Storage">存储</sys:String>
+    <sys:String x:Key="L.Set.StorageDesc">OpenWire 存放流量数据库的位置。</sys:String>
+    <sys:String x:Key="L.Set.StorageDbLocation">数据库位置</sys:String>
+    <sys:String x:Key="L.Set.StorageChange">更改…</sys:String>
+    <sys:String x:Key="L.Set.StorageRestartNote">数据库将在引擎下次重启时移动到新位置。</sys:String>
+    <sys:String x:Key="L.Set.StorageSpaceUsed">已用空间</sys:String>
+    <sys:String x:Key="L.Set.StorageDetailFmt">磁盘剩余 {0}  ·  最早记录 {1}</sys:String>
+    <sys:String x:Key="L.Set.StorageFreeFmt">磁盘剩余 {0}</sys:String>
+    <sys:String x:Key="L.Set.StorageDateFormat">yyyy年M月d日</sys:String>
+    <sys:String x:Key="L.Set.StorageClearMinutes">清除分钟级历史</sys:String>
+    <sys:String x:Key="L.Set.StorageClearAll">清除全部历史</sys:String>
+    <sys:String x:Key="L.Set.StorageChooseFolder">为 OpenWire 数据库选择一个文件夹</sys:String>
+    <sys:String x:Key="L.Set.StorageClearAllConfirm">此操作将永久删除全部流量、用量与设备历史。防火墙规则与设置将会保留。是否继续？</sys:String>
     <sys:String x:Key="L.Set.History">历史记录</sys:String>
     <sys:String x:Key="L.Set.HistoryDesc">分钟级历史保留指定天数后清理，以控制数据库大小；紧凑的按日汇总会保留更久，用于长期趋势与异常基线。设为 0 表示保留全部分钟级历史。</sys:String>
     <sys:String x:Key="L.Set.HistoryKeepFor">分钟级保留</sys:String>

@@ -21,6 +21,14 @@ public partial class ThingsViewModel : ObservableObject
     [ObservableProperty] private string _searchText = "";
     [ObservableProperty] private bool _hasDevices;
 
+    // Auto-scan preference (mirrors AppSettings.AutoScanDevices): when on, the engine
+    // re-sweeps the LAN every 30 min. Loaded from the engine, saved on toggle.
+    [ObservableProperty] private bool _autoScan = true;
+
+    // Set while LoadAsync seeds AutoScan from the persisted value, so the property
+    // change doesn't bounce straight back into a redundant save.
+    private bool _loadingSettings;
+
     // Column sort: empty field = natural order (as the engine returned it). The sort
     // is applied when a header is clicked and re-applied on every rebuild, so it
     // survives rescans and live device updates — rows are never re-sorted on a bare
@@ -37,6 +45,29 @@ public partial class ThingsViewModel : ObservableObject
         var resp = await _client.GetDevicesAsync();
         Fill(resp.Devices);
         if (resp.Devices.Count > 0) LastScanText = Loc.S("L.Scan.ScannedJustNow");
+
+        // Seed the toggle from persisted settings without triggering a save-back.
+        _loadingSettings = true;
+        AutoScan = (await _client.GetSettingsAsync()).Settings.AutoScanDevices;
+        _loadingSettings = false;
+    }
+
+    // Persist the toggle by fetching the full settings, flipping just this flag and
+    // saving it back — mirrors SettingsViewModel so we never clobber options the
+    // Settings screen owns. Skips the initial load's seed write-back.
+    async partial void OnAutoScanChanged(bool value)
+    {
+        if (_loadingSettings) return;
+        try
+        {
+            var s = (await _client.GetSettingsAsync()).Settings;
+            s.AutoScanDevices = value;
+            await _client.SetSettingsAsync(s);
+        }
+        catch
+        {
+            // engine busy or offline — the preference will re-apply on next toggle
+        }
     }
 
     [RelayCommand]

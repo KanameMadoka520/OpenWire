@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using OpenWire.App.Services;
+using OpenWire.App.Util;
 using OpenWire.Core.Models;
 using OpenWire.Core.Util;
 
@@ -28,7 +29,7 @@ public partial class AnalyticsViewModel : ObservableObject
     [ObservableProperty] private string _activeDaysText = "";
 
     [ObservableProperty] private ObservableCollection<string> _highlights = new();
-    [ObservableProperty] private ObservableCollection<UsageAnomaly> _anomalies = new();
+    [ObservableProperty] private ObservableCollection<AnomalyRow> _anomalies = new();
     [ObservableProperty] private ObservableCollection<AppShare> _topApps = new();
     [ObservableProperty] private bool _hasAnomalies;
 
@@ -44,23 +45,66 @@ public partial class AnalyticsViewModel : ObservableObject
         catch { return; }
 
         TotalText = ByteFormatter.Bytes(r.TotalBytes);
-        DownUpText = $"{ByteFormatter.Bytes(r.TotalBytesIn)} down · {ByteFormatter.Bytes(r.TotalBytesOut)} up";
-        BusiestHourText = r.BusiestHour < 0 ? "—" : $"{r.BusiestHour:00}:00";
+        DownUpText = string.Format(Loc.S("L.Analytics.DownUpFmt"),
+            ByteFormatter.Bytes(r.TotalBytesIn), ByteFormatter.Bytes(r.TotalBytesOut));
+        BusiestHourText = r.BusiestHour < 0 ? Loc.S("L.Analytics.BusiestNone") : $"{r.BusiestHour:00}:00";
         PerDayText = ByteFormatter.Bytes(r.AveragePerActiveDay);
         ActiveAppsText = r.ActiveApps.ToString();
-        ActiveDaysText = $"over {r.ActiveDays} active day{(r.ActiveDays == 1 ? "" : "s")}";
+        ActiveDaysText = string.Format(
+            Loc.S(r.ActiveDays == 1 ? "L.Analytics.ActiveDaysOneFmt" : "L.Analytics.ActiveDaysManyFmt"),
+            r.ActiveDays);
 
         HasChange = r.PreviousTotalBytes > 0;
         ChangeText = HasChange
-            ? (r.ChangeFraction >= 0 ? "▲ " : "▼ ") + Math.Abs(r.ChangeFraction).ToString("P0") + " vs previous"
-            : "no prior period";
+            ? string.Format(Loc.S("L.Analytics.ChangeFmt"),
+                r.ChangeFraction >= 0 ? "▲ " : "▼ ", Math.Abs(r.ChangeFraction).ToString("P0"))
+            : Loc.S("L.Analytics.NoPriorPeriod");
 
-        Highlights = new ObservableCollection<string>(r.Highlights);
-        Anomalies = new ObservableCollection<UsageAnomaly>(r.Anomalies);
+        Highlights = new ObservableCollection<string>(BuildHighlights(r));
+        Anomalies = new ObservableCollection<AnomalyRow>(r.Anomalies.ConvertAll(a => new AnomalyRow(a)));
         HasAnomalies = r.Anomalies.Count > 0;
         TopApps = new ObservableCollection<AppShare>(r.TopApps);
 
         ReportLoaded?.Invoke(r);
+    }
+
+    /// <summary>
+    /// Rebuilds the localized highlight one-liners app-side from the report's
+    /// structured fields, mirroring the engine's guards (MonitorEngine.BuildHighlights)
+    /// so the list is fully translated without any engine changes.
+    /// </summary>
+    private static List<string> BuildHighlights(InsightsReport r)
+    {
+        var h = new List<string>();
+
+        if (r.TotalBytes == 0)
+        {
+            h.Add(Loc.S("L.Analytics.HlNoActivity"));
+            return h;
+        }
+
+        if (r.BusiestHour >= 0)
+            h.Add(string.Format(Loc.S("L.Analytics.HlBusiest"), $"{r.BusiestHour:00}"));
+
+        if (r.TopApps.Count > 0 && r.TopApps[0].Fraction > 0)
+            h.Add(string.Format(Loc.S("L.Analytics.HlTopApp"),
+                r.TopApps[0].Name, r.TopApps[0].Fraction.ToString("P0"),
+                ByteFormatter.Bytes(r.TopApps[0].Total)));
+
+        if (r.ActiveDays > 0)
+            h.Add(string.Format(Loc.S("L.Analytics.HlAvgPerDay"),
+                ByteFormatter.Bytes(r.AveragePerActiveDay), r.ActiveDays));
+
+        if (r.TotalBytesIn > 0 && r.TotalBytesOut > 0)
+            h.Add(string.Format(Loc.S("L.Analytics.HlSplit"),
+                ByteFormatter.Bytes(r.TotalBytesIn), ByteFormatter.Bytes(r.TotalBytesOut)));
+
+        if (r.Anomalies.Count > 0)
+            h.Add(string.Format(
+                Loc.S(r.Anomalies.Count == 1 ? "L.Analytics.HlAnomaliesOne" : "L.Analytics.HlAnomaliesMany"),
+                r.Anomalies.Count));
+
+        return h;
     }
 
     partial void OnRangeChanged(GraphRange value) => _ = LoadAsync();

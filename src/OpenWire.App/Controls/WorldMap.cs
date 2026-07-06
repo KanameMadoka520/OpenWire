@@ -77,6 +77,18 @@ public sealed class WorldMap : FrameworkElement
 
     private static bool IsMarker(CountryShape? s) => s is not null && MarkerShapes.Contains(s);
 
+    private static bool IsChinaIso(string? iso) => (iso ?? "").ToUpperInvariant() is "CN" or "TW" or "HK" or "MO";
+
+    /// <summary>Whether shape <paramref name="s"/> lights up with the currently hovered
+    /// one. Hovering any China region (mainland, Taiwan, HK, Macao) highlights the whole
+    /// of China together; Taiwan still gets its own label only when hovered directly.</summary>
+    private bool HighlightsWith(CountryShape? s)
+    {
+        if (_hover is null || s is null) return false;
+        if (ReferenceEquals(s, _hover)) return true;
+        return IsChinaIso(_hover.Iso) && IsChinaIso(s.Iso);
+    }
+
     public MapMode Mode
     {
         get => _mode;
@@ -321,9 +333,13 @@ public sealed class WorldMap : FrameworkElement
                     ? Shade(bytes, 0.22, 0.92) : pal.Land;
                 dc.DrawGeometry(fill, coast, c.Geo);
             }
-            if (_hover is not null && !IsMarker(_hover))
-                dc.DrawGeometry(new SolidColorBrush(Color.FromArgb(0x2E, pal.Accent.R, pal.Accent.G, pal.Accent.B)),
-                    new Pen(pal.AccentBrush, 2.2 / _fs), _hover.Geo);
+            if (_hover is not null)
+            {
+                var hi = new SolidColorBrush(Color.FromArgb(0x2E, pal.Accent.R, pal.Accent.G, pal.Accent.B));
+                var hiPen = new Pen(pal.AccentBrush, 2.2 / _fs);
+                foreach (var c in WorldGeo.Shapes)
+                    if (HighlightsWith(c)) dc.DrawGeometry(hi, hiPen, c.Geo);
+            }
             dc.Pop();
 
             // labels + markers in screen space for this copy
@@ -345,7 +361,7 @@ public sealed class WorldMap : FrameworkElement
                 var pt = new Point(mx, my);
                 double r = 3.2;
                 dc.DrawEllipse(Shade(bytes, 0.5, 0.98), new Pen(pal.AccentBrush, 1), pt, r, r);
-                if (ReferenceEquals(_hover, mk))
+                if (HighlightsWith(mk))
                     dc.DrawEllipse(null, new Pen(pal.AccentBrush, 2), pt, r + 2.5, r + 2.5);
                 var ft = new FormattedText(OneChina.DisplayCode(mk.Iso), CultureInfo.InvariantCulture,
                     FlowDirection.LeftToRight, _ui, 9.5, pal.Strong, dpi);
@@ -393,12 +409,16 @@ public sealed class WorldMap : FrameworkElement
                 ? ShadeBrush(pal.Accent, bytes, 0.32, 0.95, lnMax) : pal.LandGlobe;
             dc.DrawGeometry(fill, coast, geo);
         }
-        if (_hover is not null && !IsMarker(_hover))
+        if (_hover is not null)
         {
-            var geo = ProjectGlobe(_hover, slat0, clat0);
-            if (geo is not null)
-                dc.DrawGeometry(new SolidColorBrush(Color.FromArgb(0x3A, pal.Accent.R, pal.Accent.G, pal.Accent.B)),
-                    new Pen(pal.AccentBrush, 1.6), geo);
+            var hi = new SolidColorBrush(Color.FromArgb(0x3A, pal.Accent.R, pal.Accent.G, pal.Accent.B));
+            var hiPen = new Pen(pal.AccentBrush, 1.6);
+            foreach (var c in WorldGeo.Shapes)
+            {
+                if (!HighlightsWith(c)) continue;
+                var geo = ProjectGlobe(c, slat0, clat0);
+                if (geo is not null) dc.DrawGeometry(hi, hiPen, geo);
+            }
         }
 
         // HK / MO as dots on the globe too (no labels — a sphere has no room for codes).
@@ -409,7 +429,7 @@ public sealed class WorldMap : FrameworkElement
             if (!vis) continue;
             const double r = 3.0;
             dc.DrawEllipse(ShadeBrush(pal.Accent, bytes, 0.5, 0.98, lnMax), new Pen(pal.AccentBrush, 1), sp, r, r);
-            if (ReferenceEquals(_hover, mk))
+            if (HighlightsWith(mk))
                 dc.DrawEllipse(null, new Pen(pal.AccentBrush, 2), sp, r + 2.5, r + 2.5);
         }
         dc.Pop(); // clip
@@ -534,7 +554,7 @@ public sealed class WorldMap : FrameworkElement
     private void DrawTooltip(DrawingContext dc, Palette pal, double dpi)
     {
         var hover = _hover!;
-        string name = OneChina.DisplayName(hover.Iso, hover.Name);
+        string name = CountryName.Localized(hover.Iso, hover.Name);
         string info = _traffic.TryGetValue(hover.Iso, out var b)
             ? string.Format(Loc.S("L.Map.ReceivedFmt"), ByteFormatter.Bytes(b))
             : Loc.S("L.Map.NoTraffic");
@@ -572,8 +592,12 @@ public sealed class WorldMap : FrameworkElement
             Muted = Frozen(Res("TextMutedColor", Color.FromRgb(0x79, 0x81, 0x8B)));
             Strong = Frozen(Res("TextSecondaryColor", Color.FromRgb(0x52, 0x59, 0x63)));
             Primary = Frozen(Res("TextPrimaryColor", Color.FromRgb(0x23, 0x27, 0x2D)));
-            OceanLight = Blend(Res("BgSubtleColor", Color.FromRgb(0xEC, 0xEE, 0xF1)), Accent, 0.05);
-            OceanDark = Blend(Res("BgSubtleColor", Color.FromRgb(0xE1, 0xE5, 0xEA)), Accent, 0.18);
+            // A soft, cool water tint — deliberately NOT derived from the accent, whose
+            // red in the Berry skins turned the globe ocean an alarming red. A gentle
+            // light blue-grey reads as water and stays easy on the eyes in every theme.
+            var water = Color.FromRgb(0xBE, 0xD3, 0xE1);
+            OceanLight = Blend(water, Colors.White, 0.34);
+            OceanDark = water;
         }
 
         private static SolidColorBrush Frozen(Color c) { var b = new SolidColorBrush(c); b.Freeze(); return b; }
