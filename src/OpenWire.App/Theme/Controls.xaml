@@ -214,13 +214,17 @@
                 <ControlTemplate TargetType="RadioButton">
                     <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="10" Padding="16,6" Margin="3,0">
                         <Grid>
-                            <StackPanel Orientation="Horizontal">
+                            <StackPanel x:Name="sp" Orientation="Horizontal">
                                 <TextBlock x:Name="glyph" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="19"
                                            Foreground="{TemplateBinding Foreground}" Text="{TemplateBinding Tag}" VerticalAlignment="Center" />
                                 <ContentPresenter x:Name="cp" VerticalAlignment="Center" Margin="10,0,0,0" />
                             </StackPanel>
-                            <Path x:Name="ul" Data="{StaticResource DoodleSquiggle}" Stretch="Fill" Height="5" Margin="4,0,4,-3"
-                                  VerticalAlignment="Bottom" Stroke="{StaticResource TabUnderline}" StrokeThickness="1.7"
+                            <!-- Width is pinned to the tab's actual content so the squiggle's natural
+                                 geometry size never inflates the tab (it dwarfed icon-only tabs). -->
+                            <Path x:Name="ul" Data="{StaticResource DoodleSquiggle}" Stretch="Fill" Height="5" Margin="0,0,0,-3"
+                                  Width="{Binding ActualWidth, ElementName=sp}"
+                                  HorizontalAlignment="Center" VerticalAlignment="Bottom"
+                                  Stroke="{StaticResource TabUnderline}" StrokeThickness="1.7"
                                   StrokeStartLineCap="Round" StrokeEndLineCap="Round" Visibility="Collapsed" IsHitTestVisible="False" />
                         </Grid>
                     </Border>

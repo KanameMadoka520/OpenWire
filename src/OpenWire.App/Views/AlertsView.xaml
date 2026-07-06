@@ -66,8 +66,12 @@
                    HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="420" TextAlignment="Center"
                    Visibility="{Binding Alerts.Count, Converter={StaticResource ZeroVis}, ConverterParameter=invert}" />
 
+        <!-- Grouping disables container virtualization unless told otherwise; with
+             hundreds of alerts that matters, so keep it virtualizing + recycling. -->
         <ListBox Grid.Row="2" Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource PlainRow}"
-                 ItemsSource="{Binding Source={StaticResource Grouped}}" ScrollViewer.HorizontalScrollBarVisibility="Disabled" Margin="0,8,0,0">
+                 ItemsSource="{Binding Source={StaticResource Grouped}}" ScrollViewer.HorizontalScrollBarVisibility="Disabled" Margin="0,8,0,0"
+                 VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
+                 VirtualizingPanel.IsVirtualizingWhenGrouping="True" VirtualizingPanel.ScrollUnit="Pixel">
             <ListBox.GroupStyle>
                 <GroupStyle>
                     <GroupStyle.HeaderTemplate>

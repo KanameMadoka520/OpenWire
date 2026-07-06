@@ -13,7 +13,6 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
@@ -76,42 +75,71 @@
             </Grid>
         </Grid>
 
-        <!-- column header -->
-        <Grid Grid.Row="3" Margin="0,6,16,0" Height="34">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="28" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="116" />
-                <ColumnDefinition Width="116" />
-                <ColumnDefinition Width="76" />
-                <ColumnDefinition Width="150" />
-                <ColumnDefinition Width="78" />
-                <ColumnDefinition Width="66" />
-                <ColumnDefinition Width="80" />
-                <ColumnDefinition Width="80" />
-            </Grid.ColumnDefinitions>
-            <TextBlock Grid.Column="1" Text="{StaticResource L.Fw.ColApplication}" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
-            <TextBlock Grid.Column="2" Text="{StaticResource L.Fw.ColIncoming}" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
-            <TextBlock Grid.Column="3" Text="{StaticResource L.Fw.ColOutgoing}" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
-            <TextBlock Grid.Column="4" Text="{StaticResource L.Fw.ColVersion}" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
-            <TextBlock Grid.Column="5" Text="{StaticResource L.Fw.ColHost}" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
-            <TextBlock Grid.Column="6" Text="{StaticResource L.Fw.ColVirusTotal}" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
-            <TextBlock Grid.Column="7" Text="{StaticResource L.Fw.ColTrend}" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
-            <TextBlock Grid.Column="8" Text="↓" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
-            <TextBlock Grid.Column="9" Text="↑" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
-        </Grid>
+        <!-- Header + rows share one column layout and one horizontal scrollbar:
+             the content tracks the viewport width but never shrinks below MinWidth,
+             so on a narrow window it scrolls sideways instead of columns colliding. -->
+        <ScrollViewer x:Name="HScroll" Grid.Row="3" Margin="0,6,0,0"
+                      HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+            <Grid Width="{Binding ViewportWidth, ElementName=HScroll}" MinWidth="1000">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="34" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
 
-        <ScrollViewer Grid.Row="4" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-            <ItemsControl ItemsSource="{Binding Apps}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
+                <!-- column header -->
+                <Grid Grid.Row="0" Margin="0,0,16,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="28" />
+                        <ColumnDefinition Width="*" MinWidth="150" />
+                        <ColumnDefinition Width="116" />
+                        <ColumnDefinition Width="116" />
+                        <ColumnDefinition Width="76" />
+                        <ColumnDefinition Width="150" />
+                        <ColumnDefinition Width="78" />
+                        <ColumnDefinition Width="66" />
+                        <ColumnDefinition Width="80" />
+                        <ColumnDefinition Width="80" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="1" Text="{StaticResource L.Fw.ColApplication}" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="2" Text="{StaticResource L.Fw.ColIncoming}" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="3" Text="{StaticResource L.Fw.ColOutgoing}" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="4" Text="{StaticResource L.Fw.ColVersion}" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="5" Text="{StaticResource L.Fw.ColHost}" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="6" Text="{StaticResource L.Fw.ColVirusTotal}" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="7" Text="{StaticResource L.Fw.ColTrend}" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="8" Text="↓" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="9" Text="↑" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
+                </Grid>
+
+                <!-- Rows: a ListBox virtualizes + recycles containers, so only the
+                     ~15 visible rows of the (often 150+) app list are ever realized. -->
+                <ListBox Grid.Row="1" ItemsSource="{Binding Apps}" Background="Transparent" BorderThickness="0" Padding="0"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto"
+                         VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
+                         VirtualizingPanel.ScrollUnit="Pixel">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                            <Setter Property="Padding" Value="0" />
+                            <Setter Property="Focusable" Value="False" />
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ListBoxItem">
+                                        <ContentPresenter />
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
                         <StackPanel>
                             <!-- app row -->
                             <Border BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1" Padding="0,7">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="28" />
-                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" MinWidth="150" />
                                         <ColumnDefinition Width="116" />
                                         <ColumnDefinition Width="116" />
                                         <ColumnDefinition Width="76" />
@@ -161,7 +189,7 @@
                                         <Grid Height="30">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="28" />
-                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="*" MinWidth="150" />
                                                 <ColumnDefinition Width="116" />
                                                 <ColumnDefinition Width="116" />
                                                 <ColumnDefinition Width="76" />
@@ -181,9 +209,10 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                         </StackPanel>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
         </ScrollViewer>
     </Grid>
 </UserControl>

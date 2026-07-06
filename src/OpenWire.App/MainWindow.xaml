@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         xmlns:views="clr-namespace:OpenWire.App.Views"
+        xmlns:util="clr-namespace:OpenWire.App.Util"
         xmlns:vm="clr-namespace:OpenWire.App.ViewModels"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -23,13 +24,10 @@
     </WindowChrome.WindowChrome>
 
     <Window.Resources>
-        <DataTemplate DataType="{x:Type vm:TrafficViewModel}"><views:TrafficView /></DataTemplate>
-        <DataTemplate DataType="{x:Type vm:AnalyticsViewModel}"><views:AnalyticsView /></DataTemplate>
-        <DataTemplate DataType="{x:Type vm:FirewallViewModel}"><views:FirewallView /></DataTemplate>
-        <DataTemplate DataType="{x:Type vm:AlertsViewModel}"><views:AlertsView /></DataTemplate>
-        <DataTemplate DataType="{x:Type vm:ThingsViewModel}"><views:ThingsView /></DataTemplate>
-        <DataTemplate DataType="{x:Type vm:HardwareViewModel}"><views:HardwareView /></DataTemplate>
-        <DataTemplate DataType="{x:Type vm:SettingsViewModel}"><views:SettingsView /></DataTemplate>
+        <!-- Each section view is built once and reused on every tab switch (no
+             visual-tree rebuild → instant switching, scroll positions preserved).
+             Window-scoped so a theme/language reskin gets a fresh cache. -->
+        <util:CachedViewConverter x:Key="CachedView" />
     </Window.Resources>
 
     <Grid>
@@ -96,7 +94,7 @@
 
         <!-- ===================== CONTENT ===================== -->
         <Grid Grid.Row="1">
-            <ContentControl Content="{Binding CurrentView}" />
+            <ContentControl Content="{Binding CurrentView, Converter={StaticResource CachedView}}" />
 
             <Border Background="{StaticResource BgApp}" Visibility="{Binding IsConnected, Converter={StaticResource BoolVis}, ConverterParameter=invert}">
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
