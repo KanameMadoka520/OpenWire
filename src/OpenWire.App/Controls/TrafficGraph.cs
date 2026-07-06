@@ -130,8 +130,10 @@ public sealed class TrafficGraph : FrameworkElement
     /// <summary>The time span currently drawn: [from, to] in unix seconds.</summary>
     public (double From, double To) VisibleWindow()
     {
+        // While paused the view is frozen at the last rendered edge (_anchorSec), so the label
+        // must not keep advancing off live UtcNow even though samples still tick in.
         double to = _zoomed ? _viewTo
-            : LiveScroll ? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0 - DisplayDelay
+            : (LiveScroll && !Paused) ? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0 - DisplayDelay
             : _anchorSec;
         return (to - WindowSeconds, to);
     }
@@ -358,9 +360,12 @@ public sealed class TrafficGraph : FrameworkElement
             _points.Add(new Pt(t, s.BytesIn * scale, s.BytesOut * scale));
         }
 
+        // With no samples, anchor at "now" for every range (the live buffer and the preset
+        // windows all end at the present) so the corner range label reads the real window
+        // instead of a 1970-epoch span computed from a zero anchor.
         double anchor = _points.Count > 0
             ? _points[^1].TimeSec
-            : (live ? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0 - DisplayDelay : 0);
+            : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0 - (live ? DisplayDelay : 0);
         _anchorSec = anchor;
         UpdatePeak(anchor - WindowSeconds, double.MaxValue);
         _renderPeak = _peak; // new range, new scale: easing from the old range's peak is meaningless

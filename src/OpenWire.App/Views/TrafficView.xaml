@@ -138,6 +138,10 @@
                             <TextBlock Style="{StaticResource Mono}" FontSize="12" Margin="5,0,0,0" VerticalAlignment="Center" Text="{Binding BreakdownDown}" />
                             <TextBlock Text="&#xE74A;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11" Foreground="{StaticResource OutLine}" VerticalAlignment="Center" Margin="16,0,0,0" />
                             <TextBlock Style="{StaticResource Mono}" FontSize="12" Margin="5,0,0,0" VerticalAlignment="Center" Text="{Binding BreakdownUp}" />
+                            <!-- app + host detail: hidden while a band is drag-selected, since the "+N more"
+                                 popups bind the whole-view lists and would disagree with the band's totals -->
+                            <StackPanel Orientation="Horizontal"
+                                        Visibility="{Binding BandActive, Converter={StaticResource BoolVis}, ConverterParameter=invert}">
                             <Border Width="1" Background="{StaticResource Border}" Margin="16,2,16,2" />
 
                             <!-- top app + "+N more" popup -->
@@ -183,6 +187,7 @@
                                     </DockPanel>
                                 </Border>
                             </Popup>
+                            </StackPanel>
                         </StackPanel>
                         </Grid>
                     </Border>

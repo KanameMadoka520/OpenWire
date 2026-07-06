@@ -22,8 +22,6 @@ public partial class TrafficViewModel : ObservableObject
     // Graph bottom breakdown bar (down/up for the view + top app + top host).
     [ObservableProperty] private string _breakdownDown = "0 B";
     [ObservableProperty] private string _breakdownUp = "0 B";
-    [ObservableProperty] private string _topApp = "";
-    [ObservableProperty] private string _topHost = "";
 
     // The top app/host, split from the "+N more" affordance so the overflow can open a popup.
     [ObservableProperty] private string _topAppName = "";
@@ -32,6 +30,11 @@ public partial class TrafficViewModel : ObservableObject
     [ObservableProperty] private string _moreHostsText = "";
     [ObservableProperty] private bool _hasMoreApps;
     [ObservableProperty] private bool _hasMoreHosts;
+
+    // True while a drag-selected band is shown: the bar then reports only the band's down/up
+    // totals (the graph can't break a band down per app), so the app/host detail — whose "+N more"
+    // popup binds the live whole-view lists — is hidden to avoid a band-vs-whole-view mismatch.
+    [ObservableProperty] private bool _bandActive;
 
     // The time range shown at the graph's corner — the drag-selected band when selecting,
     // otherwise the currently-visible window.
@@ -56,6 +59,7 @@ public partial class TrafficViewModel : ObservableObject
     public void ApplySelection(double fromSec, double toSec, double downBytes, double upBytes)
     {
         _selectionActive = true;
+        BandActive = true; // hide the whole-view app/host detail while the band's totals are shown
         BreakdownDown = ByteFormatter.Bytes((long)downBytes);
         BreakdownUp = ByteFormatter.Bytes((long)upBytes);
         RangeLabel = FormatRange(fromSec, toSec);
@@ -66,6 +70,7 @@ public partial class TrafficViewModel : ObservableObject
     {
         if (!_selectionActive) return;
         _selectionActive = false;
+        BandActive = false;
         RangeLabel = _viewRangeText;
         UpdateBreakdown();
     }
@@ -81,7 +86,7 @@ public partial class TrafficViewModel : ObservableObject
     private static string FormatRange(double fromSec, double toSec)
     {
         // Month name in the app's language (not the OS locale); the 24h clock is culture-neutral.
-        var c = System.Globalization.CultureInfo.GetCultureInfo(LangManager.CultureName(LangManager.Current));
+        var c = AppFormat.Culture;
         var f = DateTimeOffset.FromUnixTimeSeconds((long)fromSec).ToLocalTime();
         var t = DateTimeOffset.FromUnixTimeSeconds((long)toSec).ToLocalTime();
         return f.Date == t.Date
@@ -103,10 +108,6 @@ public partial class TrafficViewModel : ObservableObject
         TopHostName = hosts.Count > 0 ? hosts[0].Host : "";
         HasMoreHosts = hosts.Count > 1;
         MoreHostsText = HasMoreHosts ? string.Format(Loc.S("L.Traffic.MoreFmt"), hosts.Count - 1) : "";
-
-        // Kept for any legacy binding; the split name + "+N more" above is what the bar shows.
-        TopApp = TopAppName + (HasMoreApps ? "  " + MoreAppsText : "");
-        TopHost = TopHostName + (HasMoreHosts ? "  " + MoreHostsText : "");
     }
 
     public void PushTick(DateTimeOffset time, double inBytes, double outBytes)

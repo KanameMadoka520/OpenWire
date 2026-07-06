@@ -51,7 +51,13 @@ public partial class TrafficView : UserControl
     }
 
     private void OnGraphRangeSelected(double fromSec, double toSec, double downBytes, double upBytes)
-        => _vm?.ApplySelection(fromSec, toSec, downBytes, upBytes);
+    {
+        // The app/host detail (and its "+N more" popups) hides for the band, so dismiss any open
+        // popup — it lists the whole view, not the band.
+        AppsPopup.IsOpen = false;
+        HostsPopup.IsOpen = false;
+        _vm?.ApplySelection(fromSec, toSec, downBytes, upBytes);
+    }
 
     private void OnGraphSelectionCleared() => _vm?.ClearSelection();
 
