@@ -3,6 +3,7 @@
 [Oo]bj/
 [Oo]ut/
 artifacts/
+dist/
 
 # Visual Studio / Rider / VS Code
 .vs/
