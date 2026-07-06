@@ -151,7 +151,7 @@
                        Text="{StaticResource L.Filter.SplitNote}" />
 
 
-            <!-- list header: dimension label + down/up columns -->
+            <!-- list header: dimension label + down/up columns (all click-to-sort) -->
             <Grid DockPanel.Dock="Top" Margin="12,10,12,2">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -159,18 +159,22 @@
                     <ColumnDefinition Width="74" />
                 </Grid.ColumnDefinitions>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock x:Name="ListLabel" Text="{StaticResource L.Filter.HeaderApplications}" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
+                    <Button Style="{StaticResource SortHeaderBtn}" Click="OnSortName">
+                        <TextBlock Style="{StaticResource TableHeaderText}"><Run x:Name="ListLabel" Text="{StaticResource L.Filter.HeaderApplications}" /><Run x:Name="NameArrow" /></TextBlock>
+                    </Button>
                     <TextBlock x:Name="OneChinaInfo" Text="&#xE946;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12"
                                Foreground="{StaticResource TextMuted}" Margin="6,0,0,0" VerticalAlignment="Center" Visibility="Collapsed"
                                ToolTipService.InitialShowDelay="150" ToolTipService.ShowDuration="30000"
                                ToolTip="{StaticResource L.Common.OneChina}" />
                 </StackPanel>
-                <TextBlock Grid.Column="1" Text="&#xE74B;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11"
-                           Foreground="{StaticResource InLine}" HorizontalAlignment="Right" VerticalAlignment="Center"
-                           Opacity="{Binding DownColumnOpacity, RelativeSource={RelativeSource AncestorType={x:Type views:FilterPanel}}}" />
-                <TextBlock Grid.Column="2" Text="&#xE74A;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11"
-                           Foreground="{StaticResource OutLine}" HorizontalAlignment="Right" VerticalAlignment="Center"
-                           Opacity="{Binding UpColumnOpacity, RelativeSource={RelativeSource AncestorType={x:Type views:FilterPanel}}}" />
+                <Button Grid.Column="1" Style="{StaticResource SortHeaderBtn}" HorizontalContentAlignment="Right" Click="OnSortIn">
+                    <TextBlock HorizontalAlignment="Right"
+                               Opacity="{Binding DownColumnOpacity, RelativeSource={RelativeSource AncestorType={x:Type views:FilterPanel}}}"><Run x:Name="InArrow" FontFamily="{StaticResource UiFont}" FontSize="10" Foreground="{StaticResource TextSecondary}" /><Run Text="&#xE74B;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11" Foreground="{StaticResource InLine}" /></TextBlock>
+                </Button>
+                <Button Grid.Column="2" Style="{StaticResource SortHeaderBtn}" HorizontalContentAlignment="Right" Click="OnSortOut">
+                    <TextBlock HorizontalAlignment="Right"
+                               Opacity="{Binding UpColumnOpacity, RelativeSource={RelativeSource AncestorType={x:Type views:FilterPanel}}}"><Run x:Name="OutArrow" FontFamily="{StaticResource UiFont}" FontSize="10" Foreground="{StaticResource TextSecondary}" /><Run Text="&#xE74A;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11" Foreground="{StaticResource OutLine}" /></TextBlock>
+                </Button>
             </Grid>
 
             <TextBlock x:Name="EmptyNote" DockPanel.Dock="Top" Style="{StaticResource Caption}" Margin="12,8,12,0"

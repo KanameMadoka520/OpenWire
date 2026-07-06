@@ -114,6 +114,31 @@ public partial class FilterPanel : UserControl
 
     private void OnClose(object sender, RoutedEventArgs e) => CloseRequested?.Invoke();
 
+    // ---- column sort (click a header to sort by it) ----
+    // "" = follow the direction dropdown (default); otherwise name / in / out.
+    private string _sortKey = "";
+    private bool _sortAsc;
+
+    private void OnSortName(object sender, RoutedEventArgs e) => ToggleSort("name", defaultAsc: true);
+    private void OnSortIn(object sender, RoutedEventArgs e) => ToggleSort("in", defaultAsc: false);
+    private void OnSortOut(object sender, RoutedEventArgs e) => ToggleSort("out", defaultAsc: false);
+
+    private void ToggleSort(string key, bool defaultAsc)
+    {
+        if (_sortKey == key) _sortAsc = !_sortAsc;
+        else { _sortKey = key; _sortAsc = defaultAsc; }
+        Refresh();
+    }
+
+    private void UpdateSortArrows()
+    {
+        if (NameArrow is null) return;
+        string Arrow(string k) => _sortKey == k ? (_sortAsc ? " ▲" : " ▼") : "";
+        NameArrow.Text = Arrow("name");
+        InArrow.Text = Arrow("in") == "" ? "" : (_sortAsc ? "▲ " : "▼ ");
+        OutArrow.Text = Arrow("out") == "" ? "" : (_sortAsc ? "▲ " : "▼ ");
+    }
+
     // ---- list building ----
 
     /// <summary>Rebuilds the visible list from the active dimension + filters.</summary>
@@ -162,12 +187,22 @@ public partial class FilterPanel : UserControl
         if (search.Length > 0)
             rows = rows.Where(r => r.Name.Contains(search, StringComparison.OrdinalIgnoreCase));
 
-        var list = (dir switch
+        // A clicked column header overrides the direction dropdown's default sort.
+        IEnumerable<Row> sorted = _sortKey switch
         {
-            1 => rows.OrderByDescending(r => r.BytesIn),
-            2 => rows.OrderByDescending(r => r.BytesOut),
-            _ => rows.OrderByDescending(r => r.BytesIn + r.BytesOut),
-        }).ToList();
+            "name" => _sortAsc ? rows.OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
+                               : rows.OrderByDescending(r => r.Name, StringComparer.OrdinalIgnoreCase),
+            "in" => _sortAsc ? rows.OrderBy(r => r.BytesIn) : rows.OrderByDescending(r => r.BytesIn),
+            "out" => _sortAsc ? rows.OrderBy(r => r.BytesOut) : rows.OrderByDescending(r => r.BytesOut),
+            _ => dir switch
+            {
+                1 => rows.OrderByDescending(r => r.BytesIn),
+                2 => rows.OrderByDescending(r => r.BytesOut),
+                _ => rows.OrderByDescending(r => r.BytesIn + r.BytesOut),
+            },
+        };
+        var list = sorted.ToList();
+        UpdateSortArrows();
 
         List.ItemsSource = list;
         ListLabel.Text = Loc.S(dim switch
