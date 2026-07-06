@@ -181,6 +181,8 @@
     <sys:String x:Key="L.Hw.Processes">进程</sys:String>
     <sys:String x:Key="L.Hw.ColApplication">应用程序</sys:String>
     <sys:String x:Key="L.Hw.ColDisk">磁盘</sys:String>
+    <sys:String x:Key="L.Hw.TogglePanel">显示或隐藏进程列表</sys:String>
+    <sys:String x:Key="L.Hw.HidePanel">隐藏进程列表</sys:String>
 
     <!-- scanner -->
     <sys:String x:Key="L.Scan.SearchDevices">搜索设备</sys:String>

@@ -13,6 +13,12 @@ public partial class HardwareView : UserControl
     // continuous scroll rather than a once-a-second step.
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(250) };
 
+    // Collapsible left process panel (GlassWire-style): hide it to give the graphs the
+    // full width; the funnel button in the header brings it back. The star width is
+    // remembered across collapses so a splitter-resized panel returns to its size.
+    private bool _panelCollapsed;
+    private System.Windows.GridLength _savedLeftWidth = new(0.44, System.Windows.GridUnitType.Star);
+
     public HardwareView()
     {
         InitializeComponent();
@@ -34,6 +40,28 @@ public partial class HardwareView : UserControl
     {
         _timer.Stop();
         if (_vm is not null) _vm.SnapshotUpdated -= OnSnapshot;
+    }
+
+    /// <summary>Collapse / restore the left process panel so the graphs can use the
+    /// full width. Both the header funnel and the panel's × call this.</summary>
+    private void OnTogglePanel(object sender, System.Windows.RoutedEventArgs e)
+    {
+        _panelCollapsed = !_panelCollapsed;
+        if (_panelCollapsed)
+        {
+            _savedLeftWidth = LeftCol.Width;                 // remember a splitter-dragged size
+            LeftPanel.Visibility = System.Windows.Visibility.Collapsed;
+            Splitter.Visibility = System.Windows.Visibility.Collapsed;
+            LeftCol.MinWidth = 0;
+            LeftCol.Width = new System.Windows.GridLength(0);
+        }
+        else
+        {
+            LeftPanel.Visibility = System.Windows.Visibility.Visible;
+            Splitter.Visibility = System.Windows.Visibility.Visible;
+            LeftCol.MinWidth = 320;
+            LeftCol.Width = _savedLeftWidth;
+        }
     }
 
     private void OnSnapshot(HardwareSnapshot hw)
