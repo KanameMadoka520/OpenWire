@@ -20,7 +20,7 @@ telemetry, and no paywalled features.
 > the source code of GlassWire / SecureMix LLC**. It was built from public documentation and
 > observed behaviour, using entirely original code and assets.
 
-![Traffic graph](docs/screenshots/traffic-berry-day.png)
+![Traffic graph](docs/screenshots/traffic-pencil.png)
 
 ---
 
@@ -67,11 +67,13 @@ telemetry, and no paywalled features.
 
 ## More screens
 
-| World map | Hardware |
+| World map | 3D globe |
 |---|---|
-| ![Map](docs/screenshots/map.png) | ![Hardware](docs/screenshots/hardware.png) |
+| ![2D world map](docs/screenshots/map.png) | ![3D globe](docs/screenshots/globe.png) |
 
-![Settings](docs/screenshots/settings.png)
+| Hardware resources | Settings |
+|---|---|
+| ![Hardware](docs/screenshots/hardware.png) | ![Settings](docs/screenshots/settings.png) |
 
 ---
 
