@@ -17,6 +17,88 @@
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="TextTrimming" Value="CharacterEllipsis" />
         </Style>
+
+        <!-- "+N more…" link that opens the overflow popup -->
+        <Style x:Key="MoreLink" TargetType="Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Foreground" Value="{StaticResource Accent}" />
+            <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
+            <Setter Property="FontSize" Value="12.5" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="Padding" Value="0,10,0,0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="Transparent" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Opacity" Value="0.75" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Overflow popup card (shared look for the "show all" floats) -->
+        <Style x:Key="OverflowCard" TargetType="Border">
+            <Setter Property="Margin" Value="10" />
+            <Setter Property="Background" Value="{StaticResource BgPanel}" />
+            <Setter Property="BorderBrush" Value="{StaticResource CtlBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="{StaticResource CtlCorner}" />
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="#000000" BlurRadius="16" ShadowDepth="3" Direction="270" Opacity="0.3" />
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- One top-application row (icon · name · bytes + share bar). Shared by the inline
+             preview and the "all applications" popup. -->
+        <DataTemplate x:Key="TopAppTemplate">
+            <StackPanel Margin="0,6">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Orientation="Horizontal">
+                        <Image Width="16" Height="16" Margin="0,0,9,0" Source="{Binding ExecutablePath, Converter={StaticResource AppIcon}}" />
+                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="240" />
+                    </StackPanel>
+                    <TextBlock Grid.Column="1" Style="{StaticResource Mono}" FontSize="12" Foreground="{StaticResource TextSecondary}"
+                               Text="{Binding Total, Converter={StaticResource Bytes}}" VerticalAlignment="Center" />
+                </Grid>
+                <Border Height="4" CornerRadius="2" Background="{StaticResource Accent}" HorizontalAlignment="Left" Margin="25,5,0,0"
+                        Width="{Binding Fraction, Converter={StaticResource FracW}, ConverterParameter=300}" />
+            </StackPanel>
+        </DataTemplate>
+
+        <!-- One anomaly row (severity glyph · title · detail). Shared by the inline preview
+             and the "all anomalies" popup. -->
+        <DataTemplate x:Key="AnomalyTemplate">
+            <Border Background="{StaticResource BgSubtle}" CornerRadius="6" Padding="12,10" Margin="0,4">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="{Binding Kind, Converter={StaticResource AnomGlyph}}"
+                               FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16"
+                               Foreground="{Binding Severity, Converter={StaticResource SevBrush}}" VerticalAlignment="Top" Margin="0,1,11,0" />
+                    <StackPanel Grid.Column="1">
+                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding Detail}" Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap" FontSize="12" Margin="0,3,0,0" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </DataTemplate>
     </UserControl.Resources>
 
     <Grid>
@@ -32,13 +114,60 @@
                 <Path Data="{StaticResource DoodleChart}" Style="{StaticResource Doodle}" Width="24" Height="24" VerticalAlignment="Center" Margin="12,0,0,0" />
                 <TextBlock Text="{StaticResource L.Analytics.Subtitle}" Style="{StaticResource Caption}" VerticalAlignment="Bottom" Margin="12,0,0,3" />
             </StackPanel>
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Background="{StaticResource BgSubtle}">
-                <StackPanel.Resources>
-                    <Style TargetType="RadioButton" BasedOn="{StaticResource Seg}"><Setter Property="GroupName" Value="arange" /></Style>
-                </StackPanel.Resources>
-                <RadioButton Content="{StaticResource L.Analytics.Range24h}" IsChecked="{Binding Range, Converter={StaticResource EnumMatch}, ConverterParameter=Day, Mode=TwoWay}" />
-                <RadioButton Content="{StaticResource L.Analytics.RangeWeek}" IsChecked="{Binding Range, Converter={StaticResource EnumMatch}, ConverterParameter=Week, Mode=TwoWay}" />
-                <RadioButton Content="{StaticResource L.Analytics.RangeMonth}" IsChecked="{Binding Range, Converter={StaticResource EnumMatch}, ConverterParameter=Month, Mode=TwoWay}" />
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                <!-- active custom span, shown to the left of the selector -->
+                <TextBlock Style="{StaticResource Mono}" FontSize="12" Foreground="{StaticResource TextSecondary}"
+                           VerticalAlignment="Center" Margin="0,0,12,0" Text="{Binding CustomRangeText}"
+                           Visibility="{Binding IsCustomRange, Converter={StaticResource BoolVis}}" />
+                <StackPanel Orientation="Horizontal" Background="{StaticResource BgSubtle}">
+                    <StackPanel.Resources>
+                        <Style TargetType="RadioButton" BasedOn="{StaticResource Seg}"><Setter Property="GroupName" Value="arange" /></Style>
+                    </StackPanel.Resources>
+                    <RadioButton Content="{StaticResource L.Analytics.Range24h}" IsChecked="{Binding Range, Converter={StaticResource EnumMatch}, ConverterParameter=Day, Mode=TwoWay}" />
+                    <RadioButton Content="{StaticResource L.Analytics.RangeWeek}" IsChecked="{Binding Range, Converter={StaticResource EnumMatch}, ConverterParameter=Week, Mode=TwoWay}" />
+                    <RadioButton Content="{StaticResource L.Analytics.RangeMonth}" IsChecked="{Binding Range, Converter={StaticResource EnumMatch}, ConverterParameter=Month, Mode=TwoWay}" />
+                    <RadioButton x:Name="CustomSeg" AutomationProperties.Name="Custom" IsChecked="{Binding IsCustomRange, Mode=OneWay}" Checked="OnCustomChecked" Click="OnCustomClicked">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE787;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12.5" VerticalAlignment="Center" Margin="0,0,6,0" />
+                            <TextBlock Text="{StaticResource L.Analytics.RangeCustom}" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </RadioButton>
+                </StackPanel>
+
+                <!-- manual date + time range picker (same themed combo boxes as the rest of the app) -->
+                <Popup x:Name="RangePicker" PlacementTarget="{Binding ElementName=CustomSeg}" Placement="Bottom"
+                       StaysOpen="False" AllowsTransparency="True" PopupAnimation="Fade" HorizontalOffset="-300" VerticalOffset="4">
+                    <Border Style="{StaticResource OverflowCard}" Width="430">
+                        <StackPanel Margin="18,14">
+                            <TextBlock Text="{StaticResource L.Analytics.CustomTitle}" Style="{StaticResource TableHeaderText}" Margin="0,0,0,12" />
+
+                            <TextBlock Text="{StaticResource L.Analytics.From}" Style="{StaticResource Caption}" Margin="0,0,0,4" />
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                <ComboBox Width="92" FontSize="12" ItemsSource="{Binding Years}" SelectedItem="{Binding FromY, Mode=TwoWay}" />
+                                <ComboBox Width="60" FontSize="12" Margin="6,0,0,0" ItemsSource="{Binding Months}" SelectedItem="{Binding FromMo, Mode=TwoWay}" />
+                                <ComboBox Width="60" FontSize="12" Margin="6,0,0,0" ItemsSource="{Binding Days}" SelectedItem="{Binding FromD, Mode=TwoWay}" />
+                                <ComboBox Width="60" FontSize="12" Margin="14,0,0,0" ItemsSource="{Binding Hours}" SelectedItem="{Binding FromH, Mode=TwoWay}" />
+                                <TextBlock Text=":" VerticalAlignment="Center" Margin="4,0,4,0" Foreground="{StaticResource TextSecondary}" />
+                                <ComboBox Width="60" FontSize="12" ItemsSource="{Binding Minutes}" SelectedItem="{Binding FromMin, Mode=TwoWay}" />
+                            </StackPanel>
+
+                            <TextBlock Text="{StaticResource L.Analytics.To}" Style="{StaticResource Caption}" Margin="0,0,0,4" />
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                                <ComboBox Width="92" FontSize="12" ItemsSource="{Binding Years}" SelectedItem="{Binding ToY, Mode=TwoWay}" />
+                                <ComboBox Width="60" FontSize="12" Margin="6,0,0,0" ItemsSource="{Binding Months}" SelectedItem="{Binding ToMo, Mode=TwoWay}" />
+                                <ComboBox Width="60" FontSize="12" Margin="6,0,0,0" ItemsSource="{Binding Days}" SelectedItem="{Binding ToD, Mode=TwoWay}" />
+                                <ComboBox Width="60" FontSize="12" Margin="14,0,0,0" ItemsSource="{Binding Hours}" SelectedItem="{Binding ToH, Mode=TwoWay}" />
+                                <TextBlock Text=":" VerticalAlignment="Center" Margin="4,0,4,0" Foreground="{StaticResource TextSecondary}" />
+                                <ComboBox Width="60" FontSize="12" ItemsSource="{Binding Minutes}" SelectedItem="{Binding ToMin, Mode=TwoWay}" />
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Button Content="{StaticResource L.Common.Cancel}" Style="{StaticResource BtnGhost}" Click="OnCancelCustom" />
+                                <Button Content="{StaticResource L.Common.Apply}" Style="{StaticResource Btn}" Click="OnApplyCustom" Margin="8,0,0,0" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </Popup>
             </StackPanel>
         </Grid>
 
@@ -128,32 +257,29 @@
                                 </ItemsControl>
                             </StackPanel>
                         </Border>
-                        <!-- Top apps -->
+                        <!-- Top apps (first few inline; the rest behind a "+N more…" popup) -->
                         <Border Style="{StaticResource Card}">
                             <StackPanel Margin="16,14">
                                 <TextBlock Text="{StaticResource L.Analytics.TopApps}" Style="{StaticResource TableHeaderText}" Margin="0,0,0,8" />
-                                <ItemsControl ItemsSource="{Binding TopApps}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <StackPanel Margin="0,6">
-                                                <Grid>
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="*" />
-                                                        <ColumnDefinition Width="Auto" />
-                                                    </Grid.ColumnDefinitions>
-                                                    <StackPanel Orientation="Horizontal">
-                                                        <Image Width="16" Height="16" Margin="0,0,9,0" Source="{Binding ExecutablePath, Converter={StaticResource AppIcon}}" />
-                                                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="240" />
-                                                    </StackPanel>
-                                                    <TextBlock Grid.Column="1" Style="{StaticResource Mono}" FontSize="12" Foreground="{StaticResource TextSecondary}"
-                                                               Text="{Binding Total, Converter={StaticResource Bytes}}" VerticalAlignment="Center" />
-                                                </Grid>
-                                                <Border Height="4" CornerRadius="2" Background="{StaticResource Accent}" HorizontalAlignment="Left" Margin="25,5,0,0"
-                                                        Width="{Binding Fraction, Converter={StaticResource FracW}, ConverterParameter=300}" />
-                                            </StackPanel>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
+                                <ItemsControl ItemsSource="{Binding TopAppsPreview}" ItemTemplate="{StaticResource TopAppTemplate}" />
+
+                                <Button x:Name="MoreAppsBtn" Style="{StaticResource MoreLink}" Content="{Binding MoreTopAppsText}"
+                                        Visibility="{Binding HasMoreTopApps, Converter={StaticResource BoolVis}}" Click="OnShowAllApps" />
+                                <Popup x:Name="TopAppsPopup" PlacementTarget="{Binding ElementName=MoreAppsBtn}" Placement="Top"
+                                       StaysOpen="False" AllowsTransparency="True" PopupAnimation="Fade" VerticalOffset="-2">
+                                    <Border Style="{StaticResource OverflowCard}" Width="420">
+                                        <DockPanel>
+                                            <Grid DockPanel.Dock="Top" Margin="14,12,8,6">
+                                                <TextBlock Text="{Binding AllTopAppsText}" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
+                                                <Button HorizontalAlignment="Right" Style="{StaticResource IconBtn}" Width="30" Height="28"
+                                                        Content="&#xE711;" ToolTip="{StaticResource L.Common.Close}" Click="OnCloseAppsPopup" />
+                                            </Grid>
+                                            <ScrollViewer MaxHeight="460" VerticalScrollBarVisibility="Auto" Margin="14,0,14,12">
+                                                <ItemsControl ItemsSource="{Binding TopApps}" ItemTemplate="{StaticResource TopAppTemplate}" />
+                                            </ScrollViewer>
+                                        </DockPanel>
+                                    </Border>
+                                </Popup>
                             </StackPanel>
                         </Border>
                     </StackPanel>
@@ -178,27 +304,25 @@
                                            HorizontalAlignment="Center" TextAlignment="Center" Margin="0,2,0,0" />
                             </StackPanel>
 
-                            <ItemsControl ItemsSource="{Binding Anomalies}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border Background="{StaticResource BgSubtle}" CornerRadius="6" Padding="12,10" Margin="0,4">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="Auto" />
-                                                    <ColumnDefinition Width="*" />
-                                                </Grid.ColumnDefinitions>
-                                                <TextBlock Grid.Column="0" Text="{Binding Kind, Converter={StaticResource AnomGlyph}}"
-                                                           FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16"
-                                                           Foreground="{Binding Severity, Converter={StaticResource SevBrush}}" VerticalAlignment="Top" Margin="0,1,11,0" />
-                                                <StackPanel Grid.Column="1">
-                                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                                    <TextBlock Text="{Binding Detail}" Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap" FontSize="12" Margin="0,3,0,0" />
-                                                </StackPanel>
-                                            </Grid>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                            <ItemsControl ItemsSource="{Binding AnomaliesPreview}" ItemTemplate="{StaticResource AnomalyTemplate}" />
+
+                            <Button x:Name="MoreAnomaliesBtn" Style="{StaticResource MoreLink}" Content="{Binding MoreAnomaliesText}"
+                                    Visibility="{Binding HasMoreAnomalies, Converter={StaticResource BoolVis}}" Click="OnShowAllAnomalies" />
+                            <Popup x:Name="AnomaliesPopup" PlacementTarget="{Binding ElementName=MoreAnomaliesBtn}" Placement="Top"
+                                   StaysOpen="False" AllowsTransparency="True" PopupAnimation="Fade" VerticalOffset="-2">
+                                <Border Style="{StaticResource OverflowCard}" Width="440">
+                                    <DockPanel>
+                                        <Grid DockPanel.Dock="Top" Margin="14,12,8,6">
+                                            <TextBlock Text="{Binding AllAnomaliesText}" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
+                                            <Button HorizontalAlignment="Right" Style="{StaticResource IconBtn}" Width="30" Height="28"
+                                                    Content="&#xE711;" ToolTip="{StaticResource L.Common.Close}" Click="OnCloseAnomaliesPopup" />
+                                        </Grid>
+                                        <ScrollViewer MaxHeight="460" VerticalScrollBarVisibility="Auto" Margin="14,0,14,12">
+                                            <ItemsControl ItemsSource="{Binding Anomalies}" ItemTemplate="{StaticResource AnomalyTemplate}" />
+                                        </ScrollViewer>
+                                    </DockPanel>
+                                </Border>
+                            </Popup>
                         </StackPanel>
                     </Border>
                 </Grid>

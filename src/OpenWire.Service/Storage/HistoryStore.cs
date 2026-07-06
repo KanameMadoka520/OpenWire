@@ -312,6 +312,46 @@ CREATE TABLE IF NOT EXISTS devices (
         }
     }
 
+    /// <summary>Per-application totals grouped by local hour-of-day (0..23) over a minute-bucket
+    /// window — feeds the "which apps" hover breakdown on the hour-of-day chart.</summary>
+    public List<(int Hour, string Name, string Path, long In, long Out)> QueryAppByHour(long fromBucket, long toBucket)
+    {
+        lock (_lock)
+        {
+            var list = new List<(int, string, string, long, long)>();
+            using var cmd = _conn.CreateCommand();
+            cmd.CommandText = @"SELECT CAST(strftime('%H', u.bucket, 'unixepoch', 'localtime') AS INTEGER) AS hr,
+                    COALESCE(m.name,u.app_id), COALESCE(m.path,''), SUM(u.bytes_in), SUM(u.bytes_out)
+                FROM usage_app u LEFT JOIN app_meta m ON m.app_id=u.app_id
+                WHERE u.bucket>=$f AND u.bucket<=$t
+                GROUP BY hr, u.app_id;";
+            Bind(cmd, "$f", fromBucket); Bind(cmd, "$t", toBucket);
+            using var r = cmd.ExecuteReader();
+            while (r.Read()) list.Add((r.GetInt32(0), r.GetString(1), r.GetString(2), r.GetInt64(3), r.GetInt64(4)));
+            return list;
+        }
+    }
+
+    /// <summary>Per-application totals grouped by local calendar day ("yyyy-MM-dd") over a
+    /// minute-bucket window — feeds the "which apps" hover breakdown on the daily chart.</summary>
+    public List<(string Day, string Name, string Path, long In, long Out)> QueryAppByDay(long fromBucket, long toBucket)
+    {
+        lock (_lock)
+        {
+            var list = new List<(string, string, string, long, long)>();
+            using var cmd = _conn.CreateCommand();
+            cmd.CommandText = @"SELECT strftime('%Y-%m-%d', u.bucket, 'unixepoch', 'localtime') AS day,
+                    COALESCE(m.name,u.app_id), COALESCE(m.path,''), SUM(u.bytes_in), SUM(u.bytes_out)
+                FROM usage_app u LEFT JOIN app_meta m ON m.app_id=u.app_id
+                WHERE u.bucket>=$f AND u.bucket<=$t
+                GROUP BY day, u.app_id;";
+            Bind(cmd, "$f", fromBucket); Bind(cmd, "$t", toBucket);
+            using var r = cmd.ExecuteReader();
+            while (r.Read()) list.Add((r.GetString(0), r.GetString(1), r.GetString(2), r.GetInt64(3), r.GetInt64(4)));
+            return list;
+        }
+    }
+
     public List<HostUsage> QueryUsageByHost(long fromBucket, long toBucket)
     {
         lock (_lock)

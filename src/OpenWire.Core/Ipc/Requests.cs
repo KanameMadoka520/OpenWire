@@ -36,6 +36,11 @@ public sealed class GetUsageRequest : IpcMessage
 public sealed class GetInsightsRequest : IpcMessage
 {
     public GraphRange Range { get; set; } = GraphRange.Week;
+
+    /// <summary>Custom window bounds (unix seconds). When both are set and To &gt; From, the
+    /// report covers [From, To] instead of the preset <see cref="Range"/> ending now.</summary>
+    public long FromUnix { get; set; }
+    public long ToUnix { get; set; }
 }
 
 /// <summary>Fetch the current live connection table.</summary>

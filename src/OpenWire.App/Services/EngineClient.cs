@@ -141,6 +141,10 @@ public sealed class EngineClient : IDisposable
     public Task<GraphResponse> GetGraphAsync(GraphRange range) => RequestAsync<GraphResponse>(new GetGraphRequest { Range = range });
     public Task<UsageResponse> GetUsageAsync(GraphRange range, UsageGroupBy groupBy) => RequestAsync<UsageResponse>(new GetUsageRequest { Range = range, GroupBy = groupBy });
     public Task<InsightsResponse> GetInsightsAsync(GraphRange range) => RequestAsync<InsightsResponse>(new GetInsightsRequest { Range = range });
+
+    /// <summary>Analytics report over a custom [from, to] window (unix seconds).</summary>
+    public Task<InsightsResponse> GetInsightsAsync(long fromUnix, long toUnix)
+        => RequestAsync<InsightsResponse>(new GetInsightsRequest { FromUnix = fromUnix, ToUnix = toUnix });
     public Task<ConnectionsResponse> GetConnectionsAsync() => RequestAsync<ConnectionsResponse>(new GetConnectionsRequest());
     public Task<HardwareResponse> GetHardwareAsync() => RequestAsync<HardwareResponse>(new GetHardwareRequest());
     public Task<StorageInfoResponse> GetStorageInfoAsync() => RequestAsync<StorageInfoResponse>(new GetStorageInfoRequest());

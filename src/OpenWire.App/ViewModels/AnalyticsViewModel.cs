@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using OpenWire.App.Services;
 using OpenWire.App.Util;
@@ -18,6 +19,21 @@ public partial class AnalyticsViewModel : ObservableObject
 
     [ObservableProperty] private GraphRange _range = GraphRange.Week;
 
+    // Custom [from, to] window (manual date + time). When active, the presets are ignored and
+    // the report covers exactly the chosen span.
+    [ObservableProperty] private bool _isCustomRange;
+    [ObservableProperty] private string _customRangeText = "";
+
+    public int[] Years { get; }
+    public int[] Months { get; } = Enumerable.Range(1, 12).ToArray();
+    public int[] Days { get; } = Enumerable.Range(1, 31).ToArray();
+    public int[] Hours { get; } = Enumerable.Range(0, 24).ToArray();
+    public int[] Minutes { get; } = Enumerable.Range(0, 60).ToArray();
+
+    [ObservableProperty] private int _fromY, _fromMo = 1, _fromD = 1, _fromH, _fromMin;
+    [ObservableProperty] private int _toY, _toMo = 1, _toD = 1, _toH = 23, _toMin = 59;
+    private long _customFromUnix, _customToUnix;
+
     // Summary cards
     [ObservableProperty] private string _totalText = "0 B";
     [ObservableProperty] private string _downUpText = "";
@@ -33,15 +49,41 @@ public partial class AnalyticsViewModel : ObservableObject
     [ObservableProperty] private ObservableCollection<AppShare> _topApps = new();
     [ObservableProperty] private bool _hasAnomalies;
 
+    // Long lists show only the first few rows inline; the rest live behind a "+N more…"
+    // button that opens a floating popup with the full list, so the page stays compact.
+    private const int PreviewCount = 5;
+    [ObservableProperty] private ObservableCollection<AnomalyRow> _anomaliesPreview = new();
+    [ObservableProperty] private ObservableCollection<AppShare> _topAppsPreview = new();
+    [ObservableProperty] private bool _hasMoreAnomalies;
+    [ObservableProperty] private bool _hasMoreTopApps;
+    [ObservableProperty] private string _moreAnomaliesText = "";
+    [ObservableProperty] private string _moreTopAppsText = "";
+    [ObservableProperty] private string _allAnomaliesText = "";
+    [ObservableProperty] private string _allTopAppsText = "";
+
     /// <summary>Raised after a load so the view can feed the two bar charts.</summary>
     public event Action<InsightsReport>? ReportLoaded;
 
-    public AnalyticsViewModel(EngineClient client) => _client = client;
+    public AnalyticsViewModel(EngineClient client)
+    {
+        _client = client;
+        var now = DateTime.Now;
+        Years = Enumerable.Range(now.Year - 2, 3).ToArray(); // last two years + current
+        var start = now.Date;                                // default span: today 00:00 → now
+        FromY = start.Year; FromMo = start.Month; FromD = start.Day; FromH = 0; FromMin = 0;
+        ToY = now.Year; ToMo = now.Month; ToD = now.Day; ToH = now.Hour; ToMin = now.Minute;
+    }
 
     public async Task LoadAsync()
     {
         InsightsReport r;
-        try { r = (await _client.GetInsightsAsync(Range)).Report; }
+        try
+        {
+            var resp = IsCustomRange
+                ? await _client.GetInsightsAsync(_customFromUnix, _customToUnix)
+                : await _client.GetInsightsAsync(Range);
+            r = resp.Report;
+        }
         catch { return; }
 
         TotalText = ByteFormatter.Bytes(r.TotalBytes);
@@ -61,9 +103,20 @@ public partial class AnalyticsViewModel : ObservableObject
             : Loc.S("L.Analytics.NoPriorPeriod");
 
         Highlights = new ObservableCollection<string>(BuildHighlights(r));
-        Anomalies = new ObservableCollection<AnomalyRow>(r.Anomalies.ConvertAll(a => new AnomalyRow(a)));
-        HasAnomalies = r.Anomalies.Count > 0;
+
+        var anomalies = r.Anomalies.ConvertAll(a => new AnomalyRow(a));
+        Anomalies = new ObservableCollection<AnomalyRow>(anomalies);
+        AnomaliesPreview = new ObservableCollection<AnomalyRow>(anomalies.Take(PreviewCount));
+        HasAnomalies = anomalies.Count > 0;
+        HasMoreAnomalies = anomalies.Count > PreviewCount;
+        MoreAnomaliesText = HasMoreAnomalies ? string.Format(Loc.S("L.Analytics.ShowMoreFmt"), anomalies.Count - PreviewCount) : "";
+        AllAnomaliesText = string.Format(Loc.S("L.Analytics.AllAnomaliesFmt"), anomalies.Count);
+
         TopApps = new ObservableCollection<AppShare>(r.TopApps);
+        TopAppsPreview = new ObservableCollection<AppShare>(r.TopApps.Take(PreviewCount));
+        HasMoreTopApps = r.TopApps.Count > PreviewCount;
+        MoreTopAppsText = HasMoreTopApps ? string.Format(Loc.S("L.Analytics.ShowMoreFmt"), r.TopApps.Count - PreviewCount) : "";
+        AllTopAppsText = string.Format(Loc.S("L.Analytics.AllAppsFmt"), r.TopApps.Count);
 
         ReportLoaded?.Invoke(r);
     }
@@ -107,5 +160,33 @@ public partial class AnalyticsViewModel : ObservableObject
         return h;
     }
 
-    partial void OnRangeChanged(GraphRange value) => _ = LoadAsync();
+    partial void OnRangeChanged(GraphRange value)
+    {
+        IsCustomRange = false; // a preset overrides any active custom window
+        _ = LoadAsync();
+    }
+
+    /// <summary>Apply the manually-picked [from, to] window and reload. Tolerates a reversed
+    /// pair and clamps the day to the month; a zero-length span is ignored.</summary>
+    public async Task ApplyCustomRangeAsync()
+    {
+        var from = SafeDate(FromY, FromMo, FromD, FromH, FromMin);
+        var to = SafeDate(ToY, ToMo, ToD, ToH, ToMin);
+        if (to < from) (from, to) = (to, from);
+        if (to <= from) return;
+        _customFromUnix = new DateTimeOffset(from).ToUnixTimeSeconds();
+        _customToUnix = new DateTimeOffset(to).ToUnixTimeSeconds();
+        var c = System.Globalization.CultureInfo.GetCultureInfo(LangManager.CultureName(LangManager.Current));
+        CustomRangeText = $"{from.ToString("MMM d  HH:mm", c)} – {to.ToString("MMM d  HH:mm", c)}";
+        IsCustomRange = true;
+        await LoadAsync();
+    }
+
+    private static DateTime SafeDate(int y, int mo, int d, int h, int mi)
+    {
+        y = Math.Clamp(y, 2000, 2100);
+        mo = Math.Clamp(mo, 1, 12);
+        d = Math.Clamp(d, 1, DateTime.DaysInMonth(y, mo));
+        return new DateTime(y, mo, d, Math.Clamp(h, 0, 23), Math.Clamp(mi, 0, 59), 0, DateTimeKind.Local);
+    }
 }

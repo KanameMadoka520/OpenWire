@@ -721,12 +721,14 @@ public sealed class MonitorEngine : IAsyncDisposable
     /// patterns, top apps, detected anomalies and plain-language highlights. Pure
     /// read over the recorded rollups, so it works without elevation too.
     /// </summary>
-    public InsightsReport GetInsights(GraphRange range)
+    public InsightsReport GetInsights(GraphRange range, long fromUnix = 0, long toUnix = 0)
     {
         long nowSec = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        long windowSec = (long)range.Duration().TotalSeconds;
-        long fromBucket = (nowSec - windowSec) / 60 * 60;
-        long toBucket = nowSec / 60 * 60;
+        // A custom [From, To] window overrides the preset range (which always ends "now").
+        bool custom = fromUnix > 0 && toUnix > fromUnix;
+        long windowSec = custom ? toUnix - fromUnix : (long)range.Duration().TotalSeconds;
+        long fromBucket = (custom ? fromUnix : nowSec - windowSec) / 60 * 60;
+        long toBucket = (custom ? toUnix : nowSec) / 60 * 60;
         long todayStart = LocalDayStart(nowSec);
 
         var report = new InsightsReport { Range = range };
@@ -749,6 +751,27 @@ public sealed class MonitorEngine : IAsyncDisposable
         foreach (var (day, d) in dayMap)
             report.Daily.Add(new DayUsage { DayStartUnix = day, BytesIn = d.In, BytesOut = d.Out });
 
+        // Per-bar app breakdowns for the chart hover tooltips (top few apps per hour / per day).
+        static List<AppShare> Top4(IEnumerable<(string Name, string Path, long In, long Out)> g) =>
+            g.OrderByDescending(a => a.In + a.Out).Take(4)
+             .Select(a => new AppShare { Name = a.Name, ExecutablePath = a.Path, BytesIn = a.In, BytesOut = a.Out })
+             .ToList();
+
+        var byHour = _store.QueryAppByHour(fromBucket, toBucket)
+            .GroupBy(a => a.Hour)
+            .ToDictionary(g => g.Key, g => Top4(g.Select(a => (a.Name, a.Path, a.In, a.Out))));
+        foreach (var hu in report.HourOfDay)
+            if (byHour.TryGetValue(hu.Hour, out var hourTop)) hu.TopApps = hourTop;
+
+        var byDay = _store.QueryAppByDay(fromBucket, toBucket)
+            .GroupBy(a => a.Day)
+            .ToDictionary(g => g.Key, g => Top4(g.Select(a => (a.Name, a.Path, a.In, a.Out))));
+        foreach (var du in report.Daily)
+        {
+            string key = DateTimeOffset.FromUnixTimeSeconds(du.DayStartUnix).ToLocalTime().ToString("yyyy-MM-dd");
+            if (byDay.TryGetValue(key, out var dayTop)) du.TopApps = dayTop;
+        }
+
         report.TotalBytesIn = rows.Sum(r => r.In);
         report.TotalBytesOut = rows.Sum(r => r.Out);
         report.ActiveDays = dayMap.Count;
@@ -764,7 +787,7 @@ public sealed class MonitorEngine : IAsyncDisposable
 
         // Previous equal-length window, for the period-over-period delta. End one minute
         // before fromBucket so the two windows partition cleanly (QueryGlobal is inclusive).
-        long prevFrom = (nowSec - 2 * windowSec) / 60 * 60;
+        long prevFrom = fromBucket - windowSec;
         var prevRows = _store.QueryGlobal(prevFrom, fromBucket - 60);
         report.PreviousTotalBytes = prevRows.Sum(r => r.In + r.Out);
         report.ChangeFraction = report.PreviousTotalBytes > 0

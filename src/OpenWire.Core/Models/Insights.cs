@@ -55,6 +55,10 @@ public sealed class HourUsage
     public long BytesIn { get; set; }
     public long BytesOut { get; set; }
     public long Total => BytesIn + BytesOut;
+
+    /// <summary>Top applications that moved bytes in this hour-of-day (for the chart hover
+    /// tooltip). A few entries at most; empty when unknown.</summary>
+    public List<AppShare> TopApps { get; set; } = new();
 }
 
 /// <summary>Traffic for a single local calendar day.</summary>
@@ -65,6 +69,9 @@ public sealed class DayUsage
     public long BytesIn { get; set; }
     public long BytesOut { get; set; }
     public long Total => BytesIn + BytesOut;
+
+    /// <summary>Top applications that moved bytes on this day (for the chart hover tooltip).</summary>
+    public List<AppShare> TopApps { get; set; } = new();
 }
 
 /// <summary>One application's share of total traffic in the window.</summary>
