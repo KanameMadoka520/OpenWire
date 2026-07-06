@@ -16,16 +16,14 @@
         </Style>
     </UserControl.Resources>
 
-    <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="*" />
-        </Grid.ColumnDefinitions>
+    <!-- Four dimension columns. A UniformGrid (not a 4-star Grid) so that when the filter
+         panel opens and hides its matching column, the remaining columns redistribute evenly
+         instead of leaving a gap. The -10 right margin cancels the last card's trailing gutter. -->
+    <UniformGrid Rows="1" Margin="0,0,-10,0">
 
         <!-- APPLICATIONS -->
-        <Border Grid.Column="0" Style="{StaticResource ColCard}">
+        <Border Style="{StaticResource ColCard}"
+                Visibility="{Binding FilterDimension, Converter={StaticResource ColHide}, ConverterParameter=0}">
             <DockPanel>
                 <!-- Clickable header: toggles this column between total (high→low) and name (A→Z); arrow shows the active direction. -->
                 <Button DockPanel.Dock="Top" Style="{StaticResource SortHeaderBtn}" Margin="14,12,14,8"
@@ -34,16 +32,15 @@
                         <Run.Text><MultiBinding Converter="{StaticResource SortArrow}" ConverterParameter="name"><Binding Path="AppsSort.Key" /><Binding Path="AppsSort.Ascending" /></MultiBinding></Run.Text></Run><Run>
                         <Run.Text><MultiBinding Converter="{StaticResource SortArrow}" ConverterParameter="total"><Binding Path="AppsSort.Key" /><Binding Path="AppsSort.Ascending" /></MultiBinding></Run.Text></Run></TextBlock>
                 </Button>
-                <ListBox Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource PlainRow}" ItemsSource="{Binding Apps}">
+                <ListBox Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource PlainRow}" ItemsSource="{Binding Apps}"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <Grid Margin="14,7">
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                                <StackPanel Orientation="Horizontal">
-                                    <Image Width="16" Height="16" Margin="0,0,9,0" Source="{Binding App.ExecutablePath, Converter={StaticResource AppIcon}}" />
-                                    <TextBlock Text="{Binding App.Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="150" />
-                                </StackPanel>
-                                <TextBlock Grid.Column="1" Style="{StaticResource Mono}" FontSize="12" Foreground="{StaticResource TextSecondary}"
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                <Image Grid.Column="0" Width="16" Height="16" Margin="0,0,9,0" VerticalAlignment="Center" Source="{Binding App.ExecutablePath, Converter={StaticResource AppIcon}}" />
+                                <TextBlock Grid.Column="1" Text="{Binding App.Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Grid.Column="2" Style="{StaticResource Mono}" FontSize="12" Foreground="{StaticResource TextSecondary}" Margin="8,0,0,0"
                                            Text="{Binding Total, Converter={StaticResource Bytes}}" VerticalAlignment="Center" />
                             </Grid>
                         </DataTemplate>
@@ -53,7 +50,8 @@
         </Border>
 
         <!-- HOSTS -->
-        <Border Grid.Column="1" Style="{StaticResource ColCard}">
+        <Border Style="{StaticResource ColCard}"
+                Visibility="{Binding FilterDimension, Converter={StaticResource ColHide}, ConverterParameter=1}">
             <DockPanel>
                 <Button DockPanel.Dock="Top" Style="{StaticResource SortHeaderBtn}" Margin="14,12,14,8"
                         Command="{Binding SortColumnCommand}" CommandParameter="hosts">
@@ -61,17 +59,16 @@
                         <Run.Text><MultiBinding Converter="{StaticResource SortArrow}" ConverterParameter="name"><Binding Path="HostsSort.Key" /><Binding Path="HostsSort.Ascending" /></MultiBinding></Run.Text></Run><Run>
                         <Run.Text><MultiBinding Converter="{StaticResource SortArrow}" ConverterParameter="total"><Binding Path="HostsSort.Key" /><Binding Path="HostsSort.Ascending" /></MultiBinding></Run.Text></Run></TextBlock>
                 </Button>
-                <ListBox Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource PlainRow}" ItemsSource="{Binding Hosts}">
+                <ListBox Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource PlainRow}" ItemsSource="{Binding Hosts}"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <Grid Margin="14,7">
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                                <StackPanel Orientation="Horizontal">
-                                    <Image Width="16" Height="11" Margin="0,0,7,0" VerticalAlignment="Center"
-                                           Source="{Binding Geo.CountryCode, Converter={StaticResource Flag}}" />
-                                    <TextBlock Text="{Binding Host}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="150" />
-                                </StackPanel>
-                                <TextBlock Grid.Column="1" Style="{StaticResource Mono}" FontSize="12" Foreground="{StaticResource TextSecondary}"
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                <Image Grid.Column="0" Width="16" Height="11" Margin="0,0,7,0" VerticalAlignment="Center"
+                                       Source="{Binding Geo.CountryCode, Converter={StaticResource Flag}}" />
+                                <TextBlock Grid.Column="1" Text="{Binding Host}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Grid.Column="2" Style="{StaticResource Mono}" FontSize="12" Foreground="{StaticResource TextSecondary}" Margin="8,0,0,0"
                                            Text="{Binding Total, Converter={StaticResource Bytes}}" VerticalAlignment="Center" />
                             </Grid>
                         </DataTemplate>
@@ -81,7 +78,8 @@
         </Border>
 
         <!-- TRAFFIC TYPES -->
-        <Border Grid.Column="2" Style="{StaticResource ColCard}">
+        <Border Style="{StaticResource ColCard}"
+                Visibility="{Binding FilterDimension, Converter={StaticResource ColHide}, ConverterParameter=2}">
             <DockPanel>
                 <Button DockPanel.Dock="Top" Style="{StaticResource SortHeaderBtn}" Margin="14,12,14,8"
                         Command="{Binding SortColumnCommand}" CommandParameter="types">
@@ -89,14 +87,15 @@
                         <Run.Text><MultiBinding Converter="{StaticResource SortArrow}" ConverterParameter="name"><Binding Path="TypesSort.Key" /><Binding Path="TypesSort.Ascending" /></MultiBinding></Run.Text></Run><Run>
                         <Run.Text><MultiBinding Converter="{StaticResource SortArrow}" ConverterParameter="total"><Binding Path="TypesSort.Key" /><Binding Path="TypesSort.Ascending" /></MultiBinding></Run.Text></Run></TextBlock>
                 </Button>
-                <ListBox Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource PlainRow}" ItemsSource="{Binding Types}">
+                <ListBox Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource PlainRow}" ItemsSource="{Binding Types}"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <StackPanel Margin="14,7">
                                 <Grid>
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                                    <TextBlock Text="{Binding TypeName}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="150" />
-                                    <TextBlock Grid.Column="1" Style="{StaticResource Mono}" FontSize="12" Foreground="{StaticResource TextSecondary}"
+                                    <TextBlock Text="{Binding TypeName}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Grid.Column="1" Style="{StaticResource Mono}" FontSize="12" Foreground="{StaticResource TextSecondary}" Margin="8,0,0,0"
                                                Text="{Binding Total, Converter={StaticResource Bytes}}" VerticalAlignment="Center" />
                                 </Grid>
                                 <Border Height="4" CornerRadius="2" Background="{StaticResource InFill}" HorizontalAlignment="Left" Margin="0,6,0,0"
@@ -109,7 +108,8 @@
         </Border>
 
         <!-- COUNTRIES -->
-        <Border Grid.Column="3" Style="{StaticResource ColCard}" Margin="0">
+        <Border Style="{StaticResource ColCard}"
+                Visibility="{Binding FilterDimension, Converter={StaticResource ColHide}, ConverterParameter=3}">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="14,12,14,8">
                     <Button Style="{StaticResource SortHeaderBtn}" VerticalAlignment="Center"
@@ -123,22 +123,21 @@
                                ToolTipService.InitialShowDelay="150" ToolTipService.ShowDuration="30000"
                                ToolTip="{StaticResource L.Common.OneChina}" />
                 </StackPanel>
-                <ListBox Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource PlainRow}" ItemsSource="{Binding Countries}">
+                <ListBox Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource PlainRow}" ItemsSource="{Binding Countries}"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <StackPanel Margin="14,7">
                                 <Grid>
-                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                                    <StackPanel Orientation="Horizontal">
-                                        <Image Width="16" Height="11" Margin="0,0,8,0" VerticalAlignment="Center"
-                                               Source="{Binding CountryCode, Converter={StaticResource Flag}}" />
-                                        <Border Background="{StaticResource BgSubtle}" CornerRadius="3" Padding="5,1" Margin="0,0,8,0"
-                                                Visibility="{Binding DisplayCode.Length, Converter={StaticResource ZeroVis}}">
-                                            <TextBlock Text="{Binding DisplayCode}" FontSize="10" Foreground="{StaticResource TextSecondary}" />
-                                        </Border>
-                                        <TextBlock Text="{Binding CountryCode, Converter={StaticResource CountryName}}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="110" />
-                                    </StackPanel>
-                                    <TextBlock Grid.Column="1" Style="{StaticResource Mono}" FontSize="12" Foreground="{StaticResource TextSecondary}"
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                    <Image Grid.Column="0" Width="16" Height="11" Margin="0,0,8,0" VerticalAlignment="Center"
+                                           Source="{Binding CountryCode, Converter={StaticResource Flag}}" />
+                                    <Border Grid.Column="1" Background="{StaticResource BgSubtle}" CornerRadius="3" Padding="5,1" Margin="0,0,8,0" VerticalAlignment="Center"
+                                            Visibility="{Binding DisplayCode.Length, Converter={StaticResource ZeroVis}}">
+                                        <TextBlock Text="{Binding DisplayCode}" FontSize="10" Foreground="{StaticResource TextSecondary}" />
+                                    </Border>
+                                    <TextBlock Grid.Column="2" Text="{Binding Converter={StaticResource CountryDisplay}}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Grid.Column="3" Style="{StaticResource Mono}" FontSize="12" Foreground="{StaticResource TextSecondary}" Margin="8,0,0,0"
                                                Text="{Binding Total, Converter={StaticResource Bytes}}" VerticalAlignment="Center" />
                                 </Grid>
                                 <Border Height="4" CornerRadius="2" Background="{StaticResource OutFill}" HorizontalAlignment="Left" Margin="0,6,0,0"
@@ -149,5 +148,5 @@
                 </ListBox>
             </DockPanel>
         </Border>
-    </Grid>
+    </UniformGrid>
 </UserControl>

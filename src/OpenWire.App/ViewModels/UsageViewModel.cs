@@ -52,6 +52,11 @@ public partial class UsageViewModel : ObservableObject
     [ObservableProperty] private ObservableCollection<CountryUsage> _countries = new();
     [ObservableProperty] private string _totalText = "";
 
+    /// <summary>Dimension index shown in the filter side-panel (0 apps · 1 hosts · 2 types ·
+    /// 3 countries), or -1 when the panel is closed. The matching Usage column hides itself so
+    /// the same list isn't presented twice — the filter panel becomes that column (GlassWire-style).</summary>
+    [ObservableProperty] private int _filterDimension = -1;
+
     // Kept sort state per column (default: total, high→low — matches the engine order).
     // Held state so re-sorting happens on header click and survives range reloads,
     // rather than re-sorting on every live tick.

@@ -26,6 +26,8 @@
             <util:AnomalyKindGlyphConverter x:Key="AnomGlyph" />
             <util:SortArrowConverter x:Key="SortArrow" />
             <util:CountryNameConverter x:Key="CountryName" />
+            <util:CountryDisplayNameConverter x:Key="CountryDisplay" />
+            <util:ColumnHideConverter x:Key="ColHide" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>

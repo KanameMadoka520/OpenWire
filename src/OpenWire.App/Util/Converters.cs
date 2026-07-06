@@ -60,6 +60,21 @@ public sealed class ZeroToCollapsedConverter : IValueConverter
     public object ConvertBack(object? v, Type t, object? p, CultureInfo c) => Binding.DoNothing;
 }
 
+/// <summary>Hides the Usage column whose dimension index (ConverterParameter, 0 apps · 1 hosts ·
+/// 2 types · 3 countries) matches the filter side-panel's active dimension: the panel already
+/// lists that dimension, so showing the same list twice is redundant (GlassWire-style). The
+/// bound value is -1 when the panel is closed, keeping every column visible.</summary>
+public sealed class ColumnHideConverter : IValueConverter
+{
+    public object Convert(object? value, Type t, object? p, CultureInfo c)
+    {
+        int dim = value is int i ? i : -1;
+        int col = int.TryParse(p?.ToString(), out var n) ? n : -2;
+        return dim == col ? Visibility.Collapsed : Visibility.Visible;
+    }
+    public object ConvertBack(object? v, Type t, object? p, CultureInfo c) => Binding.DoNothing;
+}
+
 public sealed class FirewallStatusBrushConverter : IValueConverter
 {
     public object Convert(object? value, Type t, object? p, CultureInfo c) => value switch
@@ -146,6 +161,23 @@ public sealed class EnumVisibilityConverter : IValueConverter
 {
     public object Convert(object? value, Type t, object? p, CultureInfo c)
         => value?.ToString() == p?.ToString() ? Visibility.Visible : Visibility.Collapsed;
+    public object ConvertBack(object? v, Type t, object? p, CultureInfo c) => Binding.DoNothing;
+}
+
+/// <summary>Display label for a Usage "Countries &amp; regions" row. Uses the localized country
+/// name, but when the row carries no resolvable country it falls back to the same labels the
+/// filter panel uses — "Local network" for LAN traffic, "Unknown" (未知) otherwise — so the
+/// column never shows a blank and reads consistently with the filter list. Bind the whole
+/// <see cref="CountryUsage"/> item (it needs IsLocal, not just the code).</summary>
+public sealed class CountryDisplayNameConverter : IValueConverter
+{
+    public object Convert(object? value, Type t, object? p, CultureInfo c)
+    {
+        if (value is not CountryUsage cu) return "";
+        if (cu.IsLocal) return Loc.S("L.Filter.LocalNetwork");
+        if (string.IsNullOrEmpty(cu.CountryCode)) return Loc.S("L.Filter.Unknown");
+        return CountryName.Localized(cu.CountryCode, cu.CountryName);
+    }
     public object ConvertBack(object? v, Type t, object? p, CultureInfo c) => Binding.DoNothing;
 }
 

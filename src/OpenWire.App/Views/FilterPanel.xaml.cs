@@ -22,6 +22,13 @@ public partial class FilterPanel : UserControl
     /// <summary>Raised when the user clicks the panel's close (X) button.</summary>
     public event Action? CloseRequested;
 
+    /// <summary>Raised when the listed dimension changes (0 apps · 1 hosts · 2 types · 3 countries),
+    /// so the host can hide the matching Usage column while the panel is open.</summary>
+    public event Action<int>? DimensionChanged;
+
+    /// <summary>The dimension the panel is currently listing (0 apps · 1 hosts · 2 types · 3 countries).</summary>
+    public int CurrentDimension => DimCombo?.SelectedIndex ?? 0;
+
     /// <summary>Opacity of the down (in) column; lowered when sorting by outbound only.</summary>
     public static readonly DependencyProperty DownColumnOpacityProperty = DependencyProperty.Register(
         nameof(DownColumnOpacity), typeof(double), typeof(FilterPanel), new PropertyMetadata(1.0));
@@ -86,7 +93,12 @@ public partial class FilterPanel : UserControl
 
     // ---- header controls ----
 
-    private void OnFilterChanged(object sender, SelectionChangedEventArgs e) => Refresh();
+    private void OnFilterChanged(object sender, SelectionChangedEventArgs e)
+    {
+        // Only the dimension dropdown changes which column is redundant; the WAN/LAN one doesn't.
+        if (ReferenceEquals(sender, DimCombo)) DimensionChanged?.Invoke(DimCombo.SelectedIndex);
+        Refresh();
+    }
 
     private void OnDirectionChanged(object sender, SelectionChangedEventArgs e)
     {
