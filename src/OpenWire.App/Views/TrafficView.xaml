@@ -17,19 +17,23 @@
 
         <!-- Control strip -->
         <Grid Grid.Row="0" Margin="24,16,24,10">
-            <Button x:Name="PauseBtn" Style="{StaticResource IconBtn}" HorizontalAlignment="Left" VerticalAlignment="Center"
-                    Content="&#xE769;" ToolTip="Pause the live graph" Click="OnTogglePause" />
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                <Button x:Name="FilterBtn" Style="{StaticResource IconBtn}" VerticalAlignment="Center"
+                        Content="&#xE71C;" ToolTip="{StaticResource L.Traffic.Filter}" Click="OnToggleFilter" />
+                <Button x:Name="PauseBtn" Style="{StaticResource IconBtn}" VerticalAlignment="Center" Margin="6,0,0,0"
+                        Content="&#xE769;" ToolTip="{StaticResource L.Traffic.PauseLiveGraph}" Click="OnTogglePause" />
+            </StackPanel>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Background="{StaticResource BgSubtle}">
                 <StackPanel.Resources>
                     <Style TargetType="RadioButton" BasedOn="{StaticResource Seg}"><Setter Property="GroupName" Value="subview" /></Style>
                 </StackPanel.Resources>
-                <RadioButton Padding="16,7" AutomationProperties.Name="GraphView" IsChecked="{Binding SubView, Converter={StaticResource EnumMatch}, ConverterParameter=Graph, Mode=TwoWay}">
+                <RadioButton Padding="16,7" AutomationProperties.Name="GraphView" ToolTip="{StaticResource L.Traffic.TrafficGraph}" IsChecked="{Binding SubView, Converter={StaticResource EnumMatch}, ConverterParameter=Graph, Mode=TwoWay}">
                     <TextBlock Text="&#xE9D9;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" />
                 </RadioButton>
-                <RadioButton Padding="16,7" AutomationProperties.Name="ColumnsView" IsChecked="{Binding SubView, Converter={StaticResource EnumMatch}, ConverterParameter=Columns, Mode=TwoWay}">
-                    <TextBlock Text="&#xE71C;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" />
+                <RadioButton Padding="16,7" AutomationProperties.Name="ColumnsView" ToolTip="{StaticResource L.Traffic.NetworkUsage}" IsChecked="{Binding SubView, Converter={StaticResource EnumMatch}, ConverterParameter=Columns, Mode=TwoWay}">
+                    <TextBlock Text="&#xE8A9;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" />
                 </RadioButton>
-                <RadioButton Padding="16,7" AutomationProperties.Name="MapView" IsChecked="{Binding SubView, Converter={StaticResource EnumMatch}, ConverterParameter=Map, Mode=TwoWay}">
+                <RadioButton Padding="16,7" AutomationProperties.Name="MapView" ToolTip="{StaticResource L.Traffic.WorldMap}" IsChecked="{Binding SubView, Converter={StaticResource EnumMatch}, ConverterParameter=Map, Mode=TwoWay}">
                     <TextBlock Text="&#xE909;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" />
                 </RadioButton>
             </StackPanel>
@@ -38,16 +42,25 @@
                 <StackPanel.Resources>
                     <Style TargetType="RadioButton" BasedOn="{StaticResource Seg}"><Setter Property="GroupName" Value="trange" /></Style>
                 </StackPanel.Resources>
-                <RadioButton Content="5 min" IsChecked="{Binding Range, Converter={StaticResource EnumMatch}, ConverterParameter=FiveMinutes, Mode=TwoWay}" />
-                <RadioButton Content="3 hours" IsChecked="{Binding Range, Converter={StaticResource EnumMatch}, ConverterParameter=ThreeHours, Mode=TwoWay}" />
-                <RadioButton Content="24 hours" IsChecked="{Binding Range, Converter={StaticResource EnumMatch}, ConverterParameter=Day, Mode=TwoWay}" />
-                <RadioButton Content="Week" IsChecked="{Binding Range, Converter={StaticResource EnumMatch}, ConverterParameter=Week, Mode=TwoWay}" />
-                <RadioButton Content="Month" IsChecked="{Binding Range, Converter={StaticResource EnumMatch}, ConverterParameter=Month, Mode=TwoWay}" />
+                <RadioButton Content="{StaticResource L.Traffic.Range5Min}" IsChecked="{Binding Range, Converter={StaticResource EnumMatch}, ConverterParameter=FiveMinutes, Mode=TwoWay}" />
+                <RadioButton Content="{StaticResource L.Traffic.Range3Hours}" IsChecked="{Binding Range, Converter={StaticResource EnumMatch}, ConverterParameter=ThreeHours, Mode=TwoWay}" />
+                <RadioButton Content="{StaticResource L.Traffic.Range24Hours}" IsChecked="{Binding Range, Converter={StaticResource EnumMatch}, ConverterParameter=Day, Mode=TwoWay}" />
+                <RadioButton Content="{StaticResource L.Traffic.RangeWeek}" IsChecked="{Binding Range, Converter={StaticResource EnumMatch}, ConverterParameter=Week, Mode=TwoWay}" />
+                <RadioButton Content="{StaticResource L.Traffic.RangeMonth}" IsChecked="{Binding Range, Converter={StaticResource EnumMatch}, ConverterParameter=Month, Mode=TwoWay}" />
             </StackPanel>
         </Grid>
 
-        <!-- Sub-views -->
+        <!-- Sub-views (with the collapsible filter panel on the left) -->
         <Grid Grid.Row="1" Margin="24,0,24,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <views:FilterPanel x:Name="Filter" Grid.Column="0" Width="360" Margin="0,0,12,0"
+                               Visibility="Collapsed" DataContext="{Binding Usage}" />
+
+            <Grid Grid.Column="1">
             <!-- graph -->
             <Border Background="{StaticResource BgGraph}" BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="8"
                     ClipToBounds="True" Visibility="{Binding SubView, Converter={StaticResource EnumVis}, ConverterParameter=Graph}">
@@ -57,8 +70,11 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <ctrl:TrafficGraph x:Name="Graph" Grid.Row="0" />
-                    <!-- breakdown bar: down/up totals + top app + top host for the view -->
+                    <!-- breakdown bar: down/up totals + top app + top host for the view (or the drag-selected band) -->
                     <Border Grid.Row="1" BorderBrush="{StaticResource Border}" BorderThickness="0,1,0,0" Padding="14,7" Background="{StaticResource BgPanel}">
+                        <Grid>
+                        <TextBlock HorizontalAlignment="Right" VerticalAlignment="Center" Style="{StaticResource Mono}"
+                                   FontSize="12" Foreground="{StaticResource TextSecondary}" Text="{Binding SelectionRange}" />
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="&#xE74B;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11" Foreground="{StaticResource InLine}" VerticalAlignment="Center" />
                             <TextBlock Style="{StaticResource Mono}" FontSize="12" Margin="5,0,0,0" VerticalAlignment="Center" Text="{Binding BreakdownDown}" />
@@ -71,6 +87,7 @@
                             <TextBlock Text="&#xE968;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" />
                             <TextBlock FontSize="12" Foreground="{StaticResource TextSecondary}" Margin="6,0,0,0" VerticalAlignment="Center" Text="{Binding TopHost}" TextTrimming="CharacterEllipsis" MaxWidth="260" />
                         </StackPanel>
+                        </Grid>
                     </Border>
                 </Grid>
             </Border>
@@ -81,9 +98,70 @@
 
             <!-- world connection map -->
             <Border Background="{StaticResource BgGraph}" BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="8"
+                    ClipToBounds="True"
                     Visibility="{Binding SubView, Converter={StaticResource EnumVis}, ConverterParameter=Map}">
-                <ctrl:WorldMap x:Name="Map" Margin="10" />
+                <Grid>
+                    <ctrl:WorldMap x:Name="Map" Margin="8" />
+
+                    <!-- per-country drill-down (hosts talking to the clicked country) -->
+                    <Border x:Name="DrillPanel" Visibility="Collapsed" Width="300" Margin="0,46,10,12"
+                            HorizontalAlignment="Right" Background="{StaticResource BgPanel}"
+                            BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="8">
+                        <DockPanel>
+                            <Grid DockPanel.Dock="Top" Margin="12,10,4,8">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Image x:Name="DrillFlag" Width="18" Height="12" Margin="0,0,9,0" VerticalAlignment="Center" />
+                                    <StackPanel>
+                                        <TextBlock x:Name="DrillCode" FontSize="10.5" Foreground="{StaticResource TextMuted}" />
+                                        <TextBlock x:Name="DrillName" FontSize="14" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource TextPrimary}" TextTrimming="CharacterEllipsis" MaxWidth="190" />
+                                    </StackPanel>
+                                </StackPanel>
+                                <Button x:Name="DrillClose" Style="{StaticResource IconBtn}" Width="30" Height="28"
+                                        Content="&#xE711;" HorizontalAlignment="Right" VerticalAlignment="Top" Click="OnDrillClose" />
+                            </Grid>
+                            <TextBlock DockPanel.Dock="Top" Text="{StaticResource L.Traffic.Hosts}" Style="{StaticResource TableHeaderText}" Margin="12,0,12,4" />
+                            <TextBlock x:Name="DrillFooter" DockPanel.Dock="Bottom" Style="{StaticResource Caption}" Margin="12,6,12,10" />
+                            <TextBlock x:Name="DrillEmpty" DockPanel.Dock="Bottom" Visibility="Collapsed" Margin="12,8,12,4"
+                                       FontSize="12" Foreground="{StaticResource TextMuted}" TextWrapping="Wrap"
+                                       Text="{StaticResource L.Traffic.DrillEmpty}" />
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <ItemsControl x:Name="DrillHosts">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="12,5">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding Host}" TextTrimming="CharacterEllipsis" MaxWidth="180"
+                                                               Foreground="{StaticResource TextPrimary}" FontSize="12.5" />
+                                                    <TextBlock Text="{Binding RemoteAddress}" FontSize="10.5" Foreground="{StaticResource TextMuted}" />
+                                                </StackPanel>
+                                                <TextBlock Grid.Column="1" Style="{StaticResource Mono}" FontSize="12" VerticalAlignment="Center"
+                                                           Foreground="{StaticResource TextSecondary}" Text="{Binding Total, Converter={StaticResource Bytes}}" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </DockPanel>
+                    </Border>
+
+                    <!-- projection toggle + reset -->
+                    <Border HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,8,10,0"
+                            Background="{StaticResource BgSubtle}" CornerRadius="5">
+                        <StackPanel Orientation="Horizontal">
+                            <StackPanel.Resources>
+                                <Style TargetType="RadioButton" BasedOn="{StaticResource Seg}"><Setter Property="GroupName" Value="mapmode" /></Style>
+                            </StackPanel.Resources>
+                            <RadioButton x:Name="FlatModeBtn" Content="{StaticResource L.Traffic.MapFlat}" IsChecked="True" Checked="OnFlatMode" Padding="13,5" />
+                            <RadioButton x:Name="GlobeModeBtn" Content="{StaticResource L.Traffic.MapGlobe}" Checked="OnGlobeMode" Padding="13,5" />
+                            <Button Style="{StaticResource IconBtn}" Width="34" Height="30" Content="&#xE72C;"
+                                    ToolTip="{StaticResource L.Traffic.ResetView}" Click="OnResetView" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
             </Border>
+            </Grid>
         </Grid>
 
         <!-- Bottom dashboard: gauge + WAN/LAN + scrubber -->
@@ -118,7 +196,7 @@
                             <StackPanel VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,2">
                                 <TextBlock Style="{StaticResource Mono}" FontSize="17" FontWeight="Bold" HorizontalAlignment="Center"
                                            Text="{Binding DataContext.TotalCombined, RelativeSource={RelativeSource AncestorType=Window}}" />
-                                <TextBlock Text="total" Style="{StaticResource Caption}" HorizontalAlignment="Center" />
+                                <TextBlock Text="{StaticResource L.Traffic.Total}" Style="{StaticResource Caption}" HorizontalAlignment="Center" />
                             </StackPanel>
                         </Grid>
 
@@ -143,7 +221,7 @@
                         </StackPanel.Resources>
                         <Grid Margin="0,0,0,10">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="WAN" Foreground="{StaticResource TextSecondary}" FontSize="12" Width="42" VerticalAlignment="Center" />
+                                <TextBlock Text="{StaticResource L.Traffic.Wan}" Foreground="{StaticResource TextSecondary}" FontSize="12" Width="42" VerticalAlignment="Center" />
                                 <Border Width="320" Height="9" CornerRadius="5" Background="{StaticResource BgSubtle}" VerticalAlignment="Center">
                                     <Border HorizontalAlignment="Left" Height="9" CornerRadius="5" Background="{StaticResource BarFill}"
                                             Width="{Binding DataContext.WanBarWidth, RelativeSource={RelativeSource AncestorType=Window}}" />
@@ -154,7 +232,7 @@
                         </Grid>
                         <Grid>
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="LAN" Foreground="{StaticResource TextSecondary}" FontSize="12" Width="42" VerticalAlignment="Center" />
+                                <TextBlock Text="{StaticResource L.Traffic.Lan}" Foreground="{StaticResource TextSecondary}" FontSize="12" Width="42" VerticalAlignment="Center" />
                                 <Border Width="320" Height="9" CornerRadius="5" Background="{StaticResource BgSubtle}" VerticalAlignment="Center">
                                     <Border HorizontalAlignment="Left" Height="9" CornerRadius="5" Background="{StaticResource BarFill}"
                                             Width="{Binding DataContext.LanBarWidth, RelativeSource={RelativeSource AncestorType=Window}}" />
@@ -166,6 +244,8 @@
                     </StackPanel>
                 </Grid>
 
+                <!-- timeline strip: mini overview + drag handles selecting the graphed window -->
+                <ctrl:TimelineStrip x:Name="Strip" Height="66" Margin="0,12,0,0" />
             </StackPanel>
         </Border>
     </Grid>

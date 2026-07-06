@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using OpenWire.Core.Util;
 
 namespace OpenWire.App.Util;
 
@@ -21,7 +22,8 @@ public sealed class CountryFlagConverter : IValueConverter
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         if (value is not string raw) return null;
-        string code = raw.Trim().ToLowerInvariant();
+        // One-China: Taiwan renders the national (CN) flag; also accept "CN-XX" display codes.
+        string code = OneChina.FlagCode(raw.Trim()).ToLowerInvariant();
         if (code.Length != 2 || !char.IsAsciiLetter(code[0]) || !char.IsAsciiLetter(code[1]))
             return null;
         return Cache.GetOrAdd(code, Load);

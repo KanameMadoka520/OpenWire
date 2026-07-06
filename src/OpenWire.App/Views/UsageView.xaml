@@ -27,7 +27,7 @@
         <!-- APPLICATIONS -->
         <Border Grid.Column="0" Style="{StaticResource ColCard}">
             <DockPanel>
-                <TextBlock DockPanel.Dock="Top" Text="APPLICATIONS" Style="{StaticResource TableHeaderText}" Margin="14,12,14,8" />
+                <TextBlock DockPanel.Dock="Top" Text="{StaticResource L.Usage.Applications}" Style="{StaticResource TableHeaderText}" Margin="14,12,14,8" />
                 <ListBox Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource PlainRow}" ItemsSource="{Binding Apps}">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
@@ -49,7 +49,7 @@
         <!-- HOSTS -->
         <Border Grid.Column="1" Style="{StaticResource ColCard}">
             <DockPanel>
-                <TextBlock DockPanel.Dock="Top" Text="HOSTS" Style="{StaticResource TableHeaderText}" Margin="14,12,14,8" />
+                <TextBlock DockPanel.Dock="Top" Text="{StaticResource L.Usage.Hosts}" Style="{StaticResource TableHeaderText}" Margin="14,12,14,8" />
                 <ListBox Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource PlainRow}" ItemsSource="{Binding Hosts}">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
@@ -72,7 +72,7 @@
         <!-- TRAFFIC TYPES -->
         <Border Grid.Column="2" Style="{StaticResource ColCard}">
             <DockPanel>
-                <TextBlock DockPanel.Dock="Top" Text="TRAFFIC TYPES" Style="{StaticResource TableHeaderText}" Margin="14,12,14,8" />
+                <TextBlock DockPanel.Dock="Top" Text="{StaticResource L.Usage.TrafficTypes}" Style="{StaticResource TableHeaderText}" Margin="14,12,14,8" />
                 <ListBox Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource PlainRow}" ItemsSource="{Binding Types}">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
@@ -95,7 +95,13 @@
         <!-- COUNTRIES -->
         <Border Grid.Column="3" Style="{StaticResource ColCard}" Margin="0">
             <DockPanel>
-                <TextBlock DockPanel.Dock="Top" Text="COUNTRIES" Style="{StaticResource TableHeaderText}" Margin="14,12,14,8" />
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="14,12,14,8">
+                    <TextBlock Text="{StaticResource L.Usage.CountriesRegions}" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
+                    <TextBlock Text="&#xE946;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12"
+                               Foreground="{StaticResource TextMuted}" Margin="6,0,0,0" VerticalAlignment="Center"
+                               ToolTipService.InitialShowDelay="150" ToolTipService.ShowDuration="30000"
+                               ToolTip="{StaticResource L.Common.OneChina}" />
+                </StackPanel>
                 <ListBox Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource PlainRow}" ItemsSource="{Binding Countries}">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
@@ -106,10 +112,10 @@
                                         <Image Width="16" Height="11" Margin="0,0,8,0" VerticalAlignment="Center"
                                                Source="{Binding CountryCode, Converter={StaticResource Flag}}" />
                                         <Border Background="{StaticResource BgSubtle}" CornerRadius="3" Padding="5,1" Margin="0,0,8,0"
-                                                Visibility="{Binding CountryCode.Length, Converter={StaticResource ZeroVis}}">
-                                            <TextBlock Text="{Binding CountryCode}" FontSize="10" Foreground="{StaticResource TextSecondary}" />
+                                                Visibility="{Binding DisplayCode.Length, Converter={StaticResource ZeroVis}}">
+                                            <TextBlock Text="{Binding DisplayCode}" FontSize="10" Foreground="{StaticResource TextSecondary}" />
                                         </Border>
-                                        <TextBlock Text="{Binding CountryName}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="110" />
+                                        <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="110" />
                                     </StackPanel>
                                     <TextBlock Grid.Column="1" Style="{StaticResource Mono}" FontSize="12" Foreground="{StaticResource TextSecondary}"
                                                Text="{Binding Total, Converter={StaticResource Bytes}}" VerticalAlignment="Center" />

@@ -24,6 +24,10 @@ public partial class TrafficViewModel : ObservableObject
     [ObservableProperty] private string _topApp = "";
     [ObservableProperty] private string _topHost = "";
 
+    // Drag-selection on the graph: the bar shows the band's totals + time range.
+    [ObservableProperty] private string _selectionRange = "";
+    private bool _selectionActive;
+
     public TrafficViewModel(EngineClient client)
     {
         Graph = new GraphViewModel(client);
@@ -37,8 +41,31 @@ public partial class TrafficViewModel : ObservableObject
         UpdateBreakdown();
     }
 
+    /// <summary>Show the drag-selected band's totals in the breakdown bar.</summary>
+    public void ApplySelection(double fromSec, double toSec, double downBytes, double upBytes)
+    {
+        _selectionActive = true;
+        BreakdownDown = ByteFormatter.Bytes((long)downBytes);
+        BreakdownUp = ByteFormatter.Bytes((long)upBytes);
+        var f = DateTimeOffset.FromUnixTimeSeconds((long)fromSec).ToLocalTime();
+        var t = DateTimeOffset.FromUnixTimeSeconds((long)toSec).ToLocalTime();
+        SelectionRange = f.Date == t.Date
+            ? $"{f:MMM d}  {f:HH:mm} – {t:HH:mm}"
+            : $"{f:MMM d HH:mm} – {t:MMM d HH:mm}";
+    }
+
+    /// <summary>Back to whole-view totals once the band is dismissed.</summary>
+    public void ClearSelection()
+    {
+        if (!_selectionActive) return;
+        _selectionActive = false;
+        SelectionRange = "";
+        UpdateBreakdown();
+    }
+
     private void UpdateBreakdown()
     {
+        if (_selectionActive) return; // a reload must not stomp the band's totals
         var apps = Usage.Apps;
         var hosts = Usage.Hosts;
         BreakdownDown = ByteFormatter.Bytes(apps.Sum(a => a.BytesIn));

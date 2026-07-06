@@ -44,5 +44,10 @@ public partial class GraphViewModel : ObservableObject
             SampleReceived?.Invoke(time.ToUnixTimeMilliseconds() / 1000.0, inBytes, outBytes);
     }
 
-    partial void OnRangeChanged(GraphRange value) => _ = LoadAsync();
+    partial void OnRangeChanged(GraphRange value) => _ = ReloadAsync();
+
+    private async Task ReloadAsync()
+    {
+        try { await LoadAsync(); } catch { /* engine hiccup: keep the current series */ }
+    }
 }

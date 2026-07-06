@@ -35,6 +35,12 @@ public sealed class CountryUsage
 
     public double Fraction { get; set; }
     public bool IsLocal { get; set; }
+
+    /// <summary>One-China display code (TW/HK/MO shown as CN-TW/CN-HK/CN-MO).</summary>
+    public string DisplayCode => Util.OneChina.DisplayCode(CountryCode);
+
+    /// <summary>One-China display name (e.g. "Taiwan, China").</summary>
+    public string DisplayName => Util.OneChina.DisplayName(CountryCode, CountryName);
 }
 
 /// <summary>Aggregated usage grouped by traffic type (application / protocol bucket).</summary>

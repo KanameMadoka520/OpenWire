@@ -1,0 +1,224 @@
+<UserControl x:Class="OpenWire.App.Views.FilterPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:OpenWire.App.Views"
+             xmlns:vm="clr-namespace:OpenWire.App.ViewModels"
+             d:DataContext="{d:DesignInstance vm:UsageViewModel}"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d" d:DesignWidth="360" d:DesignHeight="620"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
+    <UserControl.Resources>
+        <!-- Search toggle: the IconBtn look plus an accent "active" state. -->
+        <Style x:Key="IconToggle" TargetType="ToggleButton">
+            <Setter Property="Foreground" Value="{StaticResource TextSecondary}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Width" Value="30" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="4">
+                            <TextBlock Text="{TemplateBinding Content}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                       FontSize="13" Foreground="{TemplateBinding Foreground}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="b" Property="Background" Value="{StaticResource BgElevated}" />
+                                <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="b" Property="Background" Value="{StaticResource AccentSoft}" />
+                                <Setter Property="Foreground" Value="{StaticResource Accent}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Compact direction dropdown: the Combo chrome, but the selection box shows
+             the in/out arrow glyphs instead of the item text (the full labels live in
+             the popup). SelectedIndex drives which arrows are lit. -->
+        <Style x:Key="DirCombo" TargetType="ComboBox">
+            <Setter Property="Background" Value="{StaticResource BgElevated}" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="4"
+                                    BorderBrush="{StaticResource Border}" BorderThickness="1" />
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="9,0,0,0">
+                                <TextBlock x:Name="dn" Text="&#xE74B;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10"
+                                           Foreground="{StaticResource InLine}" VerticalAlignment="Center" />
+                                <TextBlock x:Name="up" Text="&#xE74A;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10"
+                                           Foreground="{StaticResource OutLine}" VerticalAlignment="Center" Margin="1,0,0,0" />
+                            </StackPanel>
+                            <TextBlock Text="&#xE70D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="9"
+                                       Foreground="{StaticResource TextSecondary}" HorizontalAlignment="Right"
+                                       VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <ToggleButton Focusable="False" ClickMode="Press"
+                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border Background="Transparent" />
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+                            <Popup IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True"
+                                   Focusable="False" PopupAnimation="Slide">
+                                <Border Background="{StaticResource BgElevated}" BorderBrush="{StaticResource Border}"
+                                        BorderThickness="1" CornerRadius="4" MinWidth="150" Margin="0,4,0,0">
+                                    <ScrollViewer MaxHeight="320">
+                                        <ItemsPresenter />
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="b" Property="BorderBrush" Value="{StaticResource BorderStrong}" />
+                            </Trigger>
+                            <Trigger Property="SelectedIndex" Value="1">
+                                <Setter TargetName="up" Property="Visibility" Value="Collapsed" />
+                            </Trigger>
+                            <Trigger Property="SelectedIndex" Value="2">
+                                <Setter TargetName="dn" Property="Visibility" Value="Collapsed" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <Border Background="{StaticResource BgPanel}" BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="8">
+        <DockPanel>
+            <!-- header: dimension · WAN/LAN · direction · search · close -->
+            <Grid DockPanel.Dock="Top" Margin="10,10,10,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="50" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <ComboBox x:Name="DimCombo" Style="{StaticResource Combo}" ItemContainerStyle="{StaticResource ComboItem}"
+                          FontSize="12" SelectedIndex="0" SelectionChanged="OnFilterChanged" ToolTip="{StaticResource L.Filter.WhatToList}">
+                    <ComboBoxItem Content="{StaticResource L.Filter.Applications}" />
+                    <ComboBoxItem Content="{StaticResource L.Filter.Hosts}" />
+                    <ComboBoxItem Content="{StaticResource L.Filter.TrafficTypes}" />
+                    <ComboBoxItem Content="{StaticResource L.Filter.CountriesRegions}" />
+                </ComboBox>
+
+                <ComboBox x:Name="WanCombo" Grid.Column="1" Style="{StaticResource Combo}" ItemContainerStyle="{StaticResource ComboItem}"
+                          FontSize="12" SelectedIndex="0" SelectionChanged="OnFilterChanged" Margin="6,0,0,0" ToolTip="{StaticResource L.Filter.NetworkScope}">
+                    <ComboBoxItem Content="{StaticResource L.Filter.WanLan}" />
+                    <ComboBoxItem Content="{StaticResource L.Filter.Lan}" />
+                    <ComboBoxItem Content="{StaticResource L.Filter.Wan}" />
+                </ComboBox>
+
+                <ComboBox x:Name="DirCombo" Grid.Column="2" Style="{StaticResource DirCombo}" ItemContainerStyle="{StaticResource ComboItem}"
+                          SelectedIndex="0" SelectionChanged="OnDirectionChanged" Margin="6,0,0,0" ToolTip="{StaticResource L.Filter.TrafficDirection}">
+                    <ComboBoxItem Content="{StaticResource L.Filter.InAndOut}" />
+                    <ComboBoxItem Content="{StaticResource L.Filter.InboundOnly}" />
+                    <ComboBoxItem Content="{StaticResource L.Filter.OutboundOnly}" />
+                </ComboBox>
+
+                <ToggleButton x:Name="SearchToggle" Grid.Column="3" Style="{StaticResource IconToggle}" Margin="4,0,0,0"
+                              Content="&#xE721;" ToolTip="{StaticResource L.Filter.SearchByName}" Checked="OnSearchToggled" Unchecked="OnSearchToggled" />
+
+                <Button Grid.Column="4" Style="{StaticResource IconBtn}" Width="30" Content="&#xE711;"
+                        ToolTip="{StaticResource L.Filter.ClosePanel}" Click="OnClose" />
+
+                <!-- search overlay: covers the three dropdowns while the search is active -->
+                <Grid x:Name="SearchOverlay" Grid.ColumnSpan="3" Visibility="Collapsed">
+                    <TextBox x:Name="SearchBox" Style="{StaticResource Search}" FontSize="12"
+                             TextChanged="OnSearchChanged" KeyDown="OnSearchKeyDown" />
+                    <TextBlock Text="{StaticResource L.Filter.SearchByName}" Foreground="{StaticResource TextMuted}" FontSize="12" Margin="11,0,0,0"
+                               VerticalAlignment="Center" IsHitTestVisible="False"
+                               Visibility="{Binding Text.Length, ElementName=SearchBox, Converter={StaticResource ZeroVis}, ConverterParameter=invert}" />
+                </Grid>
+            </Grid>
+
+            <!-- caveat for dimensions that carry no per-item WAN/LAN split -->
+            <TextBlock x:Name="SplitNote" DockPanel.Dock="Top" Style="{StaticResource Caption}" Margin="12,8,12,0"
+                       TextWrapping="Wrap" Visibility="Collapsed"
+                       Text="{StaticResource L.Filter.SplitNote}" />
+
+
+            <!-- list header: dimension label + down/up columns -->
+            <Grid DockPanel.Dock="Top" Margin="12,10,12,2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="74" />
+                    <ColumnDefinition Width="74" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock x:Name="ListLabel" Text="{StaticResource L.Filter.HeaderApplications}" Style="{StaticResource TableHeaderText}" VerticalAlignment="Center" />
+                    <TextBlock x:Name="OneChinaInfo" Text="&#xE946;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12"
+                               Foreground="{StaticResource TextMuted}" Margin="6,0,0,0" VerticalAlignment="Center" Visibility="Collapsed"
+                               ToolTipService.InitialShowDelay="150" ToolTipService.ShowDuration="30000"
+                               ToolTip="{StaticResource L.Common.OneChina}" />
+                </StackPanel>
+                <TextBlock Grid.Column="1" Text="&#xE74B;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11"
+                           Foreground="{StaticResource InLine}" HorizontalAlignment="Right" VerticalAlignment="Center"
+                           Opacity="{Binding DownColumnOpacity, RelativeSource={RelativeSource AncestorType={x:Type views:FilterPanel}}}" />
+                <TextBlock Grid.Column="2" Text="&#xE74A;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11"
+                           Foreground="{StaticResource OutLine}" HorizontalAlignment="Right" VerticalAlignment="Center"
+                           Opacity="{Binding UpColumnOpacity, RelativeSource={RelativeSource AncestorType={x:Type views:FilterPanel}}}" />
+            </Grid>
+
+            <TextBlock x:Name="EmptyNote" DockPanel.Dock="Top" Style="{StaticResource Caption}" Margin="12,8,12,0"
+                       Visibility="Collapsed" Text="{StaticResource L.Filter.NoEntries}" />
+
+            <ListBox x:Name="List" Background="Transparent" BorderThickness="0" Margin="0,2,0,6"
+                     ItemContainerStyle="{StaticResource PlainRow}"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     ScrollViewer.VerticalScrollBarVisibility="Visible">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Margin="12,6,2,6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="74" />
+                                <ColumnDefinition Width="74" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Image Width="16" Height="16" Margin="0,0,8,0"
+                                       Source="{Binding IconPath, Converter={StaticResource AppIcon}}"
+                                       Visibility="{Binding IsApp, Converter={StaticResource BoolVis}}" />
+                                <Image Width="16" Height="11" Margin="0,0,7,0" VerticalAlignment="Center"
+                                       Source="{Binding FlagCode, Converter={StaticResource Flag}}"
+                                       Visibility="{Binding HasFlagSlot, Converter={StaticResource BoolVis}}" />
+                                <TextBlock Text="{Binding Glyph}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12"
+                                           Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" Margin="0,0,8,0"
+                                           Visibility="{Binding Glyph.Length, Converter={StaticResource ZeroVis}}" />
+                                <Border Background="{StaticResource BgSubtle}" CornerRadius="3" Padding="5,1" Margin="0,0,7,0"
+                                        VerticalAlignment="Center"
+                                        Visibility="{Binding CodeBadge.Length, Converter={StaticResource ZeroVis}}">
+                                    <TextBlock Text="{Binding CodeBadge}" FontSize="10" Foreground="{StaticResource TextSecondary}" />
+                                </Border>
+                            </StackPanel>
+                            <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="12.5" VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis" />
+                            <TextBlock Grid.Column="2" Style="{StaticResource Mono}" FontSize="12" Foreground="{StaticResource InLine}"
+                                       HorizontalAlignment="Right" VerticalAlignment="Center"
+                                       Text="{Binding BytesIn, Converter={StaticResource Bytes}}"
+                                       Opacity="{Binding DownColumnOpacity, RelativeSource={RelativeSource AncestorType={x:Type views:FilterPanel}}}" />
+                            <TextBlock Grid.Column="3" Style="{StaticResource Mono}" FontSize="12" Foreground="{StaticResource OutLine}"
+                                       HorizontalAlignment="Right" VerticalAlignment="Center"
+                                       Text="{Binding BytesOut, Converter={StaticResource Bytes}}"
+                                       Opacity="{Binding UpColumnOpacity, RelativeSource={RelativeSource AncestorType={x:Type views:FilterPanel}}}" />
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </DockPanel>
+    </Border>
+</UserControl>

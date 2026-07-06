@@ -36,7 +36,7 @@ public sealed class Sparkline : FrameworkElement
         fill.Freeze();
         _fill = fill;
         _line = new Pen(new SolidColorBrush(a), 1.3); _line.Freeze();
-        _baseline = new Pen(new SolidColorBrush(Color.FromRgb(0xE7, 0xEA, 0xEF)), 1); _baseline.Freeze();
+        _baseline = new Pen(new SolidColorBrush(ResColor("BorderColor", Color.FromRgb(0xE7, 0xEA, 0xEF))), 1); _baseline.Freeze();
     }
 
     protected override void OnRender(DrawingContext dc)
