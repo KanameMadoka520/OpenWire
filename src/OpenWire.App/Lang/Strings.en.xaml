@@ -223,4 +223,9 @@
     <sys:String x:Key="L.Set.GeoNotInstalled">not installed</sys:String>
     <sys:String x:Key="L.Set.Saved">Saved ✓</sys:String>
     <sys:String x:Key="L.Set.SaveChanges">Save changes</sys:String>
+    <sys:String x:Key="L.Set.About">ABOUT</sys:String>
+    <sys:String x:Key="L.Set.AboutTagline">An open-source network monitor + application firewall for Windows.</sys:String>
+    <sys:String x:Key="L.Set.AboutAuthor">Author</sys:String>
+    <sys:String x:Key="L.Set.AboutRepo">Repository</sys:String>
+    <sys:String x:Key="L.Set.AboutLicense">MIT license · An independent project, not affiliated with GlassWire / SecureMix LLC.</sys:String>
 </ResourceDictionary>

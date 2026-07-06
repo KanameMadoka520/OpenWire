@@ -48,9 +48,22 @@ public sealed class TrayService : IDisposable
         catch { /* shell notifications unavailable */ }
     }
 
-    // A tiny hand-drawn "wire" mark on a paper chip — original artwork, drawn at runtime.
+    // The packaged app icon (Assets/app.ico); falls back to a runtime-drawn mark
+    // if the resource can't be read for any reason.
     private static Icon BuildIcon()
     {
+        try
+        {
+            var res = System.Windows.Application.GetResourceStream(
+                new Uri("pack://application:,,,/Assets/app.ico"));
+            if (res is not null)
+            {
+                using var s = res.Stream;
+                return new Icon(s, 32, 32);
+            }
+        }
+        catch { /* fall through to the drawn fallback */ }
+
         using var bmp = new Bitmap(32, 32);
         using (var g = Graphics.FromImage(bmp))
         {
@@ -58,7 +71,7 @@ public sealed class TrayService : IDisposable
             g.Clear(Color.Transparent);
             using var paper = new SolidBrush(Color.FromArgb(245, 245, 240));
             using var ink = new Pen(Color.FromArgb(43, 43, 43), 2.2f);
-            using var node = new SolidBrush(Color.FromArgb(59, 130, 246));
+            using var node = new SolidBrush(Color.FromArgb(228, 35, 46));
             g.FillRectangle(paper, 3, 3, 25, 25);
             g.DrawRectangle(ink, 3, 3, 25, 25);
             g.DrawLines(ink, new[] { new PointF(8, 21), new PointF(13, 12), new PointF(19, 21), new PointF(24, 11) });

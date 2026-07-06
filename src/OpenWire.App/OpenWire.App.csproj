@@ -22,6 +22,12 @@
     <None Include="Assets\Flags\NOTICE.md" />
   </ItemGroup>
 
+  <!-- App logo: brand image + multi-size icon (also loaded by the tray). -->
+  <ItemGroup>
+    <Resource Include="Assets\logo.png" />
+    <Resource Include="Assets\app.ico" />
+  </ItemGroup>
+
   <!-- Public-domain world country polygons (Natural Earth 1:110m), projected + embedded. -->
   <ItemGroup>
     <EmbeddedResource Include="Controls\WorldCountries.txt" />
@@ -35,6 +41,7 @@
     <UseWPF>true</UseWPF>
     <!-- for the system-tray NotifyIcon (isolated in TrayService); WPF stays primary -->
     <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
   </PropertyGroup>
 
 </Project>

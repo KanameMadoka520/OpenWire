@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Small-size variant of the OpenWire logo (16-32 px): badge + pulse only,
+       heavier strokes, no speckles/grid/squiggle so it stays legible tiny. -->
+  <rect x="10" y="10" width="492" height="492" rx="110" fill="#F7F4ED"/>
+  <rect x="30" y="30" width="452" height="452" rx="92" fill="none"
+        stroke="#2E3237" stroke-width="26" stroke-linecap="round"/>
+
+  <!-- area wash -->
+  <path d="M96 368
+           C 140 368, 152 322, 176 268
+           C 196 224, 212 240, 226 296
+           C 238 340, 246 352, 258 336
+           C 272 316, 276 196, 292 136
+           C 302 100, 318 100, 328 136
+           C 344 200, 350 316, 366 344
+           C 378 366, 396 368, 416 368 Z"
+        fill="#E4232E" opacity="0.18"/>
+
+  <!-- pulse -->
+  <path d="M96 368
+           C 140 368, 152 322, 176 268
+           C 196 224, 212 240, 226 296
+           C 238 340, 246 352, 258 336
+           C 272 316, 276 196, 292 136
+           C 302 100, 318 100, 328 136
+           C 344 200, 350 316, 366 344
+           C 378 366, 396 368, 416 368"
+        stroke="#E4232E" stroke-width="30" fill="none" stroke-linecap="round"/>
+
+  <circle cx="96" cy="368" r="22" fill="#2E3237"/>
+  <circle cx="416" cy="368" r="22" fill="#2E3237"/>
+</svg>

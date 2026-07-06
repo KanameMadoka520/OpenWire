@@ -131,6 +131,31 @@
                 <Border Style="{StaticResource Card}" Padding="18">
                     <TextBlock Text="{Binding EngineInfo}" Foreground="{StaticResource TextSecondary}" FontSize="12.5" TextWrapping="Wrap" />
                 </Border>
+
+                <TextBlock Text="{StaticResource L.Set.About}" Style="{StaticResource TableHeaderText}" Margin="2,24,0,10" />
+                <Border Style="{StaticResource Card}" Padding="18">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="OpenWire" FontWeight="SemiBold" FontSize="14" />
+                            <TextBlock Text="{Binding AppVersion}" Foreground="{StaticResource TextMuted}" FontSize="12" Margin="8,0,0,0" VerticalAlignment="Bottom" />
+                        </StackPanel>
+                        <TextBlock Text="{StaticResource L.Set.AboutTagline}" Foreground="{StaticResource TextSecondary}" FontSize="12"
+                                   TextWrapping="Wrap" Margin="0,4,0,12" />
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{StaticResource L.Set.AboutAuthor}" Foreground="{StaticResource TextSecondary}" FontSize="12.5" Width="120" VerticalAlignment="Center" />
+                            <TextBlock FontSize="12.5" VerticalAlignment="Center">
+                                <Hyperlink NavigateUri="https://github.com/KanameMadoka520" RequestNavigate="OnOpenLink">KanameMadoka520</Hyperlink>
+                            </TextBlock>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                            <TextBlock Text="{StaticResource L.Set.AboutRepo}" Foreground="{StaticResource TextSecondary}" FontSize="12.5" Width="120" VerticalAlignment="Center" />
+                            <TextBlock FontSize="12.5" VerticalAlignment="Center">
+                                <Hyperlink NavigateUri="https://github.com/KanameMadoka520/OpenWire" RequestNavigate="OnOpenLink">github.com/KanameMadoka520/OpenWire</Hyperlink>
+                            </TextBlock>
+                        </StackPanel>
+                        <TextBlock Text="{StaticResource L.Set.AboutLicense}" Style="{StaticResource Caption}" Margin="0,12,0,0" TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
             </StackPanel>
         </ScrollViewer>
 

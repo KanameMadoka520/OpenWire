@@ -9,6 +9,7 @@
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance vm:MainViewModel}"
         Title="OpenWire" Height="820" Width="1300" MinHeight="620" MinWidth="900"
+        Icon="Assets/app.ico"
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource BgApp}"
         FontFamily="{StaticResource UiFont}"
@@ -51,12 +52,8 @@
 
                 <!-- Brand -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="20,0,0,0" VerticalAlignment="Center">
-                    <Border Width="32" Height="32" CornerRadius="8" Background="{StaticResource AccentSoft}"
-                            BorderBrush="{StaticResource SketchBorderBrush}" BorderThickness="1.3">
-                        <Path Data="{StaticResource DoodleWifi}" Stretch="Uniform" Width="18" Height="18"
-                              Stroke="{StaticResource Accent}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                              HorizontalAlignment="Center" VerticalAlignment="Center" />
-                    </Border>
+                    <Image Source="pack://application:,,,/Assets/logo.png" Width="32" Height="32"
+                           RenderOptions.BitmapScalingMode="HighQuality" />
                     <StackPanel Margin="11,0,0,0" VerticalAlignment="Center">
                         <TextBlock Text="OpenWire" FontFamily="{StaticResource HeadingFont}" FontSize="19" />
                         <TextBlock Text="OPEN SOURCE" FontSize="9" Foreground="{StaticResource TextMuted}" Margin="1,-2,0,0" />

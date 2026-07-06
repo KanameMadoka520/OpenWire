@@ -222,4 +222,9 @@
     <sys:String x:Key="L.Set.GeoNotInstalled">未安装</sys:String>
     <sys:String x:Key="L.Set.Saved">已保存 ✓</sys:String>
     <sys:String x:Key="L.Set.SaveChanges">保存更改</sys:String>
+    <sys:String x:Key="L.Set.About">关于</sys:String>
+    <sys:String x:Key="L.Set.AboutTagline">开源的 Windows 网络监控 + 应用防火墙。</sys:String>
+    <sys:String x:Key="L.Set.AboutAuthor">作者</sys:String>
+    <sys:String x:Key="L.Set.AboutRepo">项目仓库</sys:String>
+    <sys:String x:Key="L.Set.AboutLicense">MIT 许可 · 独立项目，与 GlassWire / SecureMix LLC 无关联。</sys:String>
 </ResourceDictionary>

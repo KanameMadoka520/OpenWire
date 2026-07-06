@@ -6,9 +6,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Company>OpenWire</Company>
     <Product>OpenWire</Product>
-    <Authors>OpenWire contributors</Authors>
-    <Version>0.1.0</Version>
-    <Copyright>Copyright (c) OpenWire contributors</Copyright>
+    <Authors>KanameMadoka520</Authors>
+    <Version>1.0.0</Version>
+    <Copyright>Copyright (c) KanameMadoka520</Copyright>
+    <RepositoryUrl>https://github.com/KanameMadoka520/OpenWire</RepositoryUrl>
     <NeutralLanguage>en</NeutralLanguage>
     <!-- Clean-room open-source re-implementation. Not affiliated with GlassWire / SecureMix. -->
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>

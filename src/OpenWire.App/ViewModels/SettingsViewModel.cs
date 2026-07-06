@@ -29,6 +29,10 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private string _engineInfo = "";
     [ObservableProperty] private string _savedText = "";
 
+    /// <summary>Shown in the About card (assembly version, set via Directory.Build.props).</summary>
+    public string AppVersion { get; } =
+        "v" + (System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.0");
+
     /// <summary>UI skin (Minimal / Pencil / BerryDay / BerryNight). Live-switched.</summary>
     [ObservableProperty] private string _theme = ThemeManager.Read();
 

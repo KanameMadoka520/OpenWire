@@ -8,6 +8,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <!-- Elevation is required for ETW kernel sessions + Windows Firewall writes. -->
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>..\OpenWire.App\Assets\app.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
