@@ -175,24 +175,7 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void StartEngine()
     {
-        try
-        {
-            string? exe = LocateServiceExe();
-            if (exe is null) return;
-            Process.Start(new ProcessStartInfo { FileName = exe, UseShellExecute = true, Verb = "runas" });
-        }
-        catch { /* user declined UAC */ }
-    }
-
-    private static string? LocateServiceExe()
-    {
-        string baseDir = AppContext.BaseDirectory;
-        string local = Path.Combine(baseDir, "OpenWire.Service.exe");
-        if (File.Exists(local)) return local;
-
-        string config = baseDir.Contains("Release", StringComparison.OrdinalIgnoreCase) ? "Release" : "Debug";
-        string dev = Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..",
-            "OpenWire.Service", "bin", config, "net9.0-windows", "OpenWire.Service.exe"));
-        return File.Exists(dev) ? dev : null;
+        try { OpenWire.App.Services.EngineLauncher.SpawnService(runas: true); }
+        catch { /* user declined UAC or exe not found */ }
     }
 }

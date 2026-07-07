@@ -42,6 +42,11 @@ public sealed class HardwareMonitor : IDisposable
     private Timer? _timer;
     private readonly ProcessResourceMonitor _procs = new();
 
+    /// <summary>When the UI isn't being viewed (app in tray), sample slowly instead of at 4 Hz —
+    /// enough to keep the 5-minute graph continuous when the user returns, at a fraction of the CPU.</summary>
+    private const int IdleIntervalMs = 1500;
+    private volatile bool _disposed;
+
     // ---- per-component inventory + utilisation for the "hardware resource usage" list ----
     // "% Disk Time" per physical disk (instances like "0 C:", "1 D:"), busy % clamped 0..100.
     private readonly Dictionary<string, PerformanceCounter> _diskBusy = new(StringComparer.OrdinalIgnoreCase);
@@ -95,6 +100,18 @@ public sealed class HardwareMonitor : IDisposable
     {
         _timer = new Timer(_ => Sample(), null, 500, SampleIntervalMs);
         _procs.Start();
+    }
+
+    /// <summary>Throttle the samplers when the UI isn't actively viewing them. The hardware timer
+    /// slows to <see cref="IdleIntervalMs"/> (a PDH rate counter self-normalizes over the measured
+    /// elapsed time, so a slower interval doesn't misreport), and the per-process monitor pauses
+    /// entirely. A full-interval dueTime avoids a sub-interval sample spike on resume.</summary>
+    public void SetUiActive(bool active)
+    {
+        int period = active ? SampleIntervalMs : IdleIntervalMs;
+        try { if (!_disposed) _timer?.Change(period, period); }
+        catch (ObjectDisposedException) { }
+        _procs.SetUiActive(active);
     }
 
     private static void TryInit(ref PerformanceCounter? counter, string cat, string name, string inst)
@@ -374,6 +391,7 @@ public sealed class HardwareMonitor : IDisposable
 
     public void Dispose()
     {
+        _disposed = true;
         _timer?.Dispose();
         _procs.Dispose();
         _cpu?.Dispose();

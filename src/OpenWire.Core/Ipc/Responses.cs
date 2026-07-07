@@ -76,6 +76,18 @@ public sealed class SettingsResponse : IpcMessage
     public AppSettings Settings { get; set; } = new();
 }
 
+/// <summary>Launch-at-logon state: whether the task exists/enabled, whether the current user can
+/// elevate, the task's last run result, and a human-readable message on failure.</summary>
+public sealed class AutoStartStatusResponse : IpcMessage
+{
+    public bool Exists { get; set; }
+    public bool Enabled { get; set; }
+    /// <summary>The interactive account is a local administrator (a HIGHEST-privileges task is possible).</summary>
+    public bool CanElevate { get; set; } = true;
+    public int LastRunResult { get; set; }
+    public string? Message { get; set; }
+}
+
 /// <summary>Current GeoIP database status, and — for an update request — the result of the attempt.</summary>
 public sealed class GeoIpStatusResponse : IpcMessage
 {

@@ -149,6 +149,29 @@ public sealed class SetSettingsRequest : IpcMessage
     public AppSettings Settings { get; set; } = new();
 }
 
+/// <summary>Tell the engine whether the UI is actively being viewed, so it can throttle the
+/// high-frequency hardware / per-process samplers when the app is minimized to the tray.</summary>
+public sealed class SetUiActiveRequest : IpcMessage
+{
+    public bool Active { get; set; } = true;
+}
+
+/// <summary>Enable or disable launching OpenWire at logon. The engine (elevated) registers or
+/// removes a Task Scheduler logon task that starts the app with highest privileges.</summary>
+public sealed class SetAutoStartRequest : IpcMessage
+{
+    public bool Enabled { get; set; }
+    /// <summary>Full path to the app executable the logon task should launch.</summary>
+    public string AppExePath { get; set; } = string.Empty;
+    /// <summary>The interactive user the task runs as (DOMAIN\user), from the app's WindowsIdentity.
+    /// The app has already verified this account can elevate (its token carries the Administrators
+    /// group) before enabling, so the engine just applies the task.</summary>
+    public string UserName { get; set; } = string.Empty;
+}
+
+/// <summary>Fetch the current launch-at-logon state (whether the task exists + can elevate).</summary>
+public sealed class GetAutoStartRequest : IpcMessage { }
+
 /// <summary>Fetch the current GeoIP database status (source, build date, last update).</summary>
 public sealed class GetGeoIpStatusRequest : IpcMessage { }
 

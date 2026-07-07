@@ -5,7 +5,10 @@ public sealed class AppSettings
 {
     public FirewallMode FirewallMode { get; set; } = FirewallMode.Off;
 
-    public bool LaunchOnStartup { get; set; } = true;
+    /// <summary>Start OpenWire automatically at logon (via an elevated Task Scheduler task the
+    /// engine registers). Off by default; the real source of truth is whether that task exists,
+    /// which Settings reconciles on load — this flag is only for display round-tripping.</summary>
+    public bool LaunchOnStartup { get; set; } = false;
     public bool MinimizeToTray { get; set; } = true;
     public bool ShowDesktopNotifications { get; set; } = true;
 

@@ -1,4 +1,5 @@
 using System.IO;
+using System.Threading;
 using System.Windows;
 using System.Windows.Threading;
 using OpenWire.App.Services;
@@ -19,9 +20,33 @@ public partial class App : Application
     private bool _minimizeToTray = true;
     private readonly HashSet<string> _promptOpen = new(StringComparer.OrdinalIgnoreCase);
 
+    private DispatcherTimer? _connectWatch;
+    private bool _spawnAttempted; // one auto-spawn attempt per session
+    private bool _userDeclined;   // user cancelled the UAC prompt — don't nag again
+
+    private Mutex? _singleInstance;   // one app per session (the engine is bound to it via --parent-app)
+    private EventWaitHandle? _showEvent;
+
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        // Single instance per session. The engine is tied to this app's lifetime (via --parent-app),
+        // so a second window sharing the one engine would be orphaned when the first quits. Instead,
+        // a second launch surfaces the running window and exits.
+        _showEvent = new EventWaitHandle(false, EventResetMode.AutoReset, @"Local\OpenWire.App.Show");
+        var mutex = new Mutex(true, @"Local\OpenWire.App.Singleton", out bool isFirst);
+        if (!isFirst)
+        {
+            _showEvent.Set();     // ask the running instance to come to the foreground
+            mutex.Dispose();
+            Shutdown();
+            return;
+        }
+        _singleInstance = mutex;
+        var showWatch = new Thread(() => { while (_showEvent.WaitOne()) Dispatcher.BeginInvoke(ShowMainWindow); })
+        { IsBackground = true, Name = "OpenWire.ShowWatch" };
+        showWatch.Start();
 
         // Apply the chosen language + skin before any window is created.
         LangManager.Apply(this, LangManager.Read());
@@ -43,7 +68,13 @@ public partial class App : Application
         HookWindow(_window);
 
         // Live preferences: read on (re)connect and whenever settings are saved.
-        Client.ConnectionChanged += connected => { if (connected) _ = RefreshPrefsAsync(); };
+        Client.ConnectionChanged += connected =>
+        {
+            if (!connected) return;
+            _connectWatch?.Stop();      // an engine answered; no need to spawn one
+            _ = RefreshPrefsAsync();
+            AssertUiActive();           // report the real active state on every (re)connect
+        };
         vm.Settings.Saved += s => { _notify = s.ShowDesktopNotifications; _minimizeToTray = s.MinimizeToTray; };
 
         // Desktop notifications for noteworthy (non-informational) alerts.
@@ -58,6 +89,11 @@ public partial class App : Application
 
         _window.Show();
         Client.Start();
+
+        // If no engine answers within a few seconds, spawn one (elevated). Cancelled on connect.
+        _connectWatch = new DispatcherTimer { Interval = TimeSpan.FromSeconds(6) };
+        _connectWatch.Tick += (_, _) => { _connectWatch!.Stop(); TryAutoSpawnEngine(); };
+        _connectWatch.Start();
     }
 
     private void HookWindow(MainWindow w)
@@ -66,7 +102,37 @@ public partial class App : Application
         {
             if (w.WindowState == WindowState.Minimized && _minimizeToTray)
                 w.Hide();
+            AssertUiActive(); // hidden/minimized -> throttle the samplers; restored -> full rate
         };
+    }
+
+    /// <summary>The UI is "active" (worth full-rate sampling) only when its window is actually shown.</summary>
+    private bool ComputeUiActive() =>
+        _window is { IsVisible: true, WindowState: not WindowState.Minimized };
+
+    private void AssertUiActive()
+    {
+        if (Client.IsConnected) Client.SetUiActive(ComputeUiActive());
+    }
+
+    /// <summary>When no engine is reachable, start one once (elevated — the engine needs admin for
+    /// ETW + firewall). Latched so a missing exe or a declined UAC prompt never loops.</summary>
+    private void TryAutoSpawnEngine()
+    {
+        if (Client.IsConnected || _userDeclined) return;
+        // An engine process already exists (starting up, or a stale one). Don't spawn a duplicate —
+        // the engine's single-instance mutex would reject it anyway, costing a needless UAC prompt —
+        // but keep re-checking so we still connect once it's listening, or spawn if it later dies.
+        if (System.Diagnostics.Process.GetProcessesByName("OpenWire.Service").Length > 0)
+        {
+            _connectWatch?.Start();
+            return;
+        }
+        if (_spawnAttempted) return;
+        _spawnAttempted = true;
+        try { Services.EngineLauncher.SpawnService(runas: true); }
+        catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 1223) { _userDeclined = true; }
+        catch { /* exe missing / other — the manual "Start engine" button remains */ }
     }
 
     /// <summary>
@@ -126,6 +192,7 @@ public partial class App : Application
         _window.Show();
         _window.WindowState = WindowState.Normal;
         _window.Activate();
+        AssertUiActive();
     }
 
     private void ShowFirewallPrompt(FirewallPromptEvent ev)
@@ -160,6 +227,8 @@ public partial class App : Application
     {
         _tray?.Dispose();
         Client?.Dispose();
+        _singleInstance?.Dispose();
+        _showEvent?.Dispose();
         base.OnExit(e);
     }
 }

@@ -263,6 +263,12 @@
     <sys:String x:Key="L.Set.GeoAlreadyLatest">已是最新。</sys:String>
     <sys:String x:Key="L.Set.GeoUpdateFailed">更新失败：{0}</sys:String>
     <sys:String x:Key="L.Set.GeoLastChecked">上次检查：{0}</sys:String>
+    <sys:String x:Key="L.Set.Startup">启动</sys:String>
+    <sys:String x:Key="L.Set.LaunchOnStartup">开机自启（需要管理员权限）</sys:String>
+    <sys:String x:Key="L.Set.LaunchOnStartupDesc">登录 Windows 时自动以管理员权限启动 OpenWire 并在后台持续监控；退出 OpenWire 时引擎会随之关闭。</sys:String>
+    <sys:String x:Key="L.Set.AutoStartNeedsAdmin">此功能需要管理员账户——当前账户无法在登录时以管理员权限运行。</sys:String>
+    <sys:String x:Key="L.Set.AutoStartOn">下次登录时将自动启动 OpenWire。</sys:String>
+    <sys:String x:Key="L.Set.AutoStartFailed">设置开机自启失败：{0}</sys:String>
     <sys:String x:Key="L.Set.DataPlan">流量套餐</sys:String>
     <sys:String x:Key="L.Set.DataPlanEnable">启用每月流量套餐</sys:String>
     <sys:String x:Key="L.Set.DataPlanLimit">上限（GB）</sys:String>

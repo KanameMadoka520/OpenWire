@@ -24,7 +24,9 @@ public partial class HardwareView : UserControl
         InitializeComponent();
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
-        _timer.Tick += async (_, _) => { if (_vm is not null) await _vm.RefreshAsync(); };
+        // Skip the poll (and the engine's full-snapshot serialization it drives) while the window
+        // is hidden to the tray — IsVisible goes false then, even though the timer keeps ticking.
+        _timer.Tick += async (_, _) => { if (_vm is not null && IsVisible) await _vm.RefreshAsync(); };
     }
 
     private async void OnLoaded(object sender, System.Windows.RoutedEventArgs e)

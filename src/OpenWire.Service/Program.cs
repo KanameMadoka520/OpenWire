@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.Versioning;
 using System.Security.Principal;
 using OpenWire.Core.Util;
@@ -18,6 +19,16 @@ internal static class Program
         try { Console.OutputEncoding = System.Text.Encoding.UTF8; } catch { }
         PrintBanner();
 
+        // One engine per machine owns the named pipe, the ETW session and the database. A second
+        // launch (e.g. the app's auto-spawn racing a launcher script) must bow out immediately,
+        // before touching any of them. Global\ so it spans sessions.
+        using var singleton = new Mutex(true, @"Global\OpenWire.Engine.Singleton", out bool acquired);
+        if (!acquired)
+        {
+            Console.WriteLine("Another OpenWire engine is already running - exiting.");
+            return 0;
+        }
+
         string dataDir = ResolveDataDir(args);
         Directory.CreateDirectory(dataDir);
         Console.WriteLine($"Data directory : {dataDir}");
@@ -26,8 +37,16 @@ internal static class Program
             Console.WriteLine("  ! Not elevated - per-app ETW capture and firewall control are disabled (global graph still works).");
         Console.WriteLine();
 
+        // Launch mode. The app spawns us with "--parent-app <pid>" so we die the moment it exits;
+        // "--daemon" opts out of the die-with-the-app behaviour for headless/advanced use. Otherwise
+        // the idle watchdog is on: the engine exits shortly after the last UI client disconnects, so
+        // it never lingers in the background once OpenWire is closed.
+        long parentPid = ParseParentPid(args);
+        bool exitWhenIdle = !args.Contains("--daemon");
+
         using var cts = new CancellationTokenSource();
         Console.CancelKeyPress += (_, e) => { e.Cancel = true; cts.Cancel(); };
+        void RequestShutdown() { try { cts.Cancel(); } catch { /* already disposed/cancelled */ } }
 
         await using var engine = new MonitorEngine(dataDir);
         await engine.StartAsync(cts.Token);
@@ -35,7 +54,11 @@ internal static class Program
         if (args.Contains("--selftest"))
             return await SelfTestAsync(engine, cts.Token);
 
-        await using var server = new IpcServer(engine);
+        // Die immediately if the app that spawned us exits (covers a force-kill or OS-suspend that
+        // never cleanly closes the pipe). The idle watchdog below is the normal-close path.
+        if (parentPid > 0) WatchParent((int)parentPid, RequestShutdown);
+
+        await using var server = new IpcServer(engine, exitWhenIdle, RequestShutdown);
         server.Start(cts.Token);
         Console.WriteLine($"Listening on named pipe: \\\\.\\pipe\\{OpenWire.Core.Ipc.IpcTransport.PipeName}");
         Console.WriteLine("Engine running. Press Ctrl+C to stop.\n");
@@ -45,6 +68,27 @@ internal static class Program
 
         Console.WriteLine("Shutting down...");
         return 0;
+    }
+
+    private static long ParseParentPid(string[] args)
+    {
+        for (int i = 0; i < args.Length - 1; i++)
+            if (args[i] is "--parent-app" && long.TryParse(args[i + 1], out var pid)) return pid;
+        return 0;
+    }
+
+    /// <summary>Signal shutdown when the given (parent app) process exits.</summary>
+    private static void WatchParent(int pid, Action onExit)
+    {
+        try
+        {
+            var parent = Process.GetProcessById(pid);
+            parent.EnableRaisingEvents = true;
+            parent.Exited += (_, _) => onExit();
+            if (parent.HasExited) onExit(); // exited between lookup and hookup
+        }
+        catch (ArgumentException) { onExit(); } // no such process — already gone
+        catch { /* best effort; the idle watchdog still covers a clean close */ }
     }
 
     private static async Task<int> SelfTestAsync(MonitorEngine engine, CancellationToken ct)

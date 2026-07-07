@@ -165,6 +165,19 @@ public sealed class EngineClient : IDisposable
     public Task<OkResponse> ForgetDeviceAsync(string id) => RequestAsync<OkResponse>(new ForgetDeviceRequest { DeviceId = id });
     public Task<SettingsResponse> GetSettingsAsync() => RequestAsync<SettingsResponse>(new GetSettingsRequest());
     public Task<OkResponse> SetSettingsAsync(AppSettings settings) => RequestAsync<OkResponse>(new SetSettingsRequest { Settings = settings });
+    /// <summary>Fire-and-forget send — no correlated reply is awaited (used for the UI-active hint).</summary>
+    public void Send(IpcMessage message)
+    {
+        var ch = _channel;
+        if (ch is null) return;
+        _ = ch.SendAsync(message, _cts.Token);
+    }
+
+    public void SetUiActive(bool active) => Send(new SetUiActiveRequest { Active = active });
+    public Task<AutoStartStatusResponse> GetAutoStartAsync() => RequestAsync<AutoStartStatusResponse>(new GetAutoStartRequest());
+    public Task<AutoStartStatusResponse> SetAutoStartAsync(bool enabled, string appExePath, string userName)
+        => RequestAsync<AutoStartStatusResponse>(new SetAutoStartRequest { Enabled = enabled, AppExePath = appExePath, UserName = userName });
+
     public Task<GeoIpStatusResponse> GetGeoIpStatusAsync() => RequestAsync<GeoIpStatusResponse>(new GetGeoIpStatusRequest());
 
     /// <summary>Trigger an on-demand GeoIP database download (a longer timeout than usual — it

@@ -23,10 +23,24 @@ public sealed class ProcessResourceMonitor : IDisposable
     private List<ProcessResourceRow> _latest = new();
     private Timer? _timer;
     private int _sampling;
+    private volatile bool _disposed;
+    private volatile bool _primeNext; // first sample after a resume just re-primes deltas
 
-    private readonly record struct Prev(long CpuTicks, ulong IoBytes, long Stamp);
+    // Start time stamps the delta baseline so a recycled PID (same number, new process) fails the
+    // match and re-primes just its own row instead of reporting a bogus CPU/disk spike.
+    private readonly record struct Prev(long CpuTicks, ulong IoBytes, long Stamp, DateTime Start);
 
     public void Start() => _timer = new Timer(_ => Sample(), null, 1000, SampleMs);
+
+    /// <summary>Pause entirely when the UI isn't viewing the process table (its two costs — a full
+    /// <c>Process.GetProcesses()</c> sweep and a per-instance GPU counter construction — are the
+    /// dominant idle CPU). The kept <c>_prev</c> map lets rows resume with real deltas.</summary>
+    public void SetUiActive(bool active)
+    {
+        if (active) _primeNext = true; // resume: the next sample's deltas are stale — re-prime, don't publish
+        try { if (!_disposed) _timer?.Change(active ? SampleMs : Timeout.Infinite, active ? SampleMs : Timeout.Infinite); }
+        catch (ObjectDisposedException) { }
+    }
 
     public List<ProcessResourceRow> Snapshot()
     {
@@ -54,19 +68,22 @@ public sealed class ProcessResourceMonitor : IDisposable
                     long cpuTicks = p.TotalProcessorTime.Ticks;
                     ulong io = ReadIoBytes(p);
                     long mem = p.WorkingSet64;
+                    DateTime start; try { start = p.StartTime; } catch { start = default; }
 
                     double cpuPct = 0, diskRate = 0;
-                    if (_prev.TryGetValue(pid, out var prev) && prev.Stamp > 0)
+                    // Only diff against a baseline for the SAME process (matching start time); a
+                    // reused PID or a long idle gap (paused monitor) re-primes this row cleanly.
+                    if (_prev.TryGetValue(pid, out var prev) && prev.Stamp > 0 && prev.Start == start)
                     {
                         double elapsed = Stopwatch.GetElapsedTime(prev.Stamp, now).TotalSeconds;
-                        if (elapsed > 0.05)
+                        if (elapsed is > 0.05 and < 30)
                         {
                             double cpuSec = (cpuTicks - prev.CpuTicks) / (double)TimeSpan.TicksPerSecond;
                             cpuPct = Math.Clamp(cpuSec / (elapsed * _cores) * 100.0, 0, 100);
                             if (io >= prev.IoBytes) diskRate = (io - prev.IoBytes) / elapsed;
                         }
                     }
-                    _prev[pid] = new Prev(cpuTicks, io, now);
+                    _prev[pid] = new Prev(cpuTicks, io, now, start);
 
                     gpuByPid.TryGetValue(pid, out double gpu);
 
@@ -96,6 +113,9 @@ public sealed class ProcessResourceMonitor : IDisposable
                 .Take(TopN)
                 .ToList();
 
+            // On the first sample after a resume every row re-primed (CPU 0), which would flash an
+            // all-zero, memory-sorted table; keep the previous one for this interval instead.
+            if (_primeNext) { _primeNext = false; return; }
             lock (_lock) _latest = top;
         }
         catch { /* transient */ }
@@ -166,5 +186,5 @@ public sealed class ProcessResourceMonitor : IDisposable
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetProcessIoCounters(IntPtr hProcess, out IO_COUNTERS counters);
 
-    public void Dispose() => _timer?.Dispose();
+    public void Dispose() { _disposed = true; _timer?.Dispose(); }
 }

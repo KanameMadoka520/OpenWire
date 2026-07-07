@@ -1014,6 +1014,15 @@ public sealed class MonitorEngine : IAsyncDisposable
 
     public HardwareSnapshot GetHardware() => _hardware.GetSnapshot();
 
+    /// <summary>Throttle the high-frequency hardware / per-process samplers when the UI isn't being
+    /// viewed. The 1-second traffic tick (core recording) is never gated.</summary>
+    public void SetUiActive(bool active) => _hardware.SetUiActive(active);
+
+    // ---- launch at logon (elevated Task Scheduler task, registered by this elevated engine) ----
+    public AutoStartStatusResponse GetAutoStart() => AutoStartManager.Query();
+    public AutoStartStatusResponse SetAutoStart(bool enabled, string appExePath, string userName)
+        => AutoStartManager.Configure(enabled, appExePath, userName);
+
     private List<TrafficTypeUsage> BuildTrafficTypes(List<HostUsage> hosts)
     {
         // Byte-accurate protocol split from ETW per-port-class counters (elevated).

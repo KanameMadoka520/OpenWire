@@ -264,6 +264,12 @@
     <sys:String x:Key="L.Set.GeoAlreadyLatest">Already up to date.</sys:String>
     <sys:String x:Key="L.Set.GeoUpdateFailed">Update failed: {0}</sys:String>
     <sys:String x:Key="L.Set.GeoLastChecked">Last checked {0}</sys:String>
+    <sys:String x:Key="L.Set.Startup">STARTUP</sys:String>
+    <sys:String x:Key="L.Set.LaunchOnStartup">Launch OpenWire at logon (requires administrator)</sys:String>
+    <sys:String x:Key="L.Set.LaunchOnStartupDesc">Starts OpenWire automatically and elevated when you sign in, and keeps it monitoring in the background. When you quit OpenWire the engine shuts down with it.</sys:String>
+    <sys:String x:Key="L.Set.AutoStartNeedsAdmin">This requires an administrator account — the current account can't run elevated at logon.</sys:String>
+    <sys:String x:Key="L.Set.AutoStartOn">OpenWire will start automatically at your next sign-in.</sys:String>
+    <sys:String x:Key="L.Set.AutoStartFailed">Couldn't change launch-at-logon: {0}</sys:String>
     <sys:String x:Key="L.Set.DataPlan">DATA PLAN</sys:String>
     <sys:String x:Key="L.Set.DataPlanEnable">Enable monthly data plan</sys:String>
     <sys:String x:Key="L.Set.DataPlanLimit">Limit (GB)</sys:String>

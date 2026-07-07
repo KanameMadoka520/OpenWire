@@ -19,6 +19,7 @@ public sealed class IpcServer : IAsyncDisposable
     {
         public required IpcChannel Channel;
         public volatile bool Subscribed;
+        public volatile bool WantsUiActive; // this client's last-reported "UI is being viewed" state
         public CancellationTokenSource? Cts;
         public readonly Channel<IpcMessage> Outbound =
             System.Threading.Channels.Channel.CreateBounded<IpcMessage>(
@@ -27,20 +28,47 @@ public sealed class IpcServer : IAsyncDisposable
         public void Enqueue(IpcMessage m) => Outbound.Writer.TryWrite(m);
     }
 
+    // Idle-shutdown watchdog: once a client has connected, the engine exits shortly after the last
+    // one disconnects, so it never lingers in the background after OpenWire is closed.
+    private const int IdleGraceMs = 8000;     // > the app's reconnect floor, with margin
+    private const int StartupGraceMs = 45000; // orphan protection: no app ever attached
+
     private readonly MonitorEngine _engine;
     private readonly ConcurrentDictionary<Guid, Client> _clients = new();
     private CancellationTokenSource? _cts;
     private Task? _acceptLoop;
 
-    public IpcServer(MonitorEngine engine)
+    private readonly bool _exitWhenIdle;
+    private readonly Action _requestShutdown;
+    private readonly object _watchdogLock = new();
+    private System.Threading.Timer? _idleTimer;
+    private System.Threading.Timer? _startupTimer;
+    private bool _hadClient;
+    private volatile bool _disposing;
+    private long _connectSeq;                 // bumped at the OS-accept instant, before the client is registered
+    private long _idleArmSeq, _startupArmSeq; // the _connectSeq snapshot each timer was armed at
+
+    public IpcServer(MonitorEngine engine, bool exitWhenIdle, Action requestShutdown)
     {
         _engine = engine;
+        _exitWhenIdle = exitWhenIdle;
+        _requestShutdown = requestShutdown;
         _engine.Events += OnEngineEvent;
     }
 
     public void Start(CancellationToken ct)
     {
         _cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        if (_exitWhenIdle)
+        {
+            _idleTimer = new System.Threading.Timer(OnIdleTick, null, Timeout.Infinite, Timeout.Infinite);
+            _startupTimer = new System.Threading.Timer(OnStartupTick, null, Timeout.Infinite, Timeout.Infinite);
+            lock (_watchdogLock)
+            {
+                _startupArmSeq = Interlocked.Read(ref _connectSeq);
+                _startupTimer.Change(StartupGraceMs, Timeout.Infinite);
+            }
+        }
         _acceptLoop = Task.Run(() => AcceptLoopAsync(_cts.Token));
     }
 
@@ -48,15 +76,21 @@ public sealed class IpcServer : IAsyncDisposable
     {
         while (!ct.IsCancellationRequested)
         {
+            System.IO.Pipes.NamedPipeServerStream? server = null;
             try
             {
-                var server = IpcTransport.CreateServerStream();
+                server = IpcTransport.CreateServerStream();
                 await server.WaitForConnectionAsync(ct).ConfigureAwait(false);
-                _ = HandleClientAsync(server, ct);
+                // Bump at the OS-accept instant — strictly before the client is registered below —
+                // so a watchdog timer that's about to fire sees the generation change and aborts.
+                Interlocked.Increment(ref _connectSeq);
+                var accepted = server; server = null; // ownership transfers to the handler
+                _ = HandleClientAsync(accepted, ct);
             }
-            catch (OperationCanceledException) { break; }
+            catch (OperationCanceledException) { server?.Dispose(); break; }
             catch (Exception ex)
             {
+                server?.Dispose(); // don't leak the unconnected pipe instance on an accept error
                 Console.Error.WriteLine($"[IPC] accept error: {ex.Message}");
                 await Task.Delay(200, ct).ConfigureAwait(false);
             }
@@ -68,8 +102,11 @@ public sealed class IpcServer : IAsyncDisposable
         var id = Guid.NewGuid();
         var channel = new IpcChannel(server);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        var client = new Client { Channel = channel, Cts = linked };
+        // Default WantsUiActive=true: a client that never reports (e.g. a version-skewed app) keeps
+        // the samplers at full rate, as before; the current app sends false when it hides to tray.
+        var client = new Client { Channel = channel, Cts = linked, WantsUiActive = true };
         _clients[id] = client;
+        OnClientConnected();
 
         var token = linked.Token;
         var writer = Task.Run(() => WriteLoopAsync(client, token), token);
@@ -97,10 +134,80 @@ public sealed class IpcServer : IAsyncDisposable
         finally
         {
             _clients.TryRemove(id, out _);
+            OnClientDisconnected();
             linked.Cancel();                       // stop the writer if the reader ended first
             client.Outbound.Writer.TryComplete();
             try { await writer.ConfigureAwait(false); } catch { }
             channel.Dispose();
+        }
+    }
+
+    // ---- idle-shutdown watchdog + UI-active recompute ----
+
+    private void OnClientConnected()
+    {
+        lock (_watchdogLock)
+        {
+            if (_disposing) return; // timers may already be disposed during teardown
+            _hadClient = true;
+            try
+            {
+                _idleTimer?.Change(Timeout.Infinite, Timeout.Infinite);
+                _startupTimer?.Change(Timeout.Infinite, Timeout.Infinite); // first connect ends the startup grace
+            }
+            catch (ObjectDisposedException) { }
+        }
+        RecomputeUiActive();
+    }
+
+    private void OnClientDisconnected()
+    {
+        if (_exitWhenIdle && !_disposing)
+        {
+            lock (_watchdogLock)
+            {
+                if (_hadClient && _clients.IsEmpty)
+                {
+                    _idleArmSeq = Interlocked.Read(ref _connectSeq);
+                    _idleTimer?.Change(IdleGraceMs, Timeout.Infinite);
+                }
+            }
+        }
+        RecomputeUiActive();
+    }
+
+    private void OnIdleTick(object? _)
+    {
+        lock (_watchdogLock)
+        {
+            if (_disposing || !_hadClient || !_clients.IsEmpty) return;
+            if (Interlocked.Read(ref _connectSeq) != _idleArmSeq) return; // a client raced in — abort
+        }
+        _requestShutdown(); // signal-only (catch-all inside)
+    }
+
+    private void OnStartupTick(object? _)
+    {
+        lock (_watchdogLock)
+        {
+            if (_disposing || _hadClient || !_clients.IsEmpty) return;
+            if (Interlocked.Read(ref _connectSeq) != _startupArmSeq) return;
+        }
+        _requestShutdown(); // orphan protection: spawned but nobody ever attached
+    }
+
+    private readonly object _uiActiveLock = new();
+
+    /// <summary>Throttle state is a pure OR over live clients' last-reported active flag, recomputed
+    /// on every connect / disconnect / report — never a sticky value a crashed app could strand.
+    /// Serialized so two concurrent recomputes can't apply out of order and strand it throttled.</summary>
+    private void RecomputeUiActive()
+    {
+        lock (_uiActiveLock)
+        {
+            bool anyActive = false;
+            foreach (var c in _clients.Values) if (c.WantsUiActive) { anyActive = true; break; }
+            try { _engine.SetUiActive(anyActive); } catch { /* engine tearing down */ }
         }
     }
 
@@ -224,6 +331,17 @@ public sealed class IpcServer : IAsyncDisposable
                     RunGeoIpUpdate(request.CorrelationId, client, ct);
                     return null;
 
+                case SetUiActiveRequest ua:
+                    client.WantsUiActive = ua.Active;
+                    RecomputeUiActive();
+                    return null; // fire-and-forget, no reply needed
+
+                case GetAutoStartRequest:
+                    return _engine.GetAutoStart();
+
+                case SetAutoStartRequest asr:
+                    return _engine.SetAutoStart(asr.Enabled, asr.AppExePath, asr.UserName);
+
                 case GetStorageInfoRequest:
                     return new StorageInfoResponse { Storage = _engine.GetStorageInfo() };
 
@@ -274,12 +392,24 @@ public sealed class IpcServer : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        _disposing = true; // make any in-flight watchdog callback a lock-free no-op
+        lock (_watchdogLock)
+        {
+            _idleTimer?.Change(Timeout.Infinite, Timeout.Infinite);
+            _startupTimer?.Change(Timeout.Infinite, Timeout.Infinite);
+        }
+
         _engine.Events -= OnEngineEvent;
         _cts?.Cancel();
         if (_acceptLoop is not null)
         {
             try { await _acceptLoop.ConfigureAwait(false); } catch { }
         }
+        // Dispose the timers only after the accept loop has stopped, so a late OnClientConnected
+        // can't call Change() on a disposed timer.
+        _idleTimer?.Dispose();
+        _startupTimer?.Dispose();
+
         foreach (var kv in _clients) kv.Value.Channel.Dispose();
         _clients.Clear();
     }
