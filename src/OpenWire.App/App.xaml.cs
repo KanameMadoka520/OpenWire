@@ -20,6 +20,7 @@ public partial class App : Application
     private bool _minimizeToTray = true;
     private readonly HashSet<string> _promptOpen = new(StringComparer.OrdinalIgnoreCase);
 
+    private MainViewModel? _mainVm;
     private DispatcherTimer? _connectWatch;
     private bool _spawnAttempted; // one auto-spawn attempt per session
     private bool _userDeclined;   // user cancelled the UAC prompt — don't nag again
@@ -57,6 +58,10 @@ public partial class App : Application
 
         Client = new EngineClient(Dispatcher);
         var vm = new MainViewModel(Client);
+        _mainVm = vm;
+        // The hardware / per-process samplers exist only for the Hardware page, so re-assert the
+        // active signal whenever the visible section changes (not just on window show/hide).
+        vm.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(MainViewModel.CurrentSection)) AssertUiActive(); };
         _window = new MainWindow { DataContext = vm };
         MainWindow = _window;
 
@@ -106,9 +111,12 @@ public partial class App : Application
         };
     }
 
-    /// <summary>The UI is "active" (worth full-rate sampling) only when its window is actually shown.</summary>
+    /// <summary>Full-rate hardware / per-process sampling is worthwhile only when the Hardware page
+    /// is actually on screen — its window shown and that section selected. Every other tab, and the
+    /// tray, leaves the engine's samplers idle (the process sweep pauses, hardware goes coarse).</summary>
     private bool ComputeUiActive() =>
-        _window is { IsVisible: true, WindowState: not WindowState.Minimized };
+        _window is { IsVisible: true, WindowState: not WindowState.Minimized }
+        && _mainVm?.CurrentSection == Section.Hardware;
 
     private void AssertUiActive()
     {

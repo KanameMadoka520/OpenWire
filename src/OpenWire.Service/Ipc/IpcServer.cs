@@ -102,9 +102,10 @@ public sealed class IpcServer : IAsyncDisposable
         var id = Guid.NewGuid();
         var channel = new IpcChannel(server);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        // Default WantsUiActive=true: a client that never reports (e.g. a version-skewed app) keeps
-        // the samplers at full rate, as before; the current app sends false when it hides to tray.
-        var client = new Client { Channel = channel, Cts = linked, WantsUiActive = true };
+        // Default idle: the samplers only run at full rate once a client reports the Hardware page is
+        // open (the app re-asserts on connect). A version-skewed client that never reports just gets
+        // coarse hardware / a paused process sweep — the safe, low-CPU default.
+        var client = new Client { Channel = channel, Cts = linked, WantsUiActive = false };
         _clients[id] = client;
         OnClientConnected();
 
