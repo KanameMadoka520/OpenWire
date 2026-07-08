@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using OpenWire.App.ViewModels;
+using OpenWire.Core.Models;
 
 namespace OpenWire.App.Views;
 
@@ -31,5 +32,15 @@ public partial class ThingsView : UserControl
         var field = GetSortField(header.Column);
         if (string.IsNullOrEmpty(field)) return;   // non-sortable column or the padding header
         if (DataContext is ThingsViewModel vm) vm.SortBy(field);
+    }
+
+    /// <summary>Pencil button: prompt for a new name, then hand it to the view-model.</summary>
+    private async void OnRenameClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: Device device }) return;
+        if (DataContext is not ThingsViewModel vm) return;
+        var dlg = new RenameDeviceWindow(device.Name) { Owner = Window.GetWindow(this) };
+        if (dlg.ShowDialog() == true && dlg.NewName is { } name)
+            await vm.RenameAsync(device, name);
     }
 }

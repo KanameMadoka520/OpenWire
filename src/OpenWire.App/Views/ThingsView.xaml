@@ -159,10 +159,14 @@
                                        Text="{Binding FirstSeen, Converter={StaticResource LocalTime}, ConverterParameter='MMM d  HH:mm'}" />
                         </DataTemplate></GridViewColumn.CellTemplate>
                     </GridViewColumn>
-                    <GridViewColumn Header="" Width="52">
+                    <GridViewColumn Header="" Width="86">
                         <GridViewColumn.CellTemplate><DataTemplate>
-                            <Button Style="{StaticResource IconBtn}" Width="30" Height="30" Content="&#xE74D;" FontSize="13" ToolTip="{StaticResource L.Scan.ForgetDevice}"
-                                    Command="{Binding DataContext.ForgetCommand, RelativeSource={RelativeSource AncestorType=ListView}}" CommandParameter="{Binding}" />
+                            <StackPanel Orientation="Horizontal">
+                                <Button Style="{StaticResource IconBtn}" Width="30" Height="30" Content="&#xE70F;" FontSize="13" ToolTip="{StaticResource L.Scan.RenameDevice}"
+                                        Click="OnRenameClick" Margin="0,0,4,0" />
+                                <Button Style="{StaticResource IconBtn}" Width="30" Height="30" Content="&#xE74D;" FontSize="13" ToolTip="{StaticResource L.Scan.ForgetDevice}"
+                                        Command="{Binding DataContext.ForgetCommand, RelativeSource={RelativeSource AncestorType=ListView}}" CommandParameter="{Binding}" />
+                            </StackPanel>
                         </DataTemplate></GridViewColumn.CellTemplate>
                     </GridViewColumn>
                 </GridView>

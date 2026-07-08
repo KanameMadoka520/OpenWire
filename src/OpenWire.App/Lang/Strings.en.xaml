@@ -223,6 +223,8 @@
     <sys:String x:Key="L.Scan.LocalNetwork">Local network</sys:String>
     <sys:String x:Key="L.Scan.AutoScan">Auto-scan</sys:String>
     <sys:String x:Key="L.Scan.AutoScanOff">Auto-scan off</sys:String>
+    <sys:String x:Key="L.Scan.RenameDevice">Rename device</sys:String>
+    <sys:String x:Key="L.Scan.RenameLabel">Device name</sys:String>
 
     <!-- world map -->
     <sys:String x:Key="L.Map.SourceCountriesFmt">{0} source countries/regions</sys:String>
@@ -251,6 +253,7 @@
     <sys:String x:Key="L.Set.MonArpSpoofing">ARP spoofing (gateway MAC changes)</sys:String>
     <sys:String x:Key="L.Set.MonRdp">Remote Desktop (RDP) connections</sys:String>
     <sys:String x:Key="L.Set.ShowNotifications">Show desktop notifications</sys:String>
+    <sys:String x:Key="L.Set.MinimizeToTray">Minimize to the system tray</sys:String>
     <sys:String x:Key="L.Set.Resolution">RESOLUTION</sys:String>
     <sys:String x:Key="L.Set.ResolveHosts">Resolve host names (reverse DNS)</sys:String>
     <sys:String x:Key="L.Set.ResolveGeoIp">Resolve countries (GeoIP)</sys:String>

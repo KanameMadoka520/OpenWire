@@ -41,6 +41,7 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool _monitorArpSpoofing = true;
     [ObservableProperty] private int _historyRetentionDays = 90;
     [ObservableProperty] private bool _showNotifications = true;
+    [ObservableProperty] private bool _minimizeToTray = true;
     [ObservableProperty] private bool _dataPlanEnabled;
     [ObservableProperty] private double _dataLimitGb = 100;
     [ObservableProperty] private int _billingDay = 1;
@@ -92,6 +93,7 @@ public partial class SettingsViewModel : ObservableObject
         MonitorArpSpoofing = s.MonitorArpSpoofing;
         HistoryRetentionDays = s.HistoryRetentionDays;
         ShowNotifications = s.ShowDesktopNotifications;
+        MinimizeToTray = s.MinimizeToTray;
         DataPlanEnabled = s.DataPlan.Enabled;
         DataLimitGb = s.DataPlan.LimitBytes > 0 ? s.DataPlan.LimitBytes / (1024.0 * 1024 * 1024) : 100;
         BillingDay = s.DataPlan.BillingCycleStartDay;
@@ -297,6 +299,7 @@ public partial class SettingsViewModel : ObservableObject
         _settings.MonitorArpSpoofing = MonitorArpSpoofing;
         _settings.HistoryRetentionDays = Math.Clamp(HistoryRetentionDays, 0, 3650);
         _settings.ShowDesktopNotifications = ShowNotifications;
+        _settings.MinimizeToTray = MinimizeToTray;
         _settings.DataPlan.Enabled = DataPlanEnabled;
         _settings.DataPlan.LimitBytes = (long)(DataLimitGb * 1024 * 1024 * 1024);
         _settings.DataPlan.BillingCycleStartDay = Math.Clamp(BillingDay, 1, 28);

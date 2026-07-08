@@ -222,6 +222,8 @@
     <sys:String x:Key="L.Scan.LocalNetwork">本地網路</sys:String>
     <sys:String x:Key="L.Scan.AutoScan">自動掃描</sys:String>
     <sys:String x:Key="L.Scan.AutoScanOff">自動掃描已關閉</sys:String>
+    <sys:String x:Key="L.Scan.RenameDevice">重新命名裝置</sys:String>
+    <sys:String x:Key="L.Scan.RenameLabel">裝置名稱</sys:String>
 
     <!-- world map -->
     <sys:String x:Key="L.Map.SourceCountriesFmt">{0} 個來源國家/地區</sys:String>
@@ -250,6 +252,7 @@
     <sys:String x:Key="L.Set.MonArpSpoofing">ARP 欺騙（閘道 MAC 變化）</sys:String>
     <sys:String x:Key="L.Set.MonRdp">遠端桌面（RDP）連線</sys:String>
     <sys:String x:Key="L.Set.ShowNotifications">顯示桌面通知</sys:String>
+    <sys:String x:Key="L.Set.MinimizeToTray">最小化到系統匣</sys:String>
     <sys:String x:Key="L.Set.Resolution">解析</sys:String>
     <sys:String x:Key="L.Set.ResolveHosts">解析主機名稱（反向 DNS）</sys:String>
     <sys:String x:Key="L.Set.ResolveGeoIp">解析國家/地區（GeoIP）</sys:String>

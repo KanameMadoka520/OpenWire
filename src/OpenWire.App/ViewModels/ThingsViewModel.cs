@@ -104,6 +104,20 @@ public partial class ThingsViewModel : ObservableObject
         Devices.Remove(device);
     }
 
+    /// <summary>Apply a user-entered name to a device via the engine, then rebuild the visible
+    /// list so the row reflects it. Called from the view once its rename dialog confirms.</summary>
+    public async Task RenameAsync(Device device, string newName)
+    {
+        newName = (newName ?? "").Trim();
+        if (device is null || newName.Length == 0 || newName == device.Name) return;
+        try { await _client.RenameDeviceAsync(device.Id, newName); }
+        catch { return; }   // engine busy / offline — leave the name unchanged
+        device.Name = newName;
+        var stored = _all.Find(d => d.Id == device.Id);
+        if (stored is not null && !ReferenceEquals(stored, device)) stored.Name = newName;
+        ApplyFilter();
+    }
+
     public void OnDeviceChanged(Device device)
     {
         int idx = _all.FindIndex(d => d.Id == device.Id);

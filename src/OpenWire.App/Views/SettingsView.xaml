@@ -37,6 +37,7 @@
                                    Text="{StaticResource L.Set.LaunchOnStartupDesc}" />
                         <TextBlock Text="{Binding AutoStartStatus}" Foreground="{StaticResource TextMuted}" FontSize="11.5" TextWrapping="Wrap" Margin="0,8,0,0"
                                    Visibility="{Binding HasAutoStartStatus, Converter={StaticResource BoolVis}}" />
+                        <CheckBox Style="{StaticResource Switch}" Content="{StaticResource L.Set.MinimizeToTray}" IsChecked="{Binding MinimizeToTray}" Margin="0,16,0,0" />
                     </StackPanel>
                 </Border>
 
