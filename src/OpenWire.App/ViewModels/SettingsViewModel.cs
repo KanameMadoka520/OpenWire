@@ -14,6 +14,8 @@ public partial class SettingsViewModel : ObservableObject
 {
     private readonly EngineClient _client;
     private AppSettings _settings = new();
+    private long _dataPlanUsedBytes;              // last-known consumption from EngineStatus.DataPlan
+    private const double DataPlanBarMax = 300;    // px reference width for the usage bar
 
     [ObservableProperty] private bool _resolveHostNames = true;
     [ObservableProperty] private bool _resolveGeoIp = true;
@@ -45,6 +47,14 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool _dataPlanEnabled;
     [ObservableProperty] private double _dataLimitGb = 100;
     [ObservableProperty] private int _billingDay = 1;
+    [ObservableProperty] private int _warnAtPercent = 90;
+    // Live data-plan usage meter, populated from EngineStatus.DataPlan on load.
+    [ObservableProperty] private bool _hasDataPlanUsage;
+    [ObservableProperty] private double _dataPlanBarWidth;
+    [ObservableProperty] private string _dataPlanUsedText = "";
+    [ObservableProperty] private string _dataPlanRemainingText = "";
+    [ObservableProperty] private bool _dataPlanNearLimit;
+    [ObservableProperty] private bool _dataPlanOverLimit;
     [ObservableProperty] private string _virusTotalApiKey = "";
     [ObservableProperty] private string _engineInfo = "";
     [ObservableProperty] private string _savedText = "";
@@ -97,8 +107,12 @@ public partial class SettingsViewModel : ObservableObject
         DataPlanEnabled = s.DataPlan.Enabled;
         DataLimitGb = s.DataPlan.LimitBytes > 0 ? s.DataPlan.LimitBytes / (1024.0 * 1024 * 1024) : 100;
         BillingDay = s.DataPlan.BillingCycleStartDay;
+        WarnAtPercent = (int)Math.Round(Math.Clamp(s.DataPlan.WarnAtFraction, 0.1, 1.0) * 100);
         VirusTotalApiKey = s.VirusTotalApiKey;
         GeoIpAutoUpdate = s.GeoIpAutoUpdate;
+
+        try { _dataPlanUsedBytes = (await _client.GetStatusAsync()).Status.DataPlan.UsedBytes; } catch { /* engine busy */ }
+        UpdateDataPlanMeter();
 
         try { ApplyGeoStatus(await _client.GetGeoIpStatusAsync()); } catch { /* engine busy */ }
 
@@ -286,6 +300,37 @@ public partial class SettingsViewModel : ObservableObject
         }
     }
 
+    partial void OnDataPlanEnabledChanged(bool value) => UpdateDataPlanMeter();
+    partial void OnDataLimitGbChanged(double value) => UpdateDataPlanMeter();
+    partial void OnWarnAtPercentChanged(int value) => UpdateDataPlanMeter();
+    partial void OnBillingDayChanged(int value) => UpdateDataPlanMeter();
+
+    /// <summary>Recompute the data-plan usage meter from the last-known consumption and the current
+    /// limit / warn inputs. Consumption is read from EngineStatus on load; the meter re-renders live
+    /// as the user edits the limit or warn threshold.</summary>
+    private void UpdateDataPlanMeter()
+    {
+        long limitBytes = DataLimitGb > 0 ? (long)(DataLimitGb * 1024 * 1024 * 1024) : 0;
+        HasDataPlanUsage = DataPlanEnabled && limitBytes > 0;
+        if (!HasDataPlanUsage)
+        {
+            DataPlanBarWidth = 0;
+            DataPlanUsedText = DataPlanRemainingText = "";
+            DataPlanNearLimit = DataPlanOverLimit = false;
+            return;
+        }
+        double frac = Math.Min(1.0, (double)_dataPlanUsedBytes / limitBytes);
+        double warnFrac = Math.Clamp(WarnAtPercent / 100.0, 0.1, 1.0);
+        DataPlanBarWidth = frac * DataPlanBarMax;
+        DataPlanOverLimit = _dataPlanUsedBytes >= limitBytes;
+        DataPlanNearLimit = !DataPlanOverLimit && frac >= warnFrac;
+        long remaining = Math.Max(0, limitBytes - _dataPlanUsedBytes);
+        DataPlanUsedText = string.Format(Loc.S("L.Set.DataPlanUsedFmt"),
+            ByteFormatter.Bytes(_dataPlanUsedBytes), ByteFormatter.Bytes(limitBytes));
+        DataPlanRemainingText = string.Format(Loc.S("L.Set.DataPlanRemainingFmt"),
+            ByteFormatter.Bytes(remaining), Math.Clamp(BillingDay, 1, 28));
+    }
+
     [RelayCommand]
     private async Task Save()
     {
@@ -303,6 +348,7 @@ public partial class SettingsViewModel : ObservableObject
         _settings.DataPlan.Enabled = DataPlanEnabled;
         _settings.DataPlan.LimitBytes = (long)(DataLimitGb * 1024 * 1024 * 1024);
         _settings.DataPlan.BillingCycleStartDay = Math.Clamp(BillingDay, 1, 28);
+        _settings.DataPlan.WarnAtFraction = Math.Clamp(WarnAtPercent / 100.0, 0.1, 1.0);
         _settings.VirusTotalApiKey = (VirusTotalApiKey ?? "").Trim();
         _settings.GeoIpAutoUpdate = GeoIpAutoUpdate;
 

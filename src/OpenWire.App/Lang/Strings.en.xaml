@@ -277,6 +277,9 @@
     <sys:String x:Key="L.Set.DataPlanEnable">Enable monthly data plan</sys:String>
     <sys:String x:Key="L.Set.DataPlanLimit">Limit (GB)</sys:String>
     <sys:String x:Key="L.Set.DataPlanResetDay">Reset day</sys:String>
+    <sys:String x:Key="L.Set.DataPlanWarnAt">Warn at</sys:String>
+    <sys:String x:Key="L.Set.DataPlanUsedFmt">{0} of {1} used</sys:String>
+    <sys:String x:Key="L.Set.DataPlanRemainingFmt">{0} remaining · resets on day {1}</sys:String>
     <sys:String x:Key="L.Set.Storage">STORAGE</sys:String>
     <sys:String x:Key="L.Set.StorageDesc">Where OpenWire keeps its traffic database.</sys:String>
     <sys:String x:Key="L.Set.StorageDbLocation">Database location</sys:String>

@@ -123,11 +123,37 @@
                 <Border Style="{StaticResource Card}" Padding="18">
                     <StackPanel>
                         <CheckBox Style="{StaticResource Switch}" Content="{StaticResource L.Set.DataPlanEnable}" IsChecked="{Binding DataPlanEnabled}" Margin="0,0,0,16" />
-                        <StackPanel Orientation="Horizontal" IsEnabled="{Binding DataPlanEnabled}">
-                            <TextBlock Text="{StaticResource L.Set.DataPlanLimit}" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" Width="120" />
-                            <TextBox Style="{StaticResource Search}" Width="120" Text="{Binding DataLimitGb}" />
-                            <TextBlock Text="{StaticResource L.Set.DataPlanResetDay}" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" Width="90" Margin="24,0,0,0" />
-                            <TextBox Style="{StaticResource Search}" Width="80" Text="{Binding BillingDay}" />
+                        <StackPanel IsEnabled="{Binding DataPlanEnabled}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{StaticResource L.Set.DataPlanLimit}" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" Width="120" />
+                                <TextBox Style="{StaticResource Search}" Width="120" Text="{Binding DataLimitGb}" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                                <TextBlock Text="{StaticResource L.Set.DataPlanResetDay}" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" Width="120" />
+                                <TextBox Style="{StaticResource Search}" Width="80" Text="{Binding BillingDay}" />
+                                <TextBlock Text="{StaticResource L.Set.DataPlanWarnAt}" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" Width="70" Margin="24,0,0,0" />
+                                <TextBox Style="{StaticResource Search}" Width="60" Text="{Binding WarnAtPercent}" />
+                                <TextBlock Text="%" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" Margin="6,0,0,0" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- live usage meter (shown once a plan + limit is set) -->
+                        <StackPanel Margin="0,16,0,0" Visibility="{Binding HasDataPlanUsage, Converter={StaticResource BoolVis}}">
+                            <TextBlock Text="{Binding DataPlanUsedText}" Foreground="{StaticResource TextPrimary}" FontSize="12.5" Margin="0,0,0,6" />
+                            <Border Width="300" Height="8" CornerRadius="4" Background="{StaticResource BgSubtle}" HorizontalAlignment="Left">
+                                <Border HorizontalAlignment="Left" Width="{Binding DataPlanBarWidth}" CornerRadius="4">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Background" Value="{StaticResource Accent}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding DataPlanNearLimit}" Value="True"><Setter Property="Background" Value="{StaticResource Warning}" /></DataTrigger>
+                                                <DataTrigger Binding="{Binding DataPlanOverLimit}" Value="True"><Setter Property="Background" Value="{StaticResource Danger}" /></DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                </Border>
+                            </Border>
+                            <TextBlock Text="{Binding DataPlanRemainingText}" Foreground="{StaticResource TextMuted}" FontSize="11.5" Margin="0,6,0,0" />
                         </StackPanel>
                     </StackPanel>
                 </Border>

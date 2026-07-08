@@ -276,6 +276,9 @@
     <sys:String x:Key="L.Set.DataPlanEnable">启用每月流量套餐</sys:String>
     <sys:String x:Key="L.Set.DataPlanLimit">上限（GB）</sys:String>
     <sys:String x:Key="L.Set.DataPlanResetDay">重置日</sys:String>
+    <sys:String x:Key="L.Set.DataPlanWarnAt">预警阈值</sys:String>
+    <sys:String x:Key="L.Set.DataPlanUsedFmt">已用 {0} / {1}</sys:String>
+    <sys:String x:Key="L.Set.DataPlanRemainingFmt">剩余 {0} · 每月 {1} 日重置</sys:String>
     <sys:String x:Key="L.Set.Storage">存储</sys:String>
     <sys:String x:Key="L.Set.StorageDesc">OpenWire 存放流量数据库的位置。</sys:String>
     <sys:String x:Key="L.Set.StorageDbLocation">数据库位置</sys:String>
