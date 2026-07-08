@@ -16,6 +16,10 @@ public sealed class TrayService : IDisposable
 
     public event Action? OpenRequested;
     public event Action? ExitRequested;
+    public event Action<TimeSpan>? SnoozeRequested;
+    public event Action? ResumeRequested;
+
+    private WinForms.ToolStripMenuItem? _resumeItem;
 
     public TrayService()
     {
@@ -28,6 +32,17 @@ public sealed class TrayService : IDisposable
 
         var menu = new WinForms.ContextMenuStrip();
         menu.Items.Add(Loc.S("L.Shell.TrayOpen"), null, (_, _) => OpenRequested?.Invoke());
+        menu.Items.Add(new WinForms.ToolStripSeparator());
+
+        var snooze = new WinForms.ToolStripMenuItem(Loc.S("L.Shell.TraySnooze"));
+        snooze.DropDownItems.Add(Loc.S("L.Shell.TraySnooze30m"), null, (_, _) => SnoozeRequested?.Invoke(TimeSpan.FromMinutes(30)));
+        snooze.DropDownItems.Add(Loc.S("L.Shell.TraySnooze1h"), null, (_, _) => SnoozeRequested?.Invoke(TimeSpan.FromHours(1)));
+        snooze.DropDownItems.Add(Loc.S("L.Shell.TraySnooze8h"), null, (_, _) => SnoozeRequested?.Invoke(TimeSpan.FromHours(8)));
+        menu.Items.Add(snooze);
+
+        _resumeItem = new WinForms.ToolStripMenuItem(Loc.S("L.Shell.TrayResume"), null, (_, _) => ResumeRequested?.Invoke()) { Visible = false };
+        menu.Items.Add(_resumeItem);
+
         menu.Items.Add(new WinForms.ToolStripSeparator());
         menu.Items.Add(Loc.S("L.Shell.TrayExit"), null, (_, _) => ExitRequested?.Invoke());
         _icon.ContextMenuStrip = menu;
@@ -46,6 +61,14 @@ public sealed class TrayService : IDisposable
             _icon.ShowBalloonTip(6000);
         }
         catch { /* shell notifications unavailable */ }
+    }
+
+    /// <summary>Reflect the snooze state in the tray menu (show a Resume item) and the tooltip.</summary>
+    public void SetSnoozed(bool snoozed)
+    {
+        if (_resumeItem is not null) _resumeItem.Visible = snoozed;
+        try { _icon.Text = snoozed ? Loc.S("L.Shell.TraySnoozedTip") : Loc.S("L.Shell.TrayTooltip"); }
+        catch { /* tooltip unavailable */ }
     }
 
     // The packaged app icon (Assets/app.ico); falls back to a runtime-drawn mark

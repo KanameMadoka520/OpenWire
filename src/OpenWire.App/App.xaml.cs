@@ -19,6 +19,8 @@ public partial class App : Application
     private bool _notify = true;
     private bool _minimizeToTray = true;
     private readonly HashSet<string> _promptOpen = new(StringComparer.OrdinalIgnoreCase);
+    private DateTimeOffset _snoozeUntil;              // desktop notifications suppressed until this time
+    private DispatcherTimer? _snoozeTimer;
 
     private MainViewModel? _mainVm;
     private DispatcherTimer? _connectWatch;
@@ -69,6 +71,8 @@ public partial class App : Application
         _tray = new TrayService();
         _tray.OpenRequested += () => Dispatcher.Invoke(ShowMainWindow);
         _tray.ExitRequested += () => Dispatcher.Invoke(Shutdown);
+        _tray.SnoozeRequested += d => Dispatcher.Invoke(() => Snooze(d));
+        _tray.ResumeRequested += () => Dispatcher.Invoke(ResumeNotifications);
 
         HookWindow(_window);
 
@@ -85,7 +89,7 @@ public partial class App : Application
         // Desktop notifications for noteworthy (non-informational) alerts.
         Client.AlertRaised += a =>
         {
-            if (_notify && a.Alert.Severity != AlertSeverity.Info)
+            if (_notify && DateTimeOffset.Now >= _snoozeUntil && a.Alert.Severity != AlertSeverity.Info)
                 _tray?.Notify(a.Alert.Title, a.Alert.Message, a.Alert.Severity == AlertSeverity.Critical);
         };
 
@@ -121,6 +125,29 @@ public partial class App : Application
     private void AssertUiActive()
     {
         if (Client.IsConnected) Client.SetUiActive(ComputeUiActive());
+    }
+
+    /// <summary>Suppress desktop notifications for a while (from the tray menu). A one-shot timer
+    /// clears the state when the window elapses so the tray reflects it; alerts still accrue in the log.</summary>
+    private void Snooze(TimeSpan duration)
+    {
+        _snoozeUntil = DateTimeOffset.Now + duration;
+        _tray?.SetSnoozed(true);
+        _snoozeTimer?.Stop();
+        _snoozeTimer = new DispatcherTimer { Interval = duration };
+        _snoozeTimer.Tick += (_, _) =>
+        {
+            _snoozeTimer!.Stop();
+            if (DateTimeOffset.Now >= _snoozeUntil) ResumeNotifications();
+        };
+        _snoozeTimer.Start();
+    }
+
+    private void ResumeNotifications()
+    {
+        _snoozeTimer?.Stop();
+        _snoozeUntil = default;
+        _tray?.SetSnoozed(false);
     }
 
     /// <summary>When no engine is reachable, start one once (elevated — the engine needs admin for

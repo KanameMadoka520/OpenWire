@@ -21,6 +21,12 @@
     <sys:String x:Key="L.Shell.TrayTooltip">OpenWire — 网络监控</sys:String>
     <sys:String x:Key="L.Shell.TrayOpen">打开 OpenWire</sys:String>
     <sys:String x:Key="L.Shell.TrayExit">退出</sys:String>
+    <sys:String x:Key="L.Shell.TraySnooze">暂停通知</sys:String>
+    <sys:String x:Key="L.Shell.TraySnooze30m">30 分钟</sys:String>
+    <sys:String x:Key="L.Shell.TraySnooze1h">1 小时</sys:String>
+    <sys:String x:Key="L.Shell.TraySnooze8h">8 小时</sys:String>
+    <sys:String x:Key="L.Shell.TrayResume">恢复通知</sys:String>
+    <sys:String x:Key="L.Shell.TraySnoozedTip">OpenWire — 通知已暂停</sys:String>
 
     <!-- traffic screen -->
     <sys:String x:Key="L.Traffic.Filter">筛选</sys:String>

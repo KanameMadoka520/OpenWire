@@ -22,6 +22,12 @@
     <sys:String x:Key="L.Shell.TrayTooltip">OpenWire — network monitor</sys:String>
     <sys:String x:Key="L.Shell.TrayOpen">Open OpenWire</sys:String>
     <sys:String x:Key="L.Shell.TrayExit">Exit</sys:String>
+    <sys:String x:Key="L.Shell.TraySnooze">Snooze notifications</sys:String>
+    <sys:String x:Key="L.Shell.TraySnooze30m">For 30 minutes</sys:String>
+    <sys:String x:Key="L.Shell.TraySnooze1h">For 1 hour</sys:String>
+    <sys:String x:Key="L.Shell.TraySnooze8h">For 8 hours</sys:String>
+    <sys:String x:Key="L.Shell.TrayResume">Resume notifications</sys:String>
+    <sys:String x:Key="L.Shell.TraySnoozedTip">OpenWire — notifications snoozed</sys:String>
 
     <!-- traffic screen -->
     <sys:String x:Key="L.Traffic.Filter">Filter</sys:String>
