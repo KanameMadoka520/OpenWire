@@ -85,6 +85,10 @@
     <sys:String x:Key="L.Fw.ModeOff">關閉</sys:String>
     <sys:String x:Key="L.Fw.ModeClickToBlock">點擊攔截</sys:String>
     <sys:String x:Key="L.Fw.ModeAskToConnect">連線詢問</sys:String>
+    <sys:String x:Key="L.Fw.Lockdown">鎖定</sys:String>
+    <sys:String x:Key="L.Fw.LockdownOn">已鎖定</sys:String>
+    <sys:String x:Key="L.Fw.LockdownTip">一鍵禁止所有應用連線；再次點擊解除</sys:String>
+    <sys:String x:Key="L.Fw.LockdownBanner">網路已鎖定 — 所有應用都被禁止連線，直到你解除。</sys:String>
     <sys:String x:Key="L.Fw.NotElevated">⚠  引擎未以系統管理員身分執行 — 無法執行攔截，也無法統計每應用速率。請以系統管理員身分啟動 OpenWire.Service。</sys:String>
     <sys:String x:Key="L.Fw.Profile">設定檔</sys:String>
     <sys:String x:Key="L.Fw.NewProfileTip">以目前狀態新增設定檔</sys:String>

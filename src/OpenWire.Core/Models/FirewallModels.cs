@@ -19,6 +19,9 @@ public sealed class FirewallStatus
 
     /// <summary>True if the OpenWire engine is able to write Windows Firewall rules.</summary>
     public bool CanEnforce { get; set; }
+
+    /// <summary>True while a global lock-down (block-all) rule is engaged.</summary>
+    public bool LockdownActive { get; set; }
 }
 
 /// <summary>A per-application firewall rule / decision.</summary>

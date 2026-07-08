@@ -106,6 +106,7 @@ public partial class FirewallViewModel : ObservableObject
     [ObservableProperty] private ObservableCollection<AppRowVM> _apps = new();
     [ObservableProperty] private string _statusText = "";
     [ObservableProperty] private bool _canEnforce;
+    [ObservableProperty] private bool _lockdownActive;
     [ObservableProperty] private string _searchText = "";
 
     // Column sort: empty key = natural order (by total, as the engine returned it).
@@ -127,6 +128,7 @@ public partial class FirewallViewModel : ObservableObject
         var fw = await _client.GetFirewallAsync();
         Mode = fw.Status.Mode;
         CanEnforce = fw.Status.CanEnforce;
+        LockdownActive = fw.Status.LockdownActive;
         NetworkName = fw.Status.NetworkName;
         _networkFingerprint = fw.Status.NetworkFingerprint;
         var rules = fw.Rules.ToDictionary(r => r.AppId, StringComparer.OrdinalIgnoreCase);
@@ -258,5 +260,15 @@ public partial class FirewallViewModel : ObservableObject
     {
         await _client.SetFirewallModeAsync(mode);
         Mode = mode;
+        if (mode == FirewallMode.Off) LockdownActive = false;   // the engine lifts lock-down when disabled
+    }
+
+    /// <summary>Engage or lift the global network lock-down (block every app), then reload to reflect it.</summary>
+    [RelayCommand]
+    private async Task ToggleLockdown()
+    {
+        if (!CanEnforce) return;
+        await _client.SetLockdownAsync(!LockdownActive);
+        await LoadAsync();
     }
 }

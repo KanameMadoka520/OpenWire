@@ -152,6 +152,7 @@ public sealed class EngineClient : IDisposable
     public Task<StorageInfoResponse> ClearDataAsync(ClearDataMode mode) => RequestAsync<StorageInfoResponse>(new ClearDataRequest { Mode = mode });
     public Task<FirewallResponse> GetFirewallAsync() => RequestAsync<FirewallResponse>(new GetFirewallRequest());
     public Task<OkResponse> SetFirewallModeAsync(FirewallMode mode) => RequestAsync<OkResponse>(new SetFirewallModeRequest { Mode = mode });
+    public Task<OkResponse> SetLockdownAsync(bool on) => RequestAsync<OkResponse>(new SetLockdownRequest { On = on });
     public Task<OkResponse> SetAppBlockedAsync(string appId, string path, bool blockIn, bool blockOut)
         => RequestAsync<OkResponse>(new SetAppBlockedRequest { AppId = appId, ExecutablePath = path, BlockIncoming = blockIn, BlockOutgoing = blockOut });
     public Task<OkResponse> ResolveAppDecisionAsync(string appId, bool allow) => RequestAsync<OkResponse>(new ResolveAppDecisionRequest { AppId = appId, Allow = allow });

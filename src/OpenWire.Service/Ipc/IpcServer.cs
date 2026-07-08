@@ -277,6 +277,10 @@ public sealed class IpcServer : IAsyncDisposable
                     _engine.SetFirewallMode(fm.Mode);
                     return new OkResponse();
 
+                case SetLockdownRequest ld:
+                    _engine.SetLockdown(ld.On);
+                    return new OkResponse();
+
                 case SetAppBlockedRequest ab:
                     _engine.SetAppBlocked(ab.AppId, ab.ExecutablePath, ab.BlockIncoming, ab.BlockOutgoing);
                     return new OkResponse();

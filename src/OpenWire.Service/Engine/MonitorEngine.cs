@@ -1071,6 +1071,7 @@ public sealed class MonitorEngine : IAsyncDisposable
 
     public (FirewallStatus Status, List<AppFirewallRule> Rules, List<FirewallProfile> Profiles) GetFirewall()
     {
+        bool lockdown = CanEnforceFirewall && _firewall.IsBlockAllActive();
         FirewallStatus status;
         List<FirewallProfile> profiles;
         lock (_settingsLock)
@@ -1084,6 +1085,7 @@ public sealed class MonitorEngine : IAsyncDisposable
                 BlockedAppCount = _firewallCache.Count,
                 PendingAppCount = _pendingApps.Count,
                 CanEnforce = CanEnforceFirewall,
+                LockdownActive = lockdown,
             };
             // Deep-copy so the IPC writer thread serializes a stable snapshot even while
             // another thread mutates the live profile set / blocked-app lists.
@@ -1225,6 +1227,17 @@ public sealed class MonitorEngine : IAsyncDisposable
                 if (mode == FirewallMode.Off) _firewall.SetBlockAll(false);
             }
         }
+        _status = BuildStatus(DateTimeOffset.UtcNow, 0, 0);
+        Events?.Invoke(new StatusChangedEvent { Status = _status });
+    }
+
+    /// <summary>Engage or lift a global lock-down — a single WFP rule that blocks every application in
+    /// both directions, overlaying the per-app rules (which resume when it is lifted).</summary>
+    public void SetLockdown(bool on)
+    {
+        if (!CanEnforceFirewall) return;
+        try { _firewall.SetBlockAll(on); }
+        catch (Exception ex) { Console.Error.WriteLine($"[Engine] lockdown: {ex.Message}"); return; }
         _status = BuildStatus(DateTimeOffset.UtcNow, 0, 0);
         Events?.Invoke(new StatusChangedEvent { Status = _status });
     }

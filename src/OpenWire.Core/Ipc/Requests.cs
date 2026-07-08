@@ -58,6 +58,13 @@ public sealed class SetFirewallModeRequest : IpcMessage
     public FirewallMode Mode { get; set; }
 }
 
+/// <summary>Engage or lift a global network lock-down (block every app in both directions). Overlays
+/// the current firewall mode; the per-app rules are untouched and resume when the lock-down is lifted.</summary>
+public sealed class SetLockdownRequest : IpcMessage
+{
+    public bool On { get; set; }
+}
+
 /// <summary>Block or unblock an application in a given direction.</summary>
 public sealed class SetAppBlockedRequest : IpcMessage
 {

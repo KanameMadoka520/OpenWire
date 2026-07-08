@@ -19,6 +19,7 @@ namespace OpenWire.Core.Ipc;
 [JsonDerivedType(typeof(GetHardwareRequest), "getHardware")]
 [JsonDerivedType(typeof(GetFirewallRequest), "getFirewall")]
 [JsonDerivedType(typeof(SetFirewallModeRequest), "setFirewallMode")]
+[JsonDerivedType(typeof(SetLockdownRequest), "setLockdown")]
 [JsonDerivedType(typeof(SetAppBlockedRequest), "setAppBlocked")]
 [JsonDerivedType(typeof(SaveFirewallProfileRequest), "saveFwProfile")]
 [JsonDerivedType(typeof(DeleteFirewallProfileRequest), "deleteFwProfile")]

@@ -86,6 +86,10 @@
     <sys:String x:Key="L.Fw.ModeOff">Off</sys:String>
     <sys:String x:Key="L.Fw.ModeClickToBlock">Click to block</sys:String>
     <sys:String x:Key="L.Fw.ModeAskToConnect">Ask to connect</sys:String>
+    <sys:String x:Key="L.Fw.Lockdown">Lock down</sys:String>
+    <sys:String x:Key="L.Fw.LockdownOn">Locked down</sys:String>
+    <sys:String x:Key="L.Fw.LockdownTip">Block every app from the network in one click; click again to lift it</sys:String>
+    <sys:String x:Key="L.Fw.LockdownBanner">Network locked down — every app is blocked from the network until you lift it.</sys:String>
     <sys:String x:Key="L.Fw.NotElevated">⚠  The engine is not running elevated — blocks can't be enforced and per-app rates are unavailable. Start OpenWire.Service as administrator.</sys:String>
     <sys:String x:Key="L.Fw.Profile">Profile</sys:String>
     <sys:String x:Key="L.Fw.NewProfileTip">New profile from current state</sys:String>
