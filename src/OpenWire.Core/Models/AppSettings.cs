@@ -35,6 +35,7 @@ public sealed class AppSettings
     public bool MonitorArpSpoofing { get; set; } = true;
     public bool MonitorHostsFile { get; set; } = true;
     public bool MonitorRdp { get; set; } = true;
+    public bool MonitorProxyChanges { get; set; } = true;
 
     /// <summary>
     /// Detect statistical usage anomalies over recorded history (per-app volume

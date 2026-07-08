@@ -1,3 +1,4 @@
+using Microsoft.Win32;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Security.Cryptography;
@@ -21,6 +22,8 @@ public sealed class IntegrityMonitor
     private string? _hostsHash;
     private bool _hostsSeeded;
     private readonly Dictionary<string, string> _gatewayMac = new(StringComparer.OrdinalIgnoreCase);
+    private string? _proxyState;
+    private bool _proxySeeded;
 
     /// <summary>Capture the current state as the baseline (no alerts on first run).</summary>
     public void Seed()
@@ -28,6 +31,8 @@ public sealed class IntegrityMonitor
         var h = HashHostsFile();
         if (h is not null) { _hostsHash = h; _hostsSeeded = true; }
         foreach (var (ip, mac) in CurrentGateways()) _gatewayMac[ip] = mac;
+        var p = ReadProxyState();
+        if (p is not null) { _proxyState = p; _proxySeeded = true; }
     }
 
     /// <summary>The hosts file was modified since the last observation.</summary>
@@ -70,6 +75,53 @@ public sealed class IntegrityMonitor
             _gatewayMac[ip] = mac;
         }
         return alerts;
+    }
+
+    /// <summary>The system internet proxy configuration (WinINET) changed. A silently-injected proxy
+    /// is a classic traffic-redirection vector, so a change is surfaced as a warning.</summary>
+    public Alert? CheckProxy()
+    {
+        string? now = ReadProxyState();
+        if (now is null) return null;                    // unreadable — no observation, no alarm
+        if (!_proxySeeded) { _proxyState = now; _proxySeeded = true; return null; }
+        if (now == _proxyState) return null;
+        _proxyState = now;
+        return new Alert
+        {
+            Time = DateTimeOffset.UtcNow,
+            Kind = AlertKind.ProxySettingsChanged,
+            Severity = AlertSeverity.Warning,
+            Title = "Proxy settings changed",
+            Message = $"Your system internet proxy configuration changed ({DescribeProxy(now)}). If you did not change it, review your proxy settings — malware can silently redirect traffic this way.",
+        };
+    }
+
+    /// <summary>Canonical WinINET proxy state string (enable|server|pac), or null if unreadable.</summary>
+    private static string? ReadProxyState()
+    {
+        try
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(
+                @"Software\Microsoft\Windows\CurrentVersion\Internet Settings");
+            if (key is null) return "0||";
+            int enabled = (key.GetValue("ProxyEnable") as int?) ?? 0;
+            string server = key.GetValue("ProxyServer") as string ?? "";
+            string pac = key.GetValue("AutoConfigURL") as string ?? "";
+            return $"{enabled}|{server}|{pac}";
+        }
+        catch { return null; }
+    }
+
+    /// <summary>Human-readable summary of a proxy state string for the alert message.</summary>
+    private static string DescribeProxy(string state)
+    {
+        var parts = state.Split('|');
+        string enabled = parts.Length > 0 ? parts[0] : "0";
+        string server = parts.Length > 1 ? parts[1] : "";
+        string pac = parts.Length > 2 ? parts[2] : "";
+        if (enabled == "1" && server.Length > 0) return $"now using proxy {server}";
+        if (!string.IsNullOrEmpty(pac)) return "now using an auto-config script";
+        return "proxy now disabled (direct connection)";
     }
 
     private static string? HashHostsFile()

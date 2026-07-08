@@ -250,6 +250,7 @@
     <sys:String x:Key="L.Set.MonDnsChanges">DNS 服务器变更</sys:String>
     <sys:String x:Key="L.Set.MonHostsFile">Hosts 文件变更</sys:String>
     <sys:String x:Key="L.Set.MonArpSpoofing">ARP 欺骗（网关 MAC 变化）</sys:String>
+    <sys:String x:Key="L.Set.MonProxyChanges">代理设置变更</sys:String>
     <sys:String x:Key="L.Set.MonRdp">远程桌面（RDP）连接</sys:String>
     <sys:String x:Key="L.Set.ShowNotifications">显示桌面通知</sys:String>
     <sys:String x:Key="L.Set.MinimizeToTray">最小化到系统托盘</sys:String>

@@ -432,6 +432,12 @@ public sealed class MonitorEngine : IAsyncDisposable
         if (_settings.MonitorArpSpoofing)
             foreach (var a in _integrity.CheckGatewayArp()) Persist(a);
 
+        if (_settings.MonitorProxyChanges)
+        {
+            var a = _integrity.CheckProxy();
+            if (a is not null) Persist(a);
+        }
+
         if (_settings.DataPlan.Enabled)
         {
             _settings.DataPlan.UsedBytes = _store.DataPlanUsed(CycleStartBucket());

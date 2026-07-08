@@ -104,6 +104,9 @@ public enum AlertKind
 
     /// <summary>A statistical usage anomaly (traffic spike, upload-heavy app, new country, odd-hour activity).</summary>
     UsageAnomaly = 12,
+
+    /// <summary>The system internet proxy configuration changed.</summary>
+    ProxySettingsChanged = 13,
 }
 
 /// <summary>Severity used for colour-coding alerts.</summary>

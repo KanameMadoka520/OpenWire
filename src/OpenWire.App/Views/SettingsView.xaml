@@ -83,6 +83,7 @@
                         <CheckBox Style="{StaticResource Switch}" Content="{StaticResource L.Set.MonDnsChanges}" IsChecked="{Binding MonitorDnsChanges}" Margin="0,0,0,14" />
                         <CheckBox Style="{StaticResource Switch}" Content="{StaticResource L.Set.MonHostsFile}" IsChecked="{Binding MonitorHostsFile}" Margin="0,0,0,14" />
                         <CheckBox Style="{StaticResource Switch}" Content="{StaticResource L.Set.MonArpSpoofing}" IsChecked="{Binding MonitorArpSpoofing}" Margin="0,0,0,14" />
+                        <CheckBox Style="{StaticResource Switch}" Content="{StaticResource L.Set.MonProxyChanges}" IsChecked="{Binding MonitorProxyChanges}" Margin="0,0,0,14" />
                         <CheckBox Style="{StaticResource Switch}" Content="{StaticResource L.Set.MonRdp}" IsChecked="{Binding MonitorRdp}" Margin="0,0,0,14" />
                         <CheckBox Style="{StaticResource Switch}" Content="{StaticResource L.Set.ShowNotifications}" IsChecked="{Binding ShowNotifications}" />
                     </StackPanel>

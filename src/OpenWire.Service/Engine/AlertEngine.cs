@@ -13,6 +13,9 @@ public sealed class AlertEngine
 {
     private readonly HashSet<string> _knownApps = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _knownDevices = new(StringComparer.OrdinalIgnoreCase);
+    private HashSet<string> _onlineDevices = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, string> _deviceNames = new(StringComparer.OrdinalIgnoreCase);
+    private bool _onlineSeeded;
     private readonly HashSet<string> _activeRdp = new(StringComparer.OrdinalIgnoreCase);
     private List<string>? _lastDns;
     private bool _dataWarned;
@@ -48,14 +51,20 @@ public sealed class AlertEngine
         };
     }
 
-    /// <summary>New devices appearing on the LAN since the last scan.</summary>
+    /// <summary>Devices joining (new) or leaving the LAN since the last full scan. The input is the
+    /// set discovered online by the latest scan; anything that was online last time and is now absent
+    /// is treated as having left. The first scan only seeds the baseline (no leave alerts).</summary>
     public List<Alert> CheckDevices(IEnumerable<Device> current)
     {
         var alerts = new List<Alert>();
+        var nowOnline = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
         foreach (var d in current)
         {
-            if (d.IsThisDevice) { _knownDevices.Add(d.Id); continue; }
             if (string.IsNullOrEmpty(d.Id)) continue;
+            nowOnline.Add(d.Id);
+            _deviceNames[d.Id] = string.IsNullOrWhiteSpace(d.Name) ? d.Id : d.Name;
+            if (d.IsThisDevice) { _knownDevices.Add(d.Id); continue; }
             if (!_knownDevices.Add(d.Id)) continue;
 
             alerts.Add(new Alert
@@ -68,6 +77,28 @@ public sealed class AlertEngine
                 DeviceId = d.Id,
             });
         }
+
+        // Devices that were online at the previous scan but are gone now have left the network.
+        if (_onlineSeeded)
+        {
+            foreach (var id in _onlineDevices)
+            {
+                if (nowOnline.Contains(id)) continue;
+                string name = _deviceNames.TryGetValue(id, out var n) ? n : id;
+                alerts.Add(new Alert
+                {
+                    Time = DateTimeOffset.UtcNow,
+                    Kind = AlertKind.DeviceLeft,
+                    Severity = AlertSeverity.Info,
+                    Title = "Device left your network",
+                    Message = $"A device left your network: {name}.",
+                    DeviceId = id,
+                });
+            }
+        }
+
+        _onlineDevices = nowOnline;
+        _onlineSeeded = true;
         return alerts;
     }
 
