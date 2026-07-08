@@ -16,6 +16,17 @@
         </Style>
     </UserControl.Resources>
 
+    <DockPanel>
+    <!-- Slim toolbar: export the current usage breakdown to CSV. -->
+    <Grid DockPanel.Dock="Top" Margin="0,0,10,10">
+        <Button HorizontalAlignment="Right" Style="{StaticResource BtnGhost}" Padding="10,5" Command="{Binding ExportCsvCommand}">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="&#xE74E;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12.5" VerticalAlignment="Center" Margin="0,0,7,0" />
+                <TextBlock Text="{StaticResource L.Usage.Export}" VerticalAlignment="Center" />
+            </StackPanel>
+        </Button>
+    </Grid>
+
     <!-- Four dimension columns. A UniformGrid (not a 4-star Grid) so that when the filter
          panel opens and hides its matching column, the remaining columns redistribute evenly
          instead of leaving a gap. The -10 right margin cancels the last card's trailing gutter. -->
@@ -149,4 +160,5 @@
             </DockPanel>
         </Border>
     </UniformGrid>
+    </DockPanel>
 </UserControl>

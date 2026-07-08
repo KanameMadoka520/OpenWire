@@ -1,8 +1,11 @@
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
+using System.Text;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OpenWire.App.Services;
+using OpenWire.App.Util;
 using OpenWire.Core.Models;
 using OpenWire.Core.Util;
 
@@ -104,6 +107,44 @@ public partial class UsageViewModel : ObservableObject
             case "types": TypesSort.Toggle(); ApplyTypesSort(); break;
             case "countries": CountriesSort.Toggle(); ApplyCountriesSort(); break;
         }
+    }
+
+    /// <summary>Export the current usage breakdown (all four dimensions, in their on-screen order)
+    /// to a CSV file the user picks. A GlassWire-parity "export usage data" action.</summary>
+    [RelayCommand]
+    private void ExportCsv()
+    {
+        var dlg = new Microsoft.Win32.SaveFileDialog
+        {
+            Title = Loc.S("L.Usage.ExportTitle"),
+            Filter = "CSV (*.csv)|*.csv",
+            FileName = $"openwire-usage-{DateTime.Now:yyyyMMdd-HHmm}.csv",
+            DefaultExt = ".csv",
+            AddExtension = true,
+        };
+        if (dlg.ShowDialog() != true) return;
+
+        var sb = new StringBuilder();
+        sb.Append("Category,Name,Code,Download (bytes),Upload (bytes),Total (bytes)\n");
+        foreach (var a in Apps)      Row(sb, "Application", a.App.Name, "", a.BytesIn, a.BytesOut, a.Total);
+        foreach (var h in Hosts)     Row(sb, "Host", h.Host, "", h.BytesIn, h.BytesOut, h.Total);
+        foreach (var t in Types)     Row(sb, "Traffic type", t.TypeName, "", t.BytesIn, t.BytesOut, t.Total);
+        foreach (var c in Countries) Row(sb, "Country", c.DisplayName, c.CountryCode, c.BytesIn, c.BytesOut, c.Total);
+
+        try { File.WriteAllText(dlg.FileName, sb.ToString(), new UTF8Encoding(encoderShouldEmitUTF8Identifier: true)); }
+        catch { /* file locked / no permission — the picker already committed, nothing else to do */ }
+    }
+
+    private static void Row(StringBuilder sb, string category, string name, string code, long inB, long outB, long total)
+        => sb.Append(category).Append(',').Append(Csv(name)).Append(',').Append(Csv(code)).Append(',')
+             .Append(inB).Append(',').Append(outB).Append(',').Append(total).Append('\n');
+
+    /// <summary>Minimal RFC-4180 CSV field escaping (quote when the value holds a comma/quote/newline).</summary>
+    private static string Csv(string value)
+    {
+        if (string.IsNullOrEmpty(value)) return "";
+        if (value.IndexOfAny(new[] { ',', '"', '\n', '\r' }) < 0) return value;
+        return "\"" + value.Replace("\"", "\"\"") + "\"";
     }
 
     private void ApplyAppsSort() => Apps = Sort(_appsRaw, AppsSort, a => a.App.Name, a => a.Total);

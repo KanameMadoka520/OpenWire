@@ -53,6 +53,8 @@
     <sys:String x:Key="L.Usage.Hosts">主机</sys:String>
     <sys:String x:Key="L.Usage.TrafficTypes">流量类型</sys:String>
     <sys:String x:Key="L.Usage.CountriesRegions">国家/地区</sys:String>
+    <sys:String x:Key="L.Usage.Export">导出 CSV</sys:String>
+    <sys:String x:Key="L.Usage.ExportTitle">将用量导出为 CSV</sys:String>
 
     <!-- filter panel -->
     <sys:String x:Key="L.Filter.Applications">应用程序</sys:String>

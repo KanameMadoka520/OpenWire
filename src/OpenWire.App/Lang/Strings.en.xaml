@@ -54,6 +54,8 @@
     <sys:String x:Key="L.Usage.Hosts">HOSTS</sys:String>
     <sys:String x:Key="L.Usage.TrafficTypes">TRAFFIC TYPES</sys:String>
     <sys:String x:Key="L.Usage.CountriesRegions">COUNTRIES &amp; REGIONS</sys:String>
+    <sys:String x:Key="L.Usage.Export">Export CSV</sys:String>
+    <sys:String x:Key="L.Usage.ExportTitle">Export usage as CSV</sys:String>
 
     <!-- filter panel -->
     <sys:String x:Key="L.Filter.Applications">Applications</sys:String>
