@@ -61,7 +61,7 @@ public static class IpcTransport
             return NamedPipeServerStreamAcl.Create(
                 PipeName,
                 PipeDirection.InOut,
-                NamedPipeServerStream.MaxAllowedServerInstances,
+                maxNumberOfServerInstances: 8,
                 PipeTransmissionMode.Byte,
                 PipeOptions.Asynchronous | (first ? PipeOptions.FirstPipeInstance : 0),
                 inBufferSize: 0,

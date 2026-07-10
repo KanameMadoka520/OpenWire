@@ -23,7 +23,7 @@ public sealed class IpcServer : IAsyncDisposable
         public CancellationTokenSource? Cts;
         public readonly Channel<IpcMessage> Outbound =
             System.Threading.Channels.Channel.CreateBounded<IpcMessage>(
-                new BoundedChannelOptions(4096) { FullMode = BoundedChannelFullMode.DropOldest, SingleReader = true });
+                new BoundedChannelOptions(256) { FullMode = BoundedChannelFullMode.DropOldest, SingleReader = true });
 
         public void Enqueue(IpcMessage m) => Outbound.Writer.TryWrite(m);
     }
@@ -35,6 +35,7 @@ public sealed class IpcServer : IAsyncDisposable
 
     private readonly MonitorEngine _engine;
     private readonly ConcurrentDictionary<Guid, Client> _clients = new();
+    private readonly SemaphoreSlim _clientSlots = new(initialCount: 4, maxCount: 4);
     private readonly int _expectedClientPid;
     private readonly string _authorizedUserSid;
     private CancellationTokenSource? _cts;
@@ -111,6 +112,12 @@ public sealed class IpcServer : IAsyncDisposable
             server.Dispose();
             return;
         }
+        if (!_clientSlots.Wait(0))
+        {
+            Console.Error.WriteLine("[IPC] rejected a client because the connection limit was reached.");
+            server.Dispose();
+            return;
+        }
 
         // Bump only after OS-derived PID/SID authorization succeeds. Unauthorized probes
         // must not cancel the startup watchdog or keep an orphaned engine alive.
@@ -158,6 +165,7 @@ public sealed class IpcServer : IAsyncDisposable
             client.Outbound.Writer.TryComplete();
             try { await writer.ConfigureAwait(false); } catch { }
             channel.Dispose();
+            _clientSlots.Release();
         }
     }
 
@@ -244,7 +252,11 @@ public sealed class IpcServer : IAsyncDisposable
         try
         {
             await foreach (var msg in client.Outbound.Reader.ReadAllAsync(ct).ConfigureAwait(false))
-                await client.Channel.SendAsync(msg, ct).ConfigureAwait(false);
+            {
+                using var send = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                send.CancelAfter(TimeSpan.FromSeconds(15));
+                await client.Channel.SendAsync(msg, send.Token).ConfigureAwait(false);
+            }
         }
         catch { /* connection gone / send failed */ }
         finally

@@ -44,6 +44,7 @@ public sealed class EngineClient : IDisposable
                 await pipe.ConnectAsync(2000, ct).ConfigureAwait(false);
                 VerifyServer(pipe);
                 channel = new IpcChannel(pipe);
+                await PerformHandshakeAsync(channel, ct).ConfigureAwait(false);
                 _channel = channel;
                 SetConnected(true);
 
@@ -79,6 +80,23 @@ public sealed class EngineClient : IDisposable
             || !IpcPeerIdentity.PathsEqual(server.ImagePath, expectedPath))
         {
             throw new SecurityException("The named-pipe server is not the trusted elevated OpenWire engine.");
+        }
+    }
+
+    private static async Task PerformHandshakeAsync(IpcChannel channel, CancellationToken ct)
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeout.CancelAfter(TimeSpan.FromSeconds(5));
+        string id = Guid.NewGuid().ToString("N");
+        await channel.SendAsync(
+            new HelloRequest { CorrelationId = id, ClientVersion = "0.1.0" },
+            timeout.Token).ConfigureAwait(false);
+        var response = await channel.ReceiveAsync(timeout.Token).ConfigureAwait(false);
+        if (response is not HelloResponse hello
+            || !string.Equals(hello.CorrelationId, id, StringComparison.Ordinal)
+            || string.IsNullOrWhiteSpace(hello.EngineVersion))
+        {
+            throw new InvalidDataException("The engine did not complete the IPC handshake.");
         }
     }
 
@@ -141,7 +159,7 @@ public sealed class EngineClient : IDisposable
             if (_pending.TryRemove(id, out var t)) t.TrySetCanceled();
         });
 
-        await channel.SendAsync(request, ct).ConfigureAwait(false);
+        await channel.SendAsync(request, timeoutCts.Token).ConfigureAwait(false);
         var response = await tcs.Task.ConfigureAwait(false);
 
         if (response is ErrorResponse err) throw new InvalidOperationException(err.Error);
