@@ -10,8 +10,11 @@ public static class IpcJson
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
+        RespectNullableAnnotations = true,
+        MaxDepth = 32,
         WriteIndented = false,
-        Converters = { new JsonStringEnumConverter() },
+        Converters = { new JsonStringEnumConverter(namingPolicy: null, allowIntegerValues: false) },
     };
 
     public static string Serialize(IpcMessage message) =>

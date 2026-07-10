@@ -67,15 +67,18 @@ public sealed class HistoryStore : IDisposable
     {
         lock (_lock)
         {
-            if (mode == ClearDataMode.MinuteHistory)
+            switch (mode)
             {
-                Exec("DELETE FROM traffic_min; DELETE FROM usage_app; DELETE FROM usage_host;");
-            }
-            else // AllHistory
-            {
-                Exec(@"DELETE FROM traffic_min;  DELETE FROM usage_app;      DELETE FROM usage_host;
-                       DELETE FROM traffic_day;  DELETE FROM usage_app_day;
-                       DELETE FROM host_meta;    DELETE FROM country_seen;   DELETE FROM devices;");
+                case ClearDataMode.MinuteHistory:
+                    Exec("DELETE FROM traffic_min; DELETE FROM usage_app; DELETE FROM usage_host;");
+                    break;
+                case ClearDataMode.AllHistory:
+                    Exec(@"DELETE FROM traffic_min;  DELETE FROM usage_app;      DELETE FROM usage_host;
+                           DELETE FROM traffic_day;  DELETE FROM usage_app_day;
+                           DELETE FROM host_meta;    DELETE FROM country_seen;   DELETE FROM devices;");
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unknown clear-data mode.");
             }
             try { Exec("VACUUM;"); } catch { /* vacuum can fail under WAL; harmless */ }
         }

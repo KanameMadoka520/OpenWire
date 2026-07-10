@@ -1330,10 +1330,11 @@ public sealed class MonitorEngine : IAsyncDisposable
 
     public void SetSettings(AppSettings settings)
     {
+        ArgumentNullException.ThrowIfNull(settings);
         lock (_settingsLock)
         {
-            _settings = settings;
             _store.SaveSettings(settings);
+            _settings = settings;
         }
         _dns.Enabled = settings.ResolveHostNames;
         _reputation.SetApiKey(settings.VirusTotalApiKey);

@@ -1,4 +1,5 @@
 using OpenWire.Core.Models;
+using System.Text.Json.Serialization;
 
 namespace OpenWire.Core.Ipc;
 
@@ -55,6 +56,7 @@ public sealed class GetFirewallRequest : IpcMessage { }
 /// <summary>Change the firewall mode (Off / ClickToBlock / AskToConnect).</summary>
 public sealed class SetFirewallModeRequest : IpcMessage
 {
+    [JsonRequired]
     public FirewallMode Mode { get; set; }
 }
 
@@ -62,40 +64,50 @@ public sealed class SetFirewallModeRequest : IpcMessage
 /// the current firewall mode; the per-app rules are untouched and resume when the lock-down is lifted.</summary>
 public sealed class SetLockdownRequest : IpcMessage
 {
+    [JsonRequired]
     public bool On { get; set; }
 }
 
 /// <summary>Block or unblock an application in a given direction.</summary>
 public sealed class SetAppBlockedRequest : IpcMessage
 {
+    [JsonRequired]
     public string AppId { get; set; } = string.Empty;
+    [JsonRequired]
     public string ExecutablePath { get; set; } = string.Empty;
+    [JsonRequired]
     public bool BlockIncoming { get; set; }
+    [JsonRequired]
     public bool BlockOutgoing { get; set; }
 }
 
 /// <summary>Create or update a firewall profile (matched by name).</summary>
 public sealed class SaveFirewallProfileRequest : IpcMessage
 {
+    [JsonRequired]
     public FirewallProfile Profile { get; set; } = new();
 }
 
 /// <summary>Delete a firewall profile by name (the Default profile cannot be deleted).</summary>
 public sealed class DeleteFirewallProfileRequest : IpcMessage
 {
+    [JsonRequired]
     public string Name { get; set; } = string.Empty;
 }
 
 /// <summary>Switch the active firewall profile, applying its mode and blocked apps.</summary>
 public sealed class ActivateFirewallProfileRequest : IpcMessage
 {
+    [JsonRequired]
     public string Name { get; set; } = string.Empty;
 }
 
 /// <summary>Answer an Ask-to-Connect prompt for a pending app.</summary>
 public sealed class ResolveAppDecisionRequest : IpcMessage
 {
+    [JsonRequired]
     public string AppId { get; set; } = string.Empty;
+    [JsonRequired]
     public bool Allow { get; set; }
     public bool Remember { get; set; } = true;
 }
@@ -122,13 +134,16 @@ public sealed class GetDevicesRequest : IpcMessage
 /// <summary>Rename a LAN device.</summary>
 public sealed class RenameDeviceRequest : IpcMessage
 {
+    [JsonRequired]
     public string DeviceId { get; set; } = string.Empty;
+    [JsonRequired]
     public string Name { get; set; } = string.Empty;
 }
 
 /// <summary>Forget a LAN device (removes it from the list).</summary>
 public sealed class ForgetDeviceRequest : IpcMessage
 {
+    [JsonRequired]
     public string DeviceId { get; set; } = string.Empty;
 }
 
@@ -138,12 +153,14 @@ public sealed class GetStorageInfoRequest : IpcMessage { }
 /// <summary>Relocate the database to a new directory (takes effect after restart).</summary>
 public sealed class SetStorageLocationRequest : IpcMessage
 {
+    [JsonRequired]
     public string NewDirectory { get; set; } = string.Empty;
 }
 
 /// <summary>Clear recorded data (per-mode) and compact the database.</summary>
 public sealed class ClearDataRequest : IpcMessage
 {
+    [JsonRequired]
     public ClearDataMode Mode { get; set; } = ClearDataMode.MinuteHistory;
 }
 
@@ -153,6 +170,7 @@ public sealed class GetSettingsRequest : IpcMessage { }
 /// <summary>Persist updated settings.</summary>
 public sealed class SetSettingsRequest : IpcMessage
 {
+    [JsonRequired]
     public AppSettings Settings { get; set; } = new();
 }
 
@@ -160,6 +178,7 @@ public sealed class SetSettingsRequest : IpcMessage
 /// high-frequency hardware / per-process samplers when the app is minimized to the tray.</summary>
 public sealed class SetUiActiveRequest : IpcMessage
 {
+    [JsonRequired]
     public bool Active { get; set; } = true;
 }
 

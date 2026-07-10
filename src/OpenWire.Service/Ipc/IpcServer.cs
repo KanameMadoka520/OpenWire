@@ -134,6 +134,8 @@ public sealed class IpcServer : IAsyncDisposable
             {
                 var request = await channel.ReceiveAsync(token).ConfigureAwait(false);
                 if (request is null) break;
+                if (request.CorrelationId?.Length > 64)
+                    throw new InvalidDataException("IPC correlation id exceeds 64 characters.");
 
                 IpcMessage? response = Dispatch(request, client, token);
                 if (response is not null)
@@ -258,6 +260,9 @@ public sealed class IpcServer : IAsyncDisposable
     {
         try
         {
+            if (!IpcRequestValidator.TryValidate(request, out string validationError))
+                return new ErrorResponse { Error = validationError };
+
             switch (request)
             {
                 case HelloRequest:
