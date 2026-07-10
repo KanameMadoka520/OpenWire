@@ -1,12 +1,16 @@
+using System.Diagnostics;
 using System.IO;
+using System.Security.Principal;
 using System.Threading;
 using System.Windows;
 using System.Windows.Threading;
 using OpenWire.App.Services;
+using OpenWire.App.Util;
 using OpenWire.App.ViewModels;
 using OpenWire.App.Views;
 using OpenWire.Core.Ipc;
 using OpenWire.Core.Models;
+using OpenWire.Core.Util;
 
 namespace OpenWire.App;
 
@@ -34,6 +38,12 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
+        // Load localized resources before the privilege guard so a failed de-elevation
+        // can report a usable error without ever constructing the main window.
+        LangManager.Apply(this, LangManager.Read());
+        ThemeManager.Apply(this, ThemeManager.Read());
+        if (RefuseElevatedUi(e.Args)) return;
+
         // Single instance per session. The engine is tied to this app's lifetime (via --parent-app),
         // so a second window sharing the one engine would be orphaned when the first quits. Instead,
         // a second launch surfaces the running window and exits.
@@ -50,10 +60,6 @@ public partial class App : Application
         var showWatch = new Thread(() => { while (_showEvent.WaitOne()) Dispatcher.BeginInvoke(ShowMainWindow); })
         { IsBackground = true, Name = "OpenWire.ShowWatch" };
         showWatch.Start();
-
-        // Apply the chosen language + skin before any window is created.
-        LangManager.Apply(this, LangManager.Read());
-        ThemeManager.Apply(this, ThemeManager.Read());
 
         // Never let a stray background/UI exception take down the whole app.
         DispatcherUnhandledException += OnDispatcherException;
@@ -103,6 +109,72 @@ public partial class App : Application
         _connectWatch = new DispatcherTimer { Interval = TimeSpan.FromSeconds(6) };
         _connectWatch.Tick += (_, _) => { _connectWatch!.Stop(); TryAutoSpawnEngine(); };
         _connectWatch.Start();
+    }
+
+    private bool RefuseElevatedUi(string[] args)
+    {
+        if (!IsCurrentProcessElevated())
+            return false;
+
+        // Preserve the user's old startup preference while deleting the legacy task
+        // before it can launch another high-integrity UI at the next sign-in.
+        if (LegacyAutoStartTask.RemoveIfPresent())
+            UserAutoStartManager.Configure(enabled: true);
+
+        if (!args.Contains("--unelevated-relaunch", StringComparer.OrdinalIgnoreCase)
+            && TryRelaunchUnelevated())
+        {
+            Shutdown();
+            return true;
+        }
+
+        MessageBox.Show(
+            Loc.S("L.Shell.ElevatedUiBlocked"),
+            "OpenWire",
+            MessageBoxButton.OK,
+            MessageBoxImage.Error);
+        Shutdown();
+        return true;
+    }
+
+    private static bool IsCurrentProcessElevated()
+    {
+        if (IpcPeerIdentity.TryGetProcessInfo(Environment.ProcessId, out var self))
+            return self.IsElevated;
+
+        try
+        {
+            using var identity = WindowsIdentity.GetCurrent();
+            return new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator);
+        }
+        catch
+        {
+            // An indeterminate token must not be allowed to keep a desktop UI at high integrity.
+            return true;
+        }
+    }
+
+    private static bool TryRelaunchUnelevated()
+    {
+        try
+        {
+            string? app = Environment.ProcessPath;
+            if (string.IsNullOrWhiteSpace(app) || !File.Exists(app)) return false;
+            string explorer = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.Windows),
+                "explorer.exe");
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = explorer,
+                Arguments = $"\"{app}\" --unelevated-relaunch",
+                UseShellExecute = true,
+            });
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private void HookWindow(MainWindow w)

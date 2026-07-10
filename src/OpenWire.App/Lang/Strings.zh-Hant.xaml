@@ -18,6 +18,7 @@
     <sys:String x:Key="L.Shell.ConnectingEngine">正在連線 OpenWire 引擎…</sys:String>
     <sys:String x:Key="L.Shell.EngineAdminHint">引擎需以系統管理員身分執行，才能進行監控與攔截。</sys:String>
     <sys:String x:Key="L.Shell.StartEngine">啟動引擎（系統管理員）</sys:String>
+    <sys:String x:Key="L.Shell.ElevatedUiBlocked">OpenWire 無法以一般使用者權限重新啟動介面，因此已停止執行，避免讓桌面介面維持系統管理員權限。</sys:String>
     <sys:String x:Key="L.Shell.TrayTooltip">OpenWire — 網路監控</sys:String>
     <sys:String x:Key="L.Shell.TrayOpen">開啟 OpenWire</sys:String>
     <sys:String x:Key="L.Shell.TrayExit">結束</sys:String>
@@ -280,10 +281,10 @@
     <sys:String x:Key="L.Set.GeoUpdateFailed">更新失敗：{0}</sys:String>
     <sys:String x:Key="L.Set.GeoLastChecked">上次檢查：{0}</sys:String>
     <sys:String x:Key="L.Set.Startup">啟動</sys:String>
-    <sys:String x:Key="L.Set.LaunchOnStartup">開機自啟（需要系統管理員權限）</sys:String>
-    <sys:String x:Key="L.Set.LaunchOnStartupDesc">登入 Windows 時自動以系統管理員權限啟動 OpenWire 並在背景持續監控；結束 OpenWire 時引擎會隨之關閉。</sys:String>
-    <sys:String x:Key="L.Set.AutoStartNeedsAdmin">此功能需要系統管理員帳戶——目前帳戶無法在登入時以較高權限執行。</sys:String>
-    <sys:String x:Key="L.Set.AutoStartOn">下次登入時將自動啟動 OpenWire。</sys:String>
+    <sys:String x:Key="L.Set.LaunchOnStartup">登入時啟動 OpenWire</sys:String>
+    <sys:String x:Key="L.Set.LaunchOnStartupDesc">登入 Windows 時以一般使用者權限啟動介面；需要時，引擎會另外請求系統管理員核准。</sys:String>
+    <sys:String x:Key="L.Set.AutoStartNeedsAdmin">Windows 阻止了對目前使用者啟動設定的存取。</sys:String>
+    <sys:String x:Key="L.Set.AutoStartOn">下次登入時，OpenWire 將以一般使用者權限自動啟動。</sys:String>
     <sys:String x:Key="L.Set.AutoStartFailed">設定開機自啟失敗：{0}</sys:String>
     <sys:String x:Key="L.Set.DataPlan">流量方案</sys:String>
     <sys:String x:Key="L.Set.DataPlanEnable">啟用每月流量方案</sys:String>

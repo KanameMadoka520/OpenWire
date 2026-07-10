@@ -365,12 +365,6 @@ public sealed class IpcServer : IAsyncDisposable
                     RecomputeUiActive();
                     return null; // fire-and-forget, no reply needed
 
-                case GetAutoStartRequest:
-                    return _engine.GetAutoStart();
-
-                case SetAutoStartRequest asr:
-                    return _engine.SetAutoStart(asr.Enabled, asr.AppExePath, asr.UserName);
-
                 case GetStorageInfoRequest:
                     return new StorageInfoResponse { Storage = _engine.GetStorageInfo() };
 

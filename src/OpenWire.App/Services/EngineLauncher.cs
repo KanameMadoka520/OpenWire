@@ -4,9 +4,8 @@ using System.IO;
 namespace OpenWire.App.Services;
 
 /// <summary>Locates and spawns the OpenWire engine (OpenWire.Service.exe). The engine's manifest is
-/// requireAdministrator, so a normal (non-elevated) app raises a UAC prompt; an already-elevated app
-/// (e.g. started by the logon task) spawns it silently. The app passes <c>--parent-app &lt;pid&gt;</c> so
-/// the engine dies when the app exits.</summary>
+/// requireAdministrator, so the non-elevated app raises a UAC prompt. The app passes
+/// <c>--parent-app &lt;pid&gt;</c> so the engine authorizes only this UI and exits with it.</summary>
 public static class EngineLauncher
 {
     public static string? LocateServiceExe()

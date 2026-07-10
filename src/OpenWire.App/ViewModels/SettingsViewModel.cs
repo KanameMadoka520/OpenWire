@@ -1,4 +1,3 @@
-using System.Security.Principal;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OpenWire.App.Services;
@@ -20,14 +19,14 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool _resolveHostNames = true;
     [ObservableProperty] private bool _resolveGeoIp = true;
 
-    // ---- Launch at logon (elevated Task Scheduler task) ----
+    // ---- Launch at logon (per-user, non-elevated HKCU Run entry) ----
     [ObservableProperty] private bool _launchOnStartup;
-    [ObservableProperty] private bool _canAutoStart = true;   // false disables the toggle for non-admins
+    [ObservableProperty] private bool _canAutoStart = true;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasAutoStartStatus))]
     private string _autoStartStatus = "";
     public bool HasAutoStartStatus => !string.IsNullOrEmpty(AutoStartStatus);
-    private bool _suppressAutoStartApply;                     // don't fire IPC while reconciling on load
+    private bool _suppressAutoStartApply;
 
     // ---- GeoIP database (source + build date + in-app update) ----
     [ObservableProperty] private string _geoIpStatusText = "";   // "DB-IP Lite · 2026-07-01"
@@ -118,17 +117,19 @@ public partial class SettingsViewModel : ObservableObject
 
         try { ApplyGeoStatus(await _client.GetGeoIpStatusAsync()); } catch { /* engine busy */ }
 
-        // Reconcile the launch-at-logon toggle against the real scheduled task, not the persisted bool.
-        CanAutoStart = UserCanElevate();
-        try
+        // Migrate the preference recorded when the engine removed the legacy HIGHEST
+        // scheduled task, then reconcile against the actual per-user Run entry.
+        CanAutoStart = true;
+        bool autoStart = UserAutoStartManager.IsEnabled();
+        if (s.LaunchOnStartup && !autoStart)
         {
-            var auto = await _client.GetAutoStartAsync();
-            _suppressAutoStartApply = true;
-            LaunchOnStartup = auto.Exists && auto.Enabled;
-            _suppressAutoStartApply = false;
-            AutoStartStatus = CanAutoStart ? "" : Loc.S("L.Set.AutoStartNeedsAdmin");
+            var migrated = UserAutoStartManager.Configure(enabled: true);
+            autoStart = migrated.Enabled;
+            if (migrated.Error is not null)
+                AutoStartStatus = string.Format(Loc.S("L.Set.AutoStartFailed"), migrated.Error);
         }
-        catch { _suppressAutoStartApply = false; }
+        SetToggle(autoStart);
+        _settings.LaunchOnStartup = autoStart;
 
         var hello = await _client.HelloAsync();
         EngineInfo = string.Format(Loc.S("L.Set.EngineInfoFmt"),
@@ -204,7 +205,7 @@ public partial class SettingsViewModel : ObservableObject
         if (resp.Storage is { } s) ApplyStorage(s);
     }
 
-    // Toggling the checkbox applies immediately (create/delete the logon task), not on Save.
+    // Toggling applies immediately to the current user's Run key, not on Save.
     partial void OnLaunchOnStartupChanged(bool value)
     {
         if (_suppressAutoStartApply) return;
@@ -213,25 +214,19 @@ public partial class SettingsViewModel : ObservableObject
 
     private async Task ApplyAutoStartAsync(bool enabled)
     {
-        if (enabled && !CanAutoStart)
-        {
-            SetToggle(false);
-            AutoStartStatus = Loc.S("L.Set.AutoStartNeedsAdmin");
-            return;
-        }
         try
         {
-            using var id = WindowsIdentity.GetCurrent();
-            var st = await _client.SetAutoStartAsync(enabled, Environment.ProcessPath ?? "", id.Name);
-            bool taskOn = st.Exists && st.Enabled;
-            SetToggle(taskOn);                 // reconcile the checkbox to the real task, not the request
-            AutoStartStatus = taskOn == enabled
+            var result = UserAutoStartManager.Configure(enabled);
+            SetToggle(result.Enabled);
+            _settings.LaunchOnStartup = result.Enabled;
+            await _client.SetSettingsAsync(_settings);
+            AutoStartStatus = result.Enabled == enabled
                 ? (enabled ? Loc.S("L.Set.AutoStartOn") : "")
-                : string.Format(Loc.S("L.Set.AutoStartFailed"), st.Message ?? ""); // create/delete didn't take
+                : string.Format(Loc.S("L.Set.AutoStartFailed"), result.Error ?? "");
         }
         catch (Exception ex)
         {
-            try { var q = await _client.GetAutoStartAsync(); SetToggle(q.Exists && q.Enabled); } catch { }
+            SetToggle(UserAutoStartManager.IsEnabled());
             AutoStartStatus = string.Format(Loc.S("L.Set.AutoStartFailed"), ex.Message);
         }
     }
@@ -242,20 +237,6 @@ public partial class SettingsViewModel : ObservableObject
         _suppressAutoStartApply = true;
         LaunchOnStartup = on;
         _suppressAutoStartApply = false;
-    }
-
-    /// <summary>Whether the current user is a member of the local Administrators group — true even
-    /// for a non-elevated admin (the group is present as deny-only in the filtered token), which is
-    /// exactly what a HIGHEST-privileges logon task needs.</summary>
-    private static bool UserCanElevate()
-    {
-        try
-        {
-            using var id = WindowsIdentity.GetCurrent();
-            var admins = new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null);
-            return id.Groups?.Contains(admins) ?? false;
-        }
-        catch { return true; } // never block a real admin because the check itself failed
     }
 
     /// <summary>Maps a GeoIP status response into the card's display fields.</summary>

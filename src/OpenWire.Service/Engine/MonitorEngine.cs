@@ -99,6 +99,11 @@ public sealed class MonitorEngine : IAsyncDisposable
     public async Task StartAsync(CancellationToken ct)
     {
         _settings = _store.LoadSettings();
+        if (LegacyAutoStartTask.RemoveIfPresent())
+        {
+            _settings.LaunchOnStartup = true;
+            _store.SaveSettings(_settings);
+        }
         _dns.Enabled = _settings.ResolveHostNames;
         _reputation.SetApiKey(_settings.VirusTotalApiKey);
         EnsureProfiles();
@@ -1023,11 +1028,6 @@ public sealed class MonitorEngine : IAsyncDisposable
     /// <summary>Throttle the high-frequency hardware / per-process samplers when the UI isn't being
     /// viewed. The 1-second traffic tick (core recording) is never gated.</summary>
     public void SetUiActive(bool active) => _hardware.SetUiActive(active);
-
-    // ---- launch at logon (elevated Task Scheduler task, registered by this elevated engine) ----
-    public AutoStartStatusResponse GetAutoStart() => AutoStartManager.Query();
-    public AutoStartStatusResponse SetAutoStart(bool enabled, string appExePath, string userName)
-        => AutoStartManager.Configure(enabled, appExePath, userName);
 
     private List<TrafficTypeUsage> BuildTrafficTypes(List<HostUsage> hosts)
     {

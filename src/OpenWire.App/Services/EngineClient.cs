@@ -189,10 +189,6 @@ public sealed class EngineClient : IDisposable
     }
 
     public void SetUiActive(bool active) => Send(new SetUiActiveRequest { Active = active });
-    public Task<AutoStartStatusResponse> GetAutoStartAsync() => RequestAsync<AutoStartStatusResponse>(new GetAutoStartRequest());
-    public Task<AutoStartStatusResponse> SetAutoStartAsync(bool enabled, string appExePath, string userName)
-        => RequestAsync<AutoStartStatusResponse>(new SetAutoStartRequest { Enabled = enabled, AppExePath = appExePath, UserName = userName });
-
     public Task<GeoIpStatusResponse> GetGeoIpStatusAsync() => RequestAsync<GeoIpStatusResponse>(new GetGeoIpStatusRequest());
 
     /// <summary>Trigger an on-demand GeoIP database download (a longer timeout than usual — it

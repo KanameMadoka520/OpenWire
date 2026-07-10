@@ -19,6 +19,7 @@
     <sys:String x:Key="L.Shell.ConnectingEngine">Connecting to the OpenWire engine…</sys:String>
     <sys:String x:Key="L.Shell.EngineAdminHint">The engine must run as administrator to monitor and enforce.</sys:String>
     <sys:String x:Key="L.Shell.StartEngine">Start engine (admin)</sys:String>
+    <sys:String x:Key="L.Shell.ElevatedUiBlocked">OpenWire could not restart its interface with standard user privileges, so it stopped instead of running the desktop UI as administrator.</sys:String>
     <sys:String x:Key="L.Shell.TrayTooltip">OpenWire — network monitor</sys:String>
     <sys:String x:Key="L.Shell.TrayOpen">Open OpenWire</sys:String>
     <sys:String x:Key="L.Shell.TrayExit">Exit</sys:String>
@@ -281,10 +282,10 @@
     <sys:String x:Key="L.Set.GeoUpdateFailed">Update failed: {0}</sys:String>
     <sys:String x:Key="L.Set.GeoLastChecked">Last checked {0}</sys:String>
     <sys:String x:Key="L.Set.Startup">STARTUP</sys:String>
-    <sys:String x:Key="L.Set.LaunchOnStartup">Launch OpenWire at logon (requires administrator)</sys:String>
-    <sys:String x:Key="L.Set.LaunchOnStartupDesc">Starts OpenWire automatically and elevated when you sign in, and keeps it monitoring in the background. When you quit OpenWire the engine shuts down with it.</sys:String>
-    <sys:String x:Key="L.Set.AutoStartNeedsAdmin">This requires an administrator account — the current account can't run elevated at logon.</sys:String>
-    <sys:String x:Key="L.Set.AutoStartOn">OpenWire will start automatically at your next sign-in.</sys:String>
+    <sys:String x:Key="L.Set.LaunchOnStartup">Launch OpenWire at logon</sys:String>
+    <sys:String x:Key="L.Set.LaunchOnStartupDesc">Starts the interface with standard user privileges when you sign in. The engine requests administrator approval separately when needed.</sys:String>
+    <sys:String x:Key="L.Set.AutoStartNeedsAdmin">Windows blocked access to your per-user startup settings.</sys:String>
+    <sys:String x:Key="L.Set.AutoStartOn">OpenWire will start with standard user privileges at your next sign-in.</sys:String>
     <sys:String x:Key="L.Set.AutoStartFailed">Couldn't change launch-at-logon: {0}</sys:String>
     <sys:String x:Key="L.Set.DataPlan">DATA PLAN</sys:String>
     <sys:String x:Key="L.Set.DataPlanEnable">Enable monthly data plan</sys:String>
