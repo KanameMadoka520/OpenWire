@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.Versioning;
 using System.Security.Principal;
+using OpenWire.Core.Ipc;
 using OpenWire.Core.Util;
 using OpenWire.Service.Engine;
 using OpenWire.Service.Ipc;
@@ -18,6 +19,34 @@ internal static class Program
         // terminal (dev / --selftest) a console is present and this succeeds.
         try { Console.OutputEncoding = System.Text.Encoding.UTF8; } catch { }
         PrintBanner();
+
+        int parentPid = ParseParentPid(args);
+        bool daemon = args.Contains("--daemon");
+        bool selfTest = args.Contains("--selftest");
+
+        // Privileged IPC must normally be bound to the exact GUI process that launched
+        // the engine. A deliberately unbound long-running engine requires --daemon so
+        // the weaker trust mode is never entered by accident.
+        if (parentPid == 0 && !daemon && !selfTest)
+        {
+            Console.Error.WriteLine("OpenWire.Service requires --parent-app <pid>, --daemon, or --selftest.");
+            return 2;
+        }
+
+        IpcPeerProcessInfo? expectedClient = null;
+        if (parentPid > 0)
+        {
+            if (!IpcPeerIdentity.TryGetProcessInfo(parentPid, out expectedClient)
+                || !IsExpectedAppPath(expectedClient.ImagePath))
+            {
+                Console.Error.WriteLine("The requested parent is not the expected OpenWire.App executable.");
+                return 3;
+            }
+        }
+
+        string authorizedUserSid = expectedClient?.UserSid
+            ?? WindowsIdentity.GetCurrent().User?.Value
+            ?? throw new InvalidOperationException("Unable to determine the IPC user SID.");
 
         // One engine per machine owns the named pipe, the ETW session and the database. A second
         // launch (e.g. the app's auto-spawn racing a launcher script) must bow out immediately,
@@ -41,8 +70,7 @@ internal static class Program
         // "--daemon" opts out of the die-with-the-app behaviour for headless/advanced use. Otherwise
         // the idle watchdog is on: the engine exits shortly after the last UI client disconnects, so
         // it never lingers in the background once OpenWire is closed.
-        long parentPid = ParseParentPid(args);
-        bool exitWhenIdle = !args.Contains("--daemon");
+        bool exitWhenIdle = !daemon;
 
         using var cts = new CancellationTokenSource();
         Console.CancelKeyPress += (_, e) => { e.Cancel = true; cts.Cancel(); };
@@ -51,14 +79,19 @@ internal static class Program
         await using var engine = new MonitorEngine(dataDir);
         await engine.StartAsync(cts.Token);
 
-        if (args.Contains("--selftest"))
+        if (selfTest)
             return await SelfTestAsync(engine, cts.Token);
 
         // Die immediately if the app that spawned us exits (covers a force-kill or OS-suspend that
         // never cleanly closes the pipe). The idle watchdog below is the normal-close path.
         if (parentPid > 0) WatchParent((int)parentPid, RequestShutdown);
 
-        await using var server = new IpcServer(engine, exitWhenIdle, RequestShutdown);
+        await using var server = new IpcServer(
+            engine,
+            exitWhenIdle,
+            RequestShutdown,
+            parentPid,
+            authorizedUserSid);
         server.Start(cts.Token);
         Console.WriteLine($"Listening on named pipe: \\\\.\\pipe\\{OpenWire.Core.Ipc.IpcTransport.PipeName}");
         Console.WriteLine("Engine running. Press Ctrl+C to stop.\n");
@@ -70,11 +103,23 @@ internal static class Program
         return 0;
     }
 
-    private static long ParseParentPid(string[] args)
+    private static int ParseParentPid(string[] args)
     {
         for (int i = 0; i < args.Length - 1; i++)
-            if (args[i] is "--parent-app" && long.TryParse(args[i + 1], out var pid)) return pid;
+            if (args[i] is "--parent-app" && int.TryParse(args[i + 1], out var pid) && pid > 0) return pid;
         return 0;
+    }
+
+    private static bool IsExpectedAppPath(string path)
+    {
+        string baseDir = AppContext.BaseDirectory;
+        string local = Path.Combine(baseDir, "OpenWire.App.exe");
+        if (IpcPeerIdentity.PathsEqual(path, local)) return true;
+
+        string config = baseDir.Contains("Release", StringComparison.OrdinalIgnoreCase) ? "Release" : "Debug";
+        string dev = Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..",
+            "OpenWire.App", "bin", config, "net9.0-windows", "OpenWire.App.exe"));
+        return IpcPeerIdentity.PathsEqual(path, dev);
     }
 
     /// <summary>Signal shutdown when the given (parent app) process exits.</summary>

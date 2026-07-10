@@ -35,6 +35,8 @@ public sealed class IpcServer : IAsyncDisposable
 
     private readonly MonitorEngine _engine;
     private readonly ConcurrentDictionary<Guid, Client> _clients = new();
+    private readonly int _expectedClientPid;
+    private readonly string _authorizedUserSid;
     private CancellationTokenSource? _cts;
     private Task? _acceptLoop;
 
@@ -45,14 +47,21 @@ public sealed class IpcServer : IAsyncDisposable
     private System.Threading.Timer? _startupTimer;
     private bool _hadClient;
     private volatile bool _disposing;
-    private long _connectSeq;                 // bumped at the OS-accept instant, before the client is registered
+    private long _connectSeq;                 // bumped after peer authorization, before the client is registered
     private long _idleArmSeq, _startupArmSeq; // the _connectSeq snapshot each timer was armed at
 
-    public IpcServer(MonitorEngine engine, bool exitWhenIdle, Action requestShutdown)
+    public IpcServer(
+        MonitorEngine engine,
+        bool exitWhenIdle,
+        Action requestShutdown,
+        int expectedClientPid,
+        string authorizedUserSid)
     {
         _engine = engine;
         _exitWhenIdle = exitWhenIdle;
         _requestShutdown = requestShutdown;
+        _expectedClientPid = expectedClientPid;
+        _authorizedUserSid = authorizedUserSid;
         _engine.Events += OnEngineEvent;
     }
 
@@ -79,11 +88,8 @@ public sealed class IpcServer : IAsyncDisposable
             System.IO.Pipes.NamedPipeServerStream? server = null;
             try
             {
-                server = IpcTransport.CreateServerStream();
+                server = IpcTransport.CreateServerStream(_authorizedUserSid);
                 await server.WaitForConnectionAsync(ct).ConfigureAwait(false);
-                // Bump at the OS-accept instant — strictly before the client is registered below —
-                // so a watchdog timer that's about to fire sees the generation change and aborts.
-                Interlocked.Increment(ref _connectSeq);
                 var accepted = server; server = null; // ownership transfers to the handler
                 _ = HandleClientAsync(accepted, ct);
             }
@@ -99,6 +105,16 @@ public sealed class IpcServer : IAsyncDisposable
 
     private async Task HandleClientAsync(System.IO.Pipes.NamedPipeServerStream server, CancellationToken ct)
     {
+        if (!TryAuthorizeClient(server))
+        {
+            Console.Error.WriteLine("[IPC] rejected an unauthorized local client.");
+            server.Dispose();
+            return;
+        }
+
+        // Bump only after OS-derived PID/SID authorization succeeds. Unauthorized probes
+        // must not cancel the startup watchdog or keep an orphaned engine alive.
+        Interlocked.Increment(ref _connectSeq);
         var id = Guid.NewGuid();
         var channel = new IpcChannel(server);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -141,6 +157,14 @@ public sealed class IpcServer : IAsyncDisposable
             try { await writer.ConfigureAwait(false); } catch { }
             channel.Dispose();
         }
+    }
+
+    private bool TryAuthorizeClient(System.IO.Pipes.NamedPipeServerStream server)
+    {
+        if (!IpcPeerIdentity.TryGetClientProcessInfo(server, out var candidate)) return false;
+        if (_expectedClientPid > 0 && candidate.ProcessId != _expectedClientPid) return false;
+        if (!string.Equals(candidate.UserSid, _authorizedUserSid, StringComparison.OrdinalIgnoreCase)) return false;
+        return true;
     }
 
     // ---- idle-shutdown watchdog + UI-active recompute ----

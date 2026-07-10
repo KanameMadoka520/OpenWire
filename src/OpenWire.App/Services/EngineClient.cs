@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.IO;
+using System.Security;
 using System.Windows.Threading;
 using OpenWire.Core.Ipc;
 using OpenWire.Core.Models;
@@ -41,6 +42,7 @@ public sealed class EngineClient : IDisposable
             {
                 pipe = IpcTransport.CreateClientStream();
                 await pipe.ConnectAsync(2000, ct).ConfigureAwait(false);
+                VerifyServer(pipe);
                 channel = new IpcChannel(pipe);
                 _channel = channel;
                 SetConnected(true);
@@ -65,6 +67,18 @@ public sealed class EngineClient : IDisposable
             }
 
             try { await Task.Delay(1500, ct).ConfigureAwait(false); } catch { break; }
+        }
+    }
+
+    private static void VerifyServer(System.IO.Pipes.NamedPipeClientStream pipe)
+    {
+        string? expectedPath = EngineLauncher.LocateServiceExe();
+        if (expectedPath is null
+            || !IpcPeerIdentity.TryGetServerProcessInfo(pipe, out var server)
+            || !server.IsElevated
+            || !IpcPeerIdentity.PathsEqual(server.ImagePath, expectedPath))
+        {
+            throw new SecurityException("The named-pipe server is not the trusted elevated OpenWire engine.");
         }
     }
 
