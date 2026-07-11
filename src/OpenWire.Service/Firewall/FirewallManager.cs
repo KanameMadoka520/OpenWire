@@ -117,7 +117,10 @@ public sealed class FirewallManager
         lock (_lock)
         {
             object policy = CreatePolicy();
-            return RemoveWhere(policy, IsOwnedAppRule, exceptNames: null);
+            int removed = RemoveWhere(policy, IsManagedAppRule, exceptNames: null);
+            if (CountWhere(policy, IsManagedAppRule, exceptNames: null) != 0)
+                throw new InvalidOperationException("One or more OpenWire app rules could not be removed.");
+            return removed;
         }
     }
 
@@ -142,7 +145,7 @@ public sealed class FirewallManager
     {
         string description = OwnedDescription(Tag(appId));
         string legacyDescription = "OWID=" + appId;
-        RemoveWhere(policy, ruleObject =>
+        Func<object, bool> matches = ruleObject =>
         {
             dynamic rule = ruleObject;
             string? grouping = TryGet(() => (string)rule.Grouping);
@@ -153,7 +156,10 @@ public sealed class FirewallManager
                 || (string.Equals(grouping, LegacyGroup, StringComparison.Ordinal)
                     && name?.StartsWith("OpenWire:", StringComparison.Ordinal) == true
                     && string.Equals(desc, legacyDescription, StringComparison.OrdinalIgnoreCase));
-        }, exceptNames);
+        };
+        RemoveWhere(policy, matches, exceptNames);
+        if (CountWhere(policy, matches, exceptNames) != 0)
+            throw new InvalidOperationException("One or more previous app rules could not be removed.");
     }
 
     /// <summary>Global lock-down overlay. Both rules are added before the previous generation is removed.</summary>
@@ -165,6 +171,8 @@ public sealed class FirewallManager
             if (!on)
             {
                 RemoveWhere(policy, IsOwnedLockdownRule, exceptNames: null);
+                if (CountWhere(policy, IsOwnedLockdownRule, exceptNames: null) != 0)
+                    throw new InvalidOperationException("One or more lockdown rules could not be removed.");
                 return;
             }
 
@@ -270,7 +278,7 @@ public sealed class FirewallManager
             object policy;
             try { policy = CreatePolicy(); }
             catch { return 0; }
-            return RemoveWhere(policy, rule => IsOwnedAppRule(rule) || IsOwnedLockdownRule(rule), exceptNames: null);
+            return RemoveWhere(policy, rule => IsManagedAppRule(rule) || IsOwnedLockdownRule(rule), exceptNames: null);
         }
     }
 
@@ -307,6 +315,20 @@ public sealed class FirewallManager
     private static bool IsOwnedAppRule(object rule)
         => TryGetOwnedAppId(rule, out _, out _);
 
+    private static bool IsManagedAppRule(object ruleObject)
+    {
+        dynamic rule = ruleObject;
+        string? grouping = TryGet(() => (string)rule.Grouping);
+        string desc = TryGet(() => (string)rule.Description) ?? string.Empty;
+        string name = TryGet(() => (string)rule.Name) ?? string.Empty;
+        if (string.Equals(grouping, Group, StringComparison.Ordinal)
+            && name.StartsWith("OpenWire:", StringComparison.Ordinal)
+            && desc.StartsWith(OwnerPrefix, StringComparison.Ordinal)
+            && !desc.Equals(OwnedDescription(LockdownTag), StringComparison.Ordinal))
+            return true;
+        return IsOwnedAppRule(ruleObject);
+    }
+
     private static bool IsOwnedLockdownRule(object ruleObject)
     {
         dynamic rule = ruleObject;
@@ -342,11 +364,26 @@ public sealed class FirewallManager
             if (name is null || exceptNames?.Contains(name) == true) continue;
             if (predicate((object)rule)) names.Add(name);
         }
+        int removed = 0;
         foreach (string name in names)
         {
-            try { policy.Rules.Remove(name); } catch { }
+            try { policy.Rules.Remove(name); removed++; } catch { }
         }
-        return names.Count;
+        return removed;
+    }
+
+    private static int CountWhere(object policyObject, Func<object, bool> predicate, HashSet<string>? exceptNames)
+    {
+        dynamic policy = policyObject;
+        int count = 0;
+        foreach (var obj in (IEnumerable)policy.Rules)
+        {
+            dynamic rule = obj;
+            string? name = TryGet(() => (string)rule.Name);
+            if (name is null || exceptNames?.Contains(name) == true) continue;
+            if (predicate((object)rule)) count++;
+        }
+        return count;
     }
 
     private static void RemoveOwnedNames(object policy, IEnumerable<string> names, string description)

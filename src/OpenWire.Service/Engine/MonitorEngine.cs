@@ -117,10 +117,27 @@ public sealed class MonitorEngine : IAsyncDisposable
         _integrity.Seed();
 
         CanEnforceFirewall = _firewall.CanEnforce();
-        // Lockdown is a temporary UI-controlled overlay, not a persisted policy. Clear any
-        // stale generation left by a crash before the engine begins reporting its state.
         if (CanEnforceFirewall)
-            try { _firewall.SetBlockAll(false); } catch { }
+        {
+            try
+            {
+                // Reconcile before reporting healthy. This also clears rules left by an
+                // older build when the persisted mode is Off.
+                _firewall.SetBlockAll(false);
+                FirewallProfile? startupProfile;
+                lock (_settingsLock)
+                {
+                    var active = ActiveProfileObj();
+                    startupProfile = active is null ? null : CloneProfile(active, active.Name);
+                }
+                EnforceFirewallMode(_settings.FirewallMode, startupProfile);
+            }
+            catch (Exception ex)
+            {
+                CanEnforceFirewall = false;
+                Console.Error.WriteLine($"[Firewall] startup reconciliation failed: {ex.Message}");
+            }
+        }
         _etwActive = _etw.TryStart();
         _hardware.Start();
         RefreshFirewallCache();
@@ -1157,26 +1174,31 @@ public sealed class MonitorEngine : IAsyncDisposable
     public void DeleteProfile(string name)
     {
         if (string.IsNullOrEmpty(name) || name.Equals("Default", StringComparison.OrdinalIgnoreCase)) return;
+        bool activateDefault;
         lock (_settingsLock)
         {
             _settings.FirewallProfiles.RemoveAll(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
-            if (_settings.ActiveProfile.Equals(name, StringComparison.OrdinalIgnoreCase))
-                ActivateProfile("Default");
-            else
-                _store.SaveSettings(_settings);
+            activateDefault = _settings.ActiveProfile.Equals(name, StringComparison.OrdinalIgnoreCase);
+            if (!activateDefault) _store.SaveSettings(_settings);
         }
+        if (activateDefault) ActivateProfile("Default");
     }
 
     public void ActivateProfile(string name)
     {
+        FirewallProfile? profile;
         lock (_settingsLock)
         {
-            var prof = _settings.FirewallProfiles.FirstOrDefault(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
-            if (prof is null) return;
+            var found = _settings.FirewallProfiles.FirstOrDefault(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+            profile = found is null ? null : CloneProfile(found, found.Name);
+        }
+        if (profile is null) return;
 
-            _settings.ActiveProfile = prof.Name;
-            _settings.FirewallMode = prof.Mode;
-            ApplyProfileBlocks(prof);
+        EnforceFirewallMode(profile.Mode, profile);
+        lock (_settingsLock)
+        {
+            _settings.ActiveProfile = profile.Name;
+            _settings.FirewallMode = profile.Mode;
             _store.SaveSettings(_settings);
         }
 
@@ -1189,19 +1211,52 @@ public sealed class MonitorEngine : IAsyncDisposable
     {
         if (!CanEnforceFirewall) return;
         var desired = new HashSet<string>(prof.BlockedAppIds, StringComparer.OrdinalIgnoreCase);
+        var current = _firewall.GetAppRules()
+            .ToDictionary(rule => rule.AppId, StringComparer.OrdinalIgnoreCase);
 
-        foreach (var appId in _firewallCache.Keys.ToList())
+        foreach (var appId in current.Keys)
             if (!desired.Contains(appId)) _firewall.UnblockApp(appId);
 
         foreach (var appId in desired)
         {
-            if (_firewallCache.ContainsKey(appId)) continue;
+            if (current.TryGetValue(appId, out var existing)
+                && existing.BlockIncoming
+                && existing.BlockOutgoing) continue;
             string exe = _appStore.TryGetValue(appId, out var u) ? u.App.ExecutablePath : appId;
             string nm = _appStore.TryGetValue(appId, out var au) ? au.App.Name : Path.GetFileNameWithoutExtension(exe);
-            if (!string.IsNullOrEmpty(exe))
-                try { _firewall.SetAppBlocked(exe, appId, nm, blockIn: true, blockOut: true); } catch { }
+            if (string.IsNullOrWhiteSpace(exe) || !Path.IsPathFullyQualified(exe))
+                throw new InvalidOperationException($"Cannot enforce profile rule for unresolved app '{appId}'.");
+            _firewall.SetAppBlocked(exe, appId, nm, blockIn: true, blockOut: true);
         }
-        RefreshFirewallCache();
+
+        var verified = _firewall.GetAppRules();
+        var verifiedIds = verified.Select(rule => rule.AppId).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (!verifiedIds.SetEquals(desired)
+            || verified.Any(rule => !rule.BlockIncoming || !rule.BlockOutgoing))
+        {
+            throw new InvalidOperationException("Windows Firewall did not converge to the selected profile.");
+        }
+        ReplaceFirewallCache(verified);
+    }
+
+    private void EnforceFirewallMode(FirewallMode mode, FirewallProfile? profile)
+    {
+        if (!CanEnforceFirewall) return;
+        if (mode == FirewallMode.Off)
+        {
+            _firewall.SetBlockAll(false);
+            _firewall.ClearAppRules();
+            ReplaceFirewallCache(Array.Empty<AppFirewallRule>());
+            return;
+        }
+        if (profile is not null) ApplyProfileBlocks(profile);
+    }
+
+    private void ReplaceFirewallCache(IEnumerable<AppFirewallRule> rules)
+    {
+        var next = new ConcurrentDictionary<string, AppFirewallRule>(StringComparer.OrdinalIgnoreCase);
+        foreach (var rule in rules) next[rule.AppId] = rule;
+        _firewallCache = next;
     }
 
     private AppFirewallStatus FirewallStatusFor(string appId)
@@ -1213,47 +1268,49 @@ public sealed class MonitorEngine : IAsyncDisposable
 
     public void SetFirewallMode(FirewallMode mode)
     {
-        FirewallMode old;
+        FirewallProfile? profile;
         lock (_settingsLock)
         {
-            old = _settings.FirewallMode;
+            var active = ActiveProfileObj();
+            profile = active is null ? null : CloneProfile(active, active.Name);
+            if (profile is not null) profile.Mode = mode;
+        }
+
+        EnforceFirewallMode(mode, profile);
+        lock (_settingsLock)
+        {
             _settings.FirewallMode = mode;
             var active = ActiveProfileObj();
             if (active is not null) active.Mode = mode;
             _store.SaveSettings(_settings);
         }
-
-        if (CanEnforceFirewall)
-        {
-            if (mode == FirewallMode.Off && old == FirewallMode.Off) { /* no-op */ }
-            if (old != mode)
-            {
-                if (mode == FirewallMode.Off) _firewall.SetBlockAll(false);
-            }
-        }
         _status = BuildStatus(DateTimeOffset.UtcNow, 0, 0);
         Events?.Invoke(new StatusChangedEvent { Status = _status });
     }
 
-    /// <summary>Engage or lift a global lock-down — a single WFP rule that blocks every application in
-    /// both directions, overlaying the per-app rules (which resume when it is lifted).</summary>
+    /// <summary>Engage or lift the temporary global lock-down overlay.</summary>
     public void SetLockdown(bool on)
     {
-        if (!CanEnforceFirewall) return;
-        try { _firewall.SetBlockAll(on); }
-        catch (Exception ex) { Console.Error.WriteLine($"[Engine] lockdown: {ex.Message}"); return; }
+        if (!CanEnforceFirewall) throw new InvalidOperationException("Windows Firewall enforcement is unavailable.");
+        _firewall.SetBlockAll(on);
+        if (_firewall.IsBlockAllActive() != on)
+            throw new InvalidOperationException("Windows Firewall did not converge to the requested lockdown state.");
         _status = BuildStatus(DateTimeOffset.UtcNow, 0, 0);
         Events?.Invoke(new StatusChangedEvent { Status = _status });
     }
 
     public void SetAppBlocked(string appId, string exePath, bool blockIn, bool blockOut)
     {
-        if (!CanEnforceFirewall) return;
         if (string.IsNullOrEmpty(exePath) && _appStore.TryGetValue(appId, out var u)) exePath = u.App.ExecutablePath;
         string name = _appStore.TryGetValue(appId, out var au) ? au.App.Name : Path.GetFileNameWithoutExtension(exePath);
+        FirewallMode mode;
+        lock (_settingsLock) mode = _settings.FirewallMode;
 
-        if (!blockIn && !blockOut) _firewall.UnblockApp(appId);
-        else _firewall.SetAppBlocked(exePath, appId, name, blockIn, blockOut);
+        if (CanEnforceFirewall)
+        {
+            if ((!blockIn && !blockOut) || mode == FirewallMode.Off) _firewall.UnblockApp(appId);
+            else _firewall.SetAppBlocked(exePath, appId, name, blockIn, blockOut);
+        }
 
         _pendingApps.TryRemove(appId, out _);
         RefreshFirewallCache();
