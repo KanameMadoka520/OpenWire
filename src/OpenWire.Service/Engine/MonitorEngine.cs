@@ -49,9 +49,23 @@ public sealed class MonitorEngine : IAsyncDisposable
     private Dictionary<int, (long In, long Out)> _prevPerPid = new();
     private Dictionary<string, (long In, long Out)> _prevEndpoints = new();
 
+    private sealed record PendingMinuteWrite(
+        Guid BatchId,
+        long Bucket,
+        long Day,
+        long GlobalIn,
+        long GlobalOut,
+        AppMinuteWrite[] Apps,
+        HostMinuteWrite[] Hosts,
+        long SeenAtUnix);
+
     private long _pendingGlobalIn, _pendingGlobalOut;
-    private readonly Dictionary<string, (long In, long Out)> _pendingApp = new();
-    private readonly Dictionary<string, (long In, long Out)> _pendingHost = new();
+    private long _queuedGlobalIn, _queuedGlobalOut;
+    private Dictionary<string, (long In, long Out)> _pendingApp = new();
+    private Dictionary<string, (long In, long Out)> _pendingHost = new();
+    private readonly Queue<PendingMinuteWrite> _minuteWriteQueue = new();
+    private long _nextMinuteWriteAttemptTick;
+    private int _minuteWriteFailures;
     private long _currentBucket;
 
     private List<ConnectionInfo> _connectionsSnapshot = new();
@@ -182,6 +196,15 @@ public sealed class MonitorEngine : IAsyncDisposable
         _tick++;
         var now = DateTimeOffset.UtcNow;
 
+        // Rotate before sampling this tick. A failed SQLite write must never make traffic from a
+        // later minute (or day) accumulate into the frozen batch that is waiting to be retried.
+        long bucket = MinuteBucket(now);
+        if (bucket != _currentBucket)
+        {
+            SealMinute(_currentBucket);
+            _currentBucket = bucket;
+        }
+
         // 1) global throughput delta. The counter source can switch between ETW and the
         // interface counters at runtime (the ETW session drops on sleep/resume, buffer
         // loss, or an external tool stopping it). Their absolute scales differ by orders
@@ -218,13 +241,9 @@ public sealed class MonitorEngine : IAsyncDisposable
         // 3) refresh live connection table every 3s
         if (_tick % 3 == 0) RefreshConnections();
 
-        // 4) minute rollup flush
-        long bucket = MinuteBucket(now);
-        if (bucket != _currentBucket)
-        {
-            FlushMinute(_currentBucket);
-            _currentBucket = bucket;
-        }
+        // 4) minute rollup flush. Storage failures stay isolated from live monitoring; frozen
+        // batches retain their original bucket and are retried in order with bounded backoff.
+        FlushQueuedMinutes();
 
         // 5) periodic security checks
         if (_tick % 30 == 0) RunPeriodicChecks();
@@ -359,34 +378,90 @@ public sealed class MonitorEngine : IAsyncDisposable
         _prevEndpoints = next;
     }
 
-    private void FlushMinute(long bucket)
+    private void SealMinute(long bucket)
     {
-        long day = LocalDayStart(bucket);
+        if (_pendingGlobalIn <= 0 && _pendingGlobalOut <= 0
+            && _pendingApp.Count == 0 && _pendingHost.Count == 0)
+            return;
 
-        if (_pendingGlobalIn > 0 || _pendingGlobalOut > 0)
-        {
-            _store.AddGlobalMinute(bucket, _pendingGlobalIn, _pendingGlobalOut);
-            _store.AddGlobalDay(day, _pendingGlobalIn, _pendingGlobalOut);
-        }
+        long globalIn = _pendingGlobalIn;
+        long globalOut = _pendingGlobalOut;
+        var pendingApps = _pendingApp;
+        var pendingHosts = _pendingHost;
+
+        // Rotate first so the current containers can never be mutated after they become a batch.
         _pendingGlobalIn = _pendingGlobalOut = 0;
+        _pendingApp = new Dictionary<string, (long In, long Out)>();
+        _pendingHost = new Dictionary<string, (long In, long Out)>();
 
-        foreach (var (appId, v) in _pendingApp)
-        {
-            _store.AddAppMinute(appId, bucket, v.In, v.Out);
-            _store.AddAppDay(appId, day, v.In, v.Out);
-        }
-        _pendingApp.Clear();
-
+        long day = LocalDayStart(bucket);
         long nowUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        foreach (var (ip, v) in _pendingHost)
+        var apps = pendingApps
+            .Select(kv => new AppMinuteWrite(kv.Key, kv.Value.In, kv.Value.Out))
+            .ToArray();
+        var hosts = new HostMinuteWrite[pendingHosts.Count];
+        int hostIndex = 0;
+        foreach (var (ip, v) in pendingHosts)
         {
-            _store.AddHostMinute(ip, bucket, v.In, v.Out);
-            var geo = _settings.ResolveGeoIp ? _geo.Resolve(ip) : GeoInfo.Unknown;
-            var host = _dns.Resolve(ip);
-            _store.UpsertHostMeta(ip, ip, host, geo);
-            if (geo.HasCountry) _store.TouchCountry(geo.CountryCode, nowUnix);
+            GeoInfo geo;
+            try { geo = _settings.ResolveGeoIp ? _geo.Resolve(ip) : GeoInfo.Unknown; }
+            catch { geo = GeoInfo.Unknown; }
+            string host;
+            try { host = _dns.Resolve(ip); }
+            catch { host = string.Empty; }
+            hosts[hostIndex++] = new HostMinuteWrite(
+                ip, ip, host, geo.CountryCode, geo.CountryName, v.In, v.Out);
         }
-        _pendingHost.Clear();
+
+        _minuteWriteQueue.Enqueue(new PendingMinuteWrite(
+            Guid.NewGuid(), bucket, day, globalIn, globalOut, apps, hosts, nowUnix));
+        _queuedGlobalIn += globalIn;
+        _queuedGlobalOut += globalOut;
+    }
+
+    private void FlushQueuedMinutes(bool drainAll = false)
+    {
+        long nowTick = Environment.TickCount64;
+        if (_minuteWriteQueue.Count == 0
+            || (!drainAll && nowTick < _nextMinuteWriteAttemptTick))
+            return;
+
+        int remaining = drainAll ? int.MaxValue : 4;
+        while (_minuteWriteQueue.Count > 0 && remaining-- > 0)
+        {
+            var batch = _minuteWriteQueue.Peek();
+            try
+            {
+                var result = _store.WriteMinuteBatch(
+                    batch.BatchId,
+                    batch.Bucket,
+                    batch.Day,
+                    batch.GlobalIn,
+                    batch.GlobalOut,
+                    batch.Apps,
+                    batch.Hosts,
+                    batch.SeenAtUnix);
+
+                _minuteWriteQueue.Dequeue();
+                _queuedGlobalIn -= batch.GlobalIn;
+                _queuedGlobalOut -= batch.GlobalOut;
+                _minuteWriteFailures = 0;
+                _nextMinuteWriteAttemptTick = 0;
+
+                if (result.Elapsed > TimeSpan.FromMilliseconds(250))
+                    Console.WriteLine($"[Storage] minute batch: {result.StatementExecutions} statements, " +
+                        $"{result.AppRows} apps, {result.HostRows} hosts in {result.Elapsed.TotalMilliseconds:0} ms.");
+            }
+            catch (Exception ex)
+            {
+                _minuteWriteFailures++;
+                int delaySeconds = Math.Min(30, 1 << Math.Min(5, _minuteWriteFailures - 1));
+                _nextMinuteWriteAttemptTick = nowTick + delaySeconds * 1000L;
+                Console.Error.WriteLine($"[Storage] minute batch failed; {_minuteWriteQueue.Count} queued, " +
+                    $"retrying in {delaySeconds}s: {ex.Message}");
+                return;
+            }
+        }
     }
 
     private void RefreshConnections()
@@ -599,7 +674,12 @@ public sealed class MonitorEngine : IAsyncDisposable
 
         long wan, lan;
         if (_etwActive && _etw.IsRunning) { (wan, lan) = _etw.ReadWanLan(); }
-        else { wan = totIn + totOut + _pendingGlobalIn + _pendingGlobalOut; lan = 0; }
+        else
+        {
+            wan = totIn + totOut + _queuedGlobalIn + _queuedGlobalOut
+                + _pendingGlobalIn + _pendingGlobalOut;
+            lan = 0;
+        }
 
         return new EngineStatus
         {
@@ -608,8 +688,8 @@ public sealed class MonitorEngine : IAsyncDisposable
             FirewallMode = _settings.FirewallMode,
             DownloadBytesPerSec = downBps,
             UploadBytesPerSec = upBps,
-            TotalBytesIn = totIn + _pendingGlobalIn,
-            TotalBytesOut = totOut + _pendingGlobalOut,
+            TotalBytesIn = totIn + _queuedGlobalIn + _pendingGlobalIn,
+            TotalBytesOut = totOut + _queuedGlobalOut + _pendingGlobalOut,
             TotalWanBytes = wan,
             TotalLanBytes = lan,
             ActiveAppCount = active,
@@ -1520,10 +1600,15 @@ public sealed class MonitorEngine : IAsyncDisposable
             try { await _tickLoop.ConfigureAwait(false); } catch { /* cancelled */ }
         }
 
-        try { FlushMinute(_currentBucket); } catch { }
         // Never leave a user without the UI/control channel that can reverse lockdown.
         if (CanEnforceFirewall)
             try { _firewall.SetBlockAll(false); } catch { }
+        try
+        {
+            SealMinute(_currentBucket);
+            FlushQueuedMinutes(drainAll: true);
+        }
+        catch { }
         _etw.Dispose();
         _reputation.Dispose();
         _hardware.Dispose();

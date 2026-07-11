@@ -1,8 +1,30 @@
+using System.Diagnostics;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using OpenWire.Core.Models;
 
 namespace OpenWire.Service.Storage;
+
+public sealed record AppMinuteWrite(
+    string AppId,
+    long BytesIn,
+    long BytesOut);
+
+public sealed record HostMinuteWrite(
+    string HostKey,
+    string RemoteAddress,
+    string HostName,
+    string CountryCode,
+    string CountryName,
+    long BytesIn,
+    long BytesOut);
+
+public readonly record struct MinuteWriteResult(
+    int StatementExecutions,
+    int AppRows,
+    int HostRows,
+    int CountryRows,
+    TimeSpan Elapsed);
 
 /// <summary>
 /// SQLite-backed history + configuration store (WAL mode). Holds per-minute traffic
@@ -164,6 +186,13 @@ CREATE INDEX IF NOT EXISTS ix_usage_app_day_day ON usage_app_day(day);
 CREATE TABLE IF NOT EXISTS country_seen (
     code TEXT PRIMARY KEY, first_seen INTEGER NOT NULL, last_seen INTEGER NOT NULL);
 
+-- A stable batch id makes additive minute writes idempotent if Commit succeeds but the
+-- caller loses the acknowledgement and retries. The marker and all rollups share one transaction.
+CREATE TABLE IF NOT EXISTS minute_batch_commit (
+    batch_id TEXT PRIMARY KEY,
+    committed_at INTEGER NOT NULL
+) WITHOUT ROWID;
+
 CREATE TABLE IF NOT EXISTS host_meta (
     host_key TEXT PRIMARY KEY, remote_addr TEXT, host_name TEXT, country_code TEXT, country_name TEXT);
 
@@ -231,6 +260,172 @@ CREATE TABLE IF NOT EXISTS devices (
     }
 
     // ---------------- Traffic rollups ----------------
+
+    /// <summary>
+    /// Persist one complete minute in a single transaction. A failure rolls back every table,
+    /// so the engine can retry without double-counting a partially committed batch.
+    /// </summary>
+    public MinuteWriteResult WriteMinuteBatch(
+        Guid batchId,
+        long bucket,
+        long day,
+        long globalIn,
+        long globalOut,
+        IReadOnlyList<AppMinuteWrite> apps,
+        IReadOnlyList<HostMinuteWrite> hosts,
+        long nowUnix)
+    {
+        lock (_lock)
+        {
+            var timer = Stopwatch.StartNew();
+            if ((globalIn <= 0 && globalOut <= 0) && apps.Count == 0 && hosts.Count == 0)
+                return new MinuteWriteResult(0, 0, 0, 0, TimeSpan.Zero);
+            int executions = 0;
+            using var transaction = _conn.BeginTransaction();
+
+            using var batchMarker = PrepareCommand(transaction,
+                "INSERT OR IGNORE INTO minute_batch_commit(batch_id,committed_at) VALUES($id,$n);",
+                ("$id", SqliteType.Text), ("$n", SqliteType.Integer));
+            using var globalMinute = PrepareCommand(transaction,
+                @"INSERT INTO traffic_min(bucket,bytes_in,bytes_out) VALUES($b,$i,$o)
+                  ON CONFLICT(bucket) DO UPDATE SET bytes_in=bytes_in+$i, bytes_out=bytes_out+$o;",
+                ("$b", SqliteType.Integer), ("$i", SqliteType.Integer), ("$o", SqliteType.Integer));
+            using var globalDay = PrepareCommand(transaction,
+                @"INSERT INTO traffic_day(day,bytes_in,bytes_out) VALUES($d,$i,$o)
+                  ON CONFLICT(day) DO UPDATE SET bytes_in=bytes_in+$i, bytes_out=bytes_out+$o;",
+                ("$d", SqliteType.Integer), ("$i", SqliteType.Integer), ("$o", SqliteType.Integer));
+            using var appMinute = PrepareCommand(transaction,
+                @"INSERT INTO usage_app(app_id,bucket,bytes_in,bytes_out) VALUES($a,$b,$i,$o)
+                  ON CONFLICT(app_id,bucket) DO UPDATE SET bytes_in=bytes_in+$i, bytes_out=bytes_out+$o;",
+                ("$a", SqliteType.Text), ("$b", SqliteType.Integer),
+                ("$i", SqliteType.Integer), ("$o", SqliteType.Integer));
+            using var appDay = PrepareCommand(transaction,
+                @"INSERT INTO usage_app_day(app_id,day,bytes_in,bytes_out) VALUES($a,$d,$i,$o)
+                  ON CONFLICT(app_id,day) DO UPDATE SET bytes_in=bytes_in+$i, bytes_out=bytes_out+$o;",
+                ("$a", SqliteType.Text), ("$d", SqliteType.Integer),
+                ("$i", SqliteType.Integer), ("$o", SqliteType.Integer));
+            using var hostMinute = PrepareCommand(transaction,
+                @"INSERT INTO usage_host(host_key,bucket,bytes_in,bytes_out) VALUES($h,$b,$i,$o)
+                  ON CONFLICT(host_key,bucket) DO UPDATE SET bytes_in=bytes_in+$i, bytes_out=bytes_out+$o;",
+                ("$h", SqliteType.Text), ("$b", SqliteType.Integer),
+                ("$i", SqliteType.Integer), ("$o", SqliteType.Integer));
+            using var hostMeta = PrepareCommand(transaction,
+                @"INSERT INTO host_meta(host_key,remote_addr,host_name,country_code,country_name)
+                  VALUES($h,$r,$hn,$cc,$cn)
+                  ON CONFLICT(host_key) DO UPDATE SET remote_addr=$r,
+                    host_name=CASE WHEN $hn<>'' THEN $hn ELSE host_name END,
+                    country_code=CASE WHEN $cc<>'' THEN $cc ELSE country_code END,
+                    country_name=CASE WHEN $cn<>'' THEN $cn ELSE country_name END;",
+                ("$h", SqliteType.Text), ("$r", SqliteType.Text), ("$hn", SqliteType.Text),
+                ("$cc", SqliteType.Text), ("$cn", SqliteType.Text));
+            using var country = PrepareCommand(transaction,
+                @"INSERT INTO country_seen(code,first_seen,last_seen) VALUES($c,$n,$n)
+                  ON CONFLICT(code) DO UPDATE SET last_seen=$n;",
+                ("$c", SqliteType.Text), ("$n", SqliteType.Integer));
+
+            batchMarker.Parameters[0].Value = batchId.ToString("N");
+            batchMarker.Parameters[1].Value = nowUnix;
+            int markerRows = batchMarker.ExecuteNonQuery();
+            executions++;
+            if (markerRows == 0)
+            {
+                transaction.Commit();
+                timer.Stop();
+                return new MinuteWriteResult(executions, 0, 0, 0, timer.Elapsed);
+            }
+
+            if (globalIn > 0 || globalOut > 0)
+            {
+                Execute(globalMinute, ref executions, bucket, globalIn, globalOut);
+                Execute(globalDay, ref executions, day, globalIn, globalOut);
+            }
+
+            foreach (var app in apps)
+            {
+                Execute(appMinute, ref executions, app.AppId, bucket, app.BytesIn, app.BytesOut);
+                Execute(appDay, ref executions, app.AppId, day, app.BytesIn, app.BytesOut);
+            }
+
+            var countries = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var host in hosts)
+            {
+                Execute(hostMinute, ref executions, host.HostKey, bucket, host.BytesIn, host.BytesOut);
+                Execute(hostMeta, ref executions, host.HostKey, host.RemoteAddress, host.HostName,
+                    host.CountryCode, host.CountryName);
+                if (!string.IsNullOrEmpty(host.CountryCode)) countries.Add(host.CountryCode);
+            }
+            foreach (string code in countries)
+                Execute(country, ref executions, code, nowUnix);
+
+            transaction.Commit();
+            timer.Stop();
+            return new MinuteWriteResult(executions, apps.Count, hosts.Count, countries.Count, timer.Elapsed);
+        }
+    }
+
+    private SqliteCommand PrepareCommand(
+        SqliteTransaction transaction,
+        string sql,
+        params (string Name, SqliteType Type)[] parameters)
+    {
+        var command = _conn.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = sql;
+        foreach (var parameter in parameters) command.Parameters.Add(parameter.Name, parameter.Type);
+        command.Prepare();
+        return command;
+    }
+
+    private static void Execute(SqliteCommand command, ref int executions, object v0, object v1)
+    {
+        command.Parameters[0].Value = v0;
+        command.Parameters[1].Value = v1;
+        command.ExecuteNonQuery();
+        executions++;
+    }
+
+    private static void Execute(SqliteCommand command, ref int executions, object v0, object v1, object v2)
+    {
+        command.Parameters[0].Value = v0;
+        command.Parameters[1].Value = v1;
+        command.Parameters[2].Value = v2;
+        command.ExecuteNonQuery();
+        executions++;
+    }
+
+    private static void Execute(
+        SqliteCommand command,
+        ref int executions,
+        object v0,
+        object v1,
+        object v2,
+        object v3)
+    {
+        command.Parameters[0].Value = v0;
+        command.Parameters[1].Value = v1;
+        command.Parameters[2].Value = v2;
+        command.Parameters[3].Value = v3;
+        command.ExecuteNonQuery();
+        executions++;
+    }
+
+    private static void Execute(
+        SqliteCommand command,
+        ref int executions,
+        object v0,
+        object v1,
+        object v2,
+        object v3,
+        object v4)
+    {
+        command.Parameters[0].Value = v0;
+        command.Parameters[1].Value = v1;
+        command.Parameters[2].Value = v2;
+        command.Parameters[3].Value = v3;
+        command.Parameters[4].Value = v4;
+        command.ExecuteNonQuery();
+        executions++;
+    }
 
     public void AddGlobalMinute(long bucket, long bytesIn, long bytesOut)
     {
@@ -548,6 +743,7 @@ CREATE TABLE IF NOT EXISTS devices (
             removed += ExecDelete("DELETE FROM usage_host WHERE bucket<$c;", minuteCutoffUnix);
             removed += ExecDelete("DELETE FROM traffic_day    WHERE day<$c;", dayCutoffUnix);
             removed += ExecDelete("DELETE FROM usage_app_day  WHERE day<$c;", dayCutoffUnix);
+            removed += ExecDelete("DELETE FROM minute_batch_commit WHERE committed_at<$c;", minuteCutoffUnix);
 
             // Drop host metadata for hosts that no longer have any usage rows, so the
             // table doesn't accumulate a permanent row per IP ever contacted.
