@@ -18,6 +18,7 @@ public sealed class DnsResolver
     }
 
     private static readonly TimeSpan Ttl = TimeSpan.FromMinutes(30);
+    private static readonly TimeSpan SaturatedRetry = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan SweepEvery = TimeSpan.FromMinutes(10);
     private readonly ConcurrentDictionary<string, Entry> _cache = new();
     private readonly SemaphoreSlim _gate = new(8);
@@ -77,9 +78,21 @@ public sealed class DnsResolver
             entry.Pending = true;
         }
 
+        // Do not create an unbounded Task/sem_waiter backlog when a burst contains thousands of
+        // new endpoints. A saturated resolver records a short negative result and will retry on
+        // a later observation, keeping the number of live DNS operations bounded by the gate.
+        if (!_gate.Wait(0))
+        {
+            lock (entry)
+            {
+                entry.Pending = false;
+                entry.Expiry = DateTimeOffset.UtcNow + SaturatedRetry;
+            }
+            return;
+        }
+
         _ = Task.Run(async () =>
         {
-            await _gate.WaitAsync().ConfigureAwait(false);
             try
             {
                 string host = string.Empty;
