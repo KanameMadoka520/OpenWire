@@ -166,7 +166,21 @@ CREATE TABLE IF NOT EXISTS devices (
         {
             var json = GetKv("settings");
             if (string.IsNullOrEmpty(json)) return new AppSettings();
-            try { return JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings(); }
+            try
+            {
+                var settings = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+                string persistedKey = settings.VirusTotalApiKey;
+                settings.VirusTotalApiKey = SettingsSecretProtector.Unprotect(persistedKey);
+
+                // Upgrade a legacy plaintext key immediately. This runs under the existing
+                // re-entrant store lock and never exposes the plaintext outside this process.
+                if (!string.IsNullOrEmpty(persistedKey)
+                    && !SettingsSecretProtector.IsProtected(persistedKey))
+                {
+                    SetKv("settings", SerializeSettingsForStorage(settings));
+                }
+                return settings;
+            }
             catch { return new AppSettings(); }
         }
     }
@@ -174,7 +188,15 @@ CREATE TABLE IF NOT EXISTS devices (
     public void SaveSettings(AppSettings settings)
     {
         lock (_lock)
-            SetKv("settings", JsonSerializer.Serialize(settings));
+            SetKv("settings", SerializeSettingsForStorage(settings));
+    }
+
+    private static string SerializeSettingsForStorage(AppSettings settings)
+    {
+        var persisted = JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(settings))
+            ?? throw new InvalidOperationException("Settings could not be cloned for persistence.");
+        persisted.VirusTotalApiKey = SettingsSecretProtector.Protect(settings.VirusTotalApiKey);
+        return JsonSerializer.Serialize(persisted);
     }
 
     // ---------------- Traffic rollups ----------------
