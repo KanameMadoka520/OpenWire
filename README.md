@@ -101,7 +101,28 @@ over a local named pipe.
 | `OpenWire.Service` | The monitoring engine. Runs elevated; does all privileged work. |
 | `OpenWire.App` | The WPF UI. Runs as a normal user; talks only to the engine. |
 
-See [`docs/SPEC.md`](docs/SPEC.md) for the full feature + UI specification.
+See [`docs/SPEC.md`](docs/SPEC.md) for the full feature + UI specification, and
+[`CHANGELOG.md`](CHANGELOG.md) for release history.
+
+---
+
+## Security & privacy
+
+OpenWire runs a privileged engine, so the trust boundary is taken seriously:
+
+- **Authenticated IPC** — the elevated engine derives each client's identity from the
+  OS pipe handle and binds to the exact GUI process it launched; the pipe ACL is
+  limited to the current user. Cross-user and pipe-squatting connections are refused.
+- **Least privilege at login** — the GUI auto-starts as a normal per-user entry; no
+  elevated auto-start task is ever registered.
+- **Your firewall rules are yours** — OpenWire only manages rules that carry its own
+  marker, replaces them atomically, and never edits or deletes your existing rules.
+  Lockdown / block-all is always manual and reversible.
+- **Data stays local and locked down** — the SQLite history lives under a tightened
+  DACL; the VirusTotal key is encrypted at rest with DPAPI; crash logs are private
+  and rotated. No account, no cloud, no telemetry.
+
+See [`CHANGELOG.md`](CHANGELOG.md) for the full hardening history.
 
 ---
 
