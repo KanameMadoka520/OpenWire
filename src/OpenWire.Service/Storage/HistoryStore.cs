@@ -72,6 +72,37 @@ public sealed class HistoryStore : IDisposable
         lock (_lock) { try { Exec("PRAGMA wal_checkpoint(TRUNCATE);"); } catch { } }
     }
 
+    /// <summary>Create and verify a transactionally consistent SQLite backup.</summary>
+    public void BackupTo(string targetDbPath)
+    {
+        lock (_lock)
+        {
+            string directory = StorageSecurity.EnsurePrivateDirectory(Path.GetDirectoryName(targetDbPath)!);
+            string targetPath = Path.Combine(directory, Path.GetFileName(targetDbPath));
+            if (File.Exists(targetPath))
+                throw new IOException("The temporary backup target already exists.");
+
+            var connectionString = new SqliteConnectionStringBuilder
+            {
+                DataSource = targetPath,
+                Mode = SqliteOpenMode.ReadWriteCreate,
+                Cache = SqliteCacheMode.Private,
+                Pooling = false,
+            };
+            using var target = new SqliteConnection(connectionString.ToString());
+            target.Open();
+            _conn.BackupDatabase(target);
+
+            using var check = target.CreateCommand();
+            check.CommandText = "PRAGMA quick_check;";
+            string result = Convert.ToString(check.ExecuteScalar()) ?? string.Empty;
+            if (!result.Equals("ok", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException($"SQLite backup verification failed: {result}");
+            target.Close();
+            StorageSecurity.EnsurePrivateFile(targetPath);
+        }
+    }
+
     /// <summary>Delete recorded history (per <paramref name="mode"/>) and compact the file.</summary>
     public void ClearData(ClearDataMode mode)
     {

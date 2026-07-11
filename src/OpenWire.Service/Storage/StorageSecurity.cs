@@ -8,6 +8,16 @@ namespace OpenWire.Service.Storage;
 [SupportedOSPlatform("windows")]
 public static class StorageSecurity
 {
+    public static string PrepareDataDirectory(string selectedDirectory)
+    {
+        string selected = NormalizeLocalDirectory(selectedDirectory);
+        string leaf = Path.GetFileName(selected);
+        string dataDirectory = leaf.Equals("OpenWire", StringComparison.OrdinalIgnoreCase)
+            ? selected
+            : Path.Combine(selected, "OpenWire");
+        return EnsurePrivateDirectory(dataDirectory);
+    }
+
     public static string NormalizeLocalDirectory(string path)
     {
         if (string.IsNullOrWhiteSpace(path))
@@ -73,6 +83,44 @@ public static class StorageSecurity
             AccessControlType.Allow));
         AddCurrentUserForNonElevatedEngine(security);
         new FileInfo(path).SetAccessControl(security);
+    }
+
+    public static void WritePrivateTextFileAtomic(string path, string contents)
+    {
+        string directory = EnsurePrivateDirectory(Path.GetDirectoryName(path)!);
+        string finalPath = Path.Combine(directory, Path.GetFileName(path));
+        RejectReparseFile(finalPath);
+
+        string tempPath = Path.Combine(directory, $".{Path.GetFileName(path)}.{Guid.NewGuid():N}.tmp");
+        try
+        {
+            using (var stream = new FileStream(
+                       tempPath,
+                       FileMode.CreateNew,
+                       FileAccess.Write,
+                       FileShare.None,
+                       bufferSize: 4096,
+                       FileOptions.WriteThrough))
+            using (var writer = new StreamWriter(stream, new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: false)))
+            {
+                writer.Write(contents);
+                writer.Flush();
+                stream.Flush(flushToDisk: true);
+            }
+            EnsurePrivateFile(tempPath);
+            File.Move(tempPath, finalPath, overwrite: true);
+            EnsurePrivateFile(finalPath);
+        }
+        finally
+        {
+            try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
+        }
+    }
+
+    public static void RejectReparseFile(string path)
+    {
+        if (File.Exists(path) && (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
+            throw new IOException($"Refusing reparse-point storage file: {path}");
     }
 
     private static void RejectExistingReparsePoints(string full, string root)

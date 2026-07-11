@@ -1373,24 +1373,43 @@ public sealed class MonitorEngine : IAsyncDisposable
     {
         var info = GetStorageInfo();
         if (string.IsNullOrWhiteSpace(newDir)) return info;
-        newDir = Path.GetFullPath(newDir.Trim());
+        newDir = StorageSecurity.PrepareDataDirectory(newDir);
         if (string.Equals(newDir, _dataDir, StringComparison.OrdinalIgnoreCase)) return info;
 
+        string targetDb = Path.Combine(newDir, "openwire.db");
+        string tempDb = Path.Combine(newDir, $".openwire.{Guid.NewGuid():N}.tmp");
         try
         {
-            Directory.CreateDirectory(newDir);
-            _store.Checkpoint(); // fold the WAL in so the single .db file is complete
-            File.Copy(Path.Combine(_dataDir, "openwire.db"), Path.Combine(newDir, "openwire.db"), overwrite: true);
-            // Persist the pointer at the FIXED default location so startup finds it.
-            File.WriteAllText(DataDirPointerPath, newDir);
+            _store.BackupTo(tempDb);
+            StorageSecurity.RejectReparseFile(targetDb);
+            DeleteStaleSidecar(targetDb + "-wal");
+            DeleteStaleSidecar(targetDb + "-shm");
+            File.Move(tempDb, targetDb, overwrite: true);
+            StorageSecurity.EnsurePrivateFile(targetDb);
+            long targetBytes = new FileInfo(targetDb).Length;
+
+            // Persist only after a verified database is atomically in place.
+            StorageSecurity.WritePrivateTextFileAtomic(DataDirPointerPath, newDir);
             info.DataDirectory = newDir;
+            info.DatabaseBytes = targetBytes;
             info.RestartRequired = true;
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"[storage] relocate failed: {ex.Message}");
         }
+        finally
+        {
+            try { if (File.Exists(tempDb)) File.Delete(tempDb); } catch { }
+        }
         return info;
+    }
+
+    private static void DeleteStaleSidecar(string path)
+    {
+        if (!File.Exists(path)) return;
+        StorageSecurity.RejectReparseFile(path);
+        File.Delete(path);
     }
 
     /// <summary>Fixed pointer file recording where the data directory lives, so the
