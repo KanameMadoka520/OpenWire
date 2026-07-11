@@ -201,6 +201,7 @@ CREATE TABLE IF NOT EXISTS alerts (
     severity INTEGER NOT NULL, title TEXT, message TEXT,
     app_id TEXT, app_name TEXT, device_id TEXT, remote_host TEXT, ack INTEGER NOT NULL DEFAULT 0);
 CREATE INDEX IF NOT EXISTS ix_alerts_time ON alerts(time);
+CREATE INDEX IF NOT EXISTS ix_alerts_ack ON alerts(ack);
 
 CREATE TABLE IF NOT EXISTS devices (
     id TEXT PRIMARY KEY, name TEXT, custom_name TEXT, ip TEXT, mac TEXT, vendor TEXT,

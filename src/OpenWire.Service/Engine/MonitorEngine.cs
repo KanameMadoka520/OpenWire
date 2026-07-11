@@ -70,6 +70,11 @@ public sealed class MonitorEngine : IAsyncDisposable
 
     private List<ConnectionInfo> _connectionsSnapshot = new();
     private volatile EngineStatus _status = new();
+    private const int StatusDbRefreshMs = 30_000;
+    private long _cachedTotalIn, _cachedTotalOut;
+    private int _cachedUnreadAlerts;
+    private long _nextStatusDbRefreshTick;
+    private int _statusDbDirty = 1;
     private AppSettings _settings = new();
     private NetworkInfo _network = NetworkInfo.None;
     private DateTimeOffset _monitoringSince;
@@ -124,6 +129,8 @@ public sealed class MonitorEngine : IAsyncDisposable
         _network = NetworkIdentity.Current();
         _monitoringSince = DateTimeOffset.UtcNow;
         _currentBucket = MinuteBucket(_monitoringSince);
+        if (_settings.DataPlan.Enabled)
+            _settings.DataPlan.UsedBytes = _store.DataPlanUsed(CycleStartBucket());
 
         _alerts.SeedKnownApps(_store.GetKnownAppIds());
         _alerts.SeedKnownDevices(_store.GetKnownDeviceIds());
@@ -445,6 +452,7 @@ public sealed class MonitorEngine : IAsyncDisposable
                 _minuteWriteQueue.Dequeue();
                 _queuedGlobalIn -= batch.GlobalIn;
                 _queuedGlobalOut -= batch.GlobalOut;
+                MarkStatusDbDirty();
                 _minuteWriteFailures = 0;
                 _nextMinuteWriteAttemptTick = 0;
 
@@ -583,7 +591,11 @@ public sealed class MonitorEngine : IAsyncDisposable
                 minuteCutoff = Math.Min(minuteCutoff, CycleStartBucket());
             long dayCutoff = LocalDayStart(now) - Math.Max(days, 730) * 86400L; // keep ≥2y of daily rollups
             int removed = _store.PruneOldHistory(minuteCutoff, dayCutoff);
-            if (removed > 0) Console.WriteLine($"[Engine] pruned {removed} history rows older than {days}d.");
+            if (removed > 0)
+            {
+                MarkStatusDbDirty();
+                Console.WriteLine($"[Engine] pruned {removed} history rows older than {days}d.");
+            }
         }
         catch (Exception ex) { Console.Error.WriteLine($"[Engine] prune: {ex.Message}"); }
     }
@@ -648,6 +660,7 @@ public sealed class MonitorEngine : IAsyncDisposable
     private void Persist(Alert alert)
     {
         _store.InsertAlert(alert);
+        MarkStatusDbDirty();
         Events?.Invoke(new AlertRaisedEvent { Alert = alert });
     }
 
@@ -667,16 +680,15 @@ public sealed class MonitorEngine : IAsyncDisposable
 
     private EngineStatus BuildStatus(DateTimeOffset now, long upBps, long downBps)
     {
+        RefreshStatusDbCache();
         int active = _appStore.Values.Count(u => u.IsActive);
-        var (totIn, totOut) = _store.TotalTraffic();
         var plan = _settings.DataPlan;
-        if (plan.Enabled) plan.UsedBytes = _store.DataPlanUsed(CycleStartBucket());
 
         long wan, lan;
         if (_etwActive && _etw.IsRunning) { (wan, lan) = _etw.ReadWanLan(); }
         else
         {
-            wan = totIn + totOut + _queuedGlobalIn + _queuedGlobalOut
+            wan = _cachedTotalIn + _cachedTotalOut + _queuedGlobalIn + _queuedGlobalOut
                 + _pendingGlobalIn + _pendingGlobalOut;
             lan = 0;
         }
@@ -688,18 +700,44 @@ public sealed class MonitorEngine : IAsyncDisposable
             FirewallMode = _settings.FirewallMode,
             DownloadBytesPerSec = downBps,
             UploadBytesPerSec = upBps,
-            TotalBytesIn = totIn + _queuedGlobalIn + _pendingGlobalIn,
-            TotalBytesOut = totOut + _queuedGlobalOut + _pendingGlobalOut,
+            TotalBytesIn = _cachedTotalIn + _queuedGlobalIn + _pendingGlobalIn,
+            TotalBytesOut = _cachedTotalOut + _queuedGlobalOut + _pendingGlobalOut,
             TotalWanBytes = wan,
             TotalLanBytes = lan,
             ActiveAppCount = active,
             ActiveConnectionCount = _connectionsSnapshot.Count(ConnectionEnumerator.HasRemotePeer),
             OnlineDeviceCount = _status.OnlineDeviceCount,
-            UnreadAlertCount = _store.UnreadAlertCount(),
+            UnreadAlertCount = _cachedUnreadAlerts,
             MonitoringSince = _monitoringSince,
             DataPlan = plan,
             CanEnforceFirewall = CanEnforceFirewall,
         };
+    }
+
+    private void MarkStatusDbDirty() => Interlocked.Exchange(ref _statusDbDirty, 1);
+
+    private void RefreshStatusDbCache()
+    {
+        long nowTick = Environment.TickCount64;
+        bool dirty = Interlocked.Exchange(ref _statusDbDirty, 0) != 0;
+        if (!dirty && nowTick < _nextStatusDbRefreshTick) return;
+
+        try
+        {
+            var totals = _store.TotalTraffic();
+            int unread = _store.UnreadAlertCount();
+            _cachedTotalIn = totals.In;
+            _cachedTotalOut = totals.Out;
+            _cachedUnreadAlerts = unread;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[Storage] status refresh failed: {ex.Message}");
+        }
+        finally
+        {
+            _nextStatusDbRefreshTick = nowTick + StatusDbRefreshMs;
+        }
     }
 
     // ---------------- query API (called by IPC) ----------------
@@ -1432,6 +1470,7 @@ public sealed class MonitorEngine : IAsyncDisposable
     {
         if (all) _store.AckAllAlerts();
         else _store.AckAlert(id);
+        MarkStatusDbDirty();
     }
 
     public List<Device> GetDevices() => _store.GetDevices();
@@ -1488,6 +1527,8 @@ public sealed class MonitorEngine : IAsyncDisposable
         }
         _dns.Enabled = settings.ResolveHostNames;
         _reputation.SetApiKey(settings.VirusTotalApiKey);
+        if (settings.DataPlan.Enabled)
+            settings.DataPlan.UsedBytes = _store.DataPlanUsed(CycleStartBucket());
         SetFirewallMode(settings.FirewallMode);
     }
 
@@ -1511,6 +1552,7 @@ public sealed class MonitorEngine : IAsyncDisposable
     public StorageInfo ClearData(ClearDataMode mode)
     {
         _store.ClearData(mode);
+        MarkStatusDbDirty();
         return GetStorageInfo();
     }
 
