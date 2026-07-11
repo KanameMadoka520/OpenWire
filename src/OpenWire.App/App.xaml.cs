@@ -320,12 +320,7 @@ public partial class App : Application
 
     private void OnDispatcherException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
-        try
-        {
-            File.AppendAllText(
-                Path.Combine(Path.GetTempPath(), "OpenWire-ui.log"),
-                $"{DateTimeOffset.Now:O}  {e.Exception}\n\n");
-        }
+        try { UiCrashLog.Write(e.Exception); }
         catch { /* logging is best-effort */ }
         e.Handled = true; // keep the app alive
     }
