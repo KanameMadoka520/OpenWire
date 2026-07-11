@@ -139,12 +139,15 @@ public partial class UsageViewModel : ObservableObject
         => sb.Append(category).Append(',').Append(Csv(name)).Append(',').Append(Csv(code)).Append(',')
              .Append(inB).Append(',').Append(outB).Append(',').Append(total).Append('\n');
 
-    /// <summary>Minimal RFC-4180 CSV field escaping (quote when the value holds a comma/quote/newline).</summary>
+    /// <summary>Neutralize spreadsheet formulas, then apply RFC-4180 field escaping.</summary>
     private static string Csv(string value)
     {
         if (string.IsNullOrEmpty(value)) return "";
-        if (value.IndexOfAny(new[] { ',', '"', '\n', '\r' }) < 0) return value;
-        return "\"" + value.Replace("\"", "\"\"") + "\"";
+        string safe = value[0] is '=' or '+' or '-' or '@' or '\t' or '\r' or '\n'
+            ? "'" + value
+            : value;
+        if (safe.IndexOfAny(new[] { ',', '"', '\n', '\r' }) < 0) return safe;
+        return "\"" + safe.Replace("\"", "\"\"") + "\"";
     }
 
     private void ApplyAppsSort() => Apps = Sort(_appsRaw, AppsSort, a => a.App.Name, a => a.Total);
