@@ -38,7 +38,7 @@ public sealed class EtwNetworkMonitor : IDisposable
 
     public bool IsRunning => _running;
 
-    public readonly record struct EndpointKey(int Pid, string Remote);
+    public readonly record struct EndpointKey(int Pid, IPAddress Remote);
 
     /// <summary>Attempt to start the kernel ETW session. Returns false if unavailable.</summary>
     public bool TryStart()
@@ -122,9 +122,9 @@ public sealed class EtwNetworkMonitor : IDisposable
             if (incoming) Interlocked.Add(ref pc.In, size);
             else Interlocked.Add(ref pc.Out, size);
 
-            if (remote is not null)
+            if (!local && remote is not null)
             {
-                var key = new EndpointKey(pid, remote.ToString());
+                var key = new EndpointKey(pid, remote);
                 if (_perEndpoint.TryGetValue(key, out var ec))
                 {
                     if (incoming) Interlocked.Add(ref ec.In, size);
@@ -168,7 +168,8 @@ public sealed class EtwNetworkMonitor : IDisposable
     {
         var result = new List<(int, string, long, long)>(_perEndpoint.Count);
         foreach (var kv in _perEndpoint)
-            result.Add((kv.Key.Pid, kv.Key.Remote, Interlocked.Read(ref kv.Value.In), Interlocked.Read(ref kv.Value.Out)));
+            result.Add((kv.Key.Pid, kv.Key.Remote.ToString(),
+                Interlocked.Read(ref kv.Value.In), Interlocked.Read(ref kv.Value.Out)));
         return result;
     }
 

@@ -55,23 +55,27 @@ public sealed class ConnectionEnumerator
     {
         if (IPAddress.IsLoopback(ip)) return true;
 
+        Span<byte> bytes = stackalloc byte[16];
+        if (!ip.TryWriteBytes(bytes, out int length)) return false;
+
         if (ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
-        {
-            var b = ip.GetAddressBytes();
-            return b[0] == 10
-                || (b[0] == 172 && b[1] >= 16 && b[1] <= 31)
-                || (b[0] == 192 && b[1] == 168)
-                || (b[0] == 169 && b[1] == 254)   // link-local
-                || b[0] == 0;
-        }
+            return length == 4 && IsLocalIpv4(bytes);
 
         if (ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6)
         {
             if (ip.IsIPv6LinkLocal || ip.IsIPv6SiteLocal) return true;
-            var b = ip.GetAddressBytes();
-            return (b[0] & 0xFE) == 0xFC; // unique local fc00::/7
+            if (ip.Equals(IPAddress.IPv6Any)) return true;
+            if (ip.IsIPv4MappedToIPv6 && length == 16) return IsLocalIpv4(bytes[12..]);
+            return length == 16 && (bytes[0] & 0xFE) == 0xFC; // unique local fc00::/7
         }
 
         return false;
     }
+
+    private static bool IsLocalIpv4(ReadOnlySpan<byte> bytes)
+        => bytes[0] == 10
+            || (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31)
+            || (bytes[0] == 192 && bytes[1] == 168)
+            || (bytes[0] == 169 && bytes[1] == 254)   // link-local
+            || bytes[0] == 0;
 }
