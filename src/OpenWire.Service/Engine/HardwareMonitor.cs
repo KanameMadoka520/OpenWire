@@ -98,8 +98,11 @@ public sealed class HardwareMonitor : IDisposable
 
     public void Start()
     {
-        _timer = new Timer(_ => Sample(), null, 500, SampleIntervalMs);
+        // Idle is the safe default: the IPC server explicitly enables 4 Hz only while a visible
+        // Hardware page asks for it. This also covers the startup grace period before any client.
+        _timer = new Timer(_ => Sample(), null, IdleIntervalMs, IdleIntervalMs);
         _procs.Start();
+        _procs.SetUiActive(false);
     }
 
     /// <summary>Throttle the samplers when the UI isn't actively viewing them. The hardware timer
