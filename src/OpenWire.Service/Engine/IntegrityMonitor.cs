@@ -24,6 +24,8 @@ public sealed class IntegrityMonitor
     private readonly Dictionary<string, string> _gatewayMac = new(StringComparer.OrdinalIgnoreCase);
     private string? _proxyState;
     private bool _proxySeeded;
+    private string? _netState;
+    private bool _netSeeded;
 
     /// <summary>Capture the current state as the baseline (no alerts on first run).</summary>
     public void Seed()
@@ -33,6 +35,8 @@ public sealed class IntegrityMonitor
         foreach (var (ip, mac) in CurrentGateways()) _gatewayMac[ip] = mac;
         var p = ReadProxyState();
         if (p is not null) { _proxyState = p; _proxySeeded = true; }
+        var n = NetworkListManagerInterop.ReadState();
+        if (n is not null) { _netState = n; _netSeeded = true; }
     }
 
     /// <summary>The hosts file was modified since the last observation.</summary>
@@ -93,6 +97,33 @@ public sealed class IntegrityMonitor
             Severity = AlertSeverity.Warning,
             Title = "Proxy settings changed",
             Message = $"Your system internet proxy configuration changed ({DescribeProxy(now)}). If you did not change it, review your proxy settings — malware can silently redirect traffic this way.",
+        };
+    }
+
+    /// <summary>Internet reachability was lost or restored since the last observation. Only the
+    /// up↔down transition of overall internet access is reported (minor connectivity-flag jitter is
+    /// ignored) so the alert fires on the event that actually matters.</summary>
+    public Alert? CheckInternetAccess()
+    {
+        string? now = NetworkListManagerInterop.ReadState();
+        if (now is null) return null;                    // NLM unqueryable — no observation, no alarm
+        if (!_netSeeded) { _netState = now; _netSeeded = true; return null; }
+        string prev = _netState!;
+        _netState = now;
+
+        bool wasUp = NetworkListManagerInterop.IsInternetUp(prev);
+        bool isUp = NetworkListManagerInterop.IsInternetUp(now);
+        if (wasUp == isUp) return null;                  // connectivity changed but internet up/down did not
+
+        return new Alert
+        {
+            Time = DateTimeOffset.UtcNow,
+            Kind = AlertKind.InternetAccessChanged,
+            Severity = isUp ? AlertSeverity.Info : AlertSeverity.Warning,
+            Title = isUp ? "Internet access restored" : "Internet access lost",
+            Message = isUp
+                ? "This computer regained internet access."
+                : "This computer lost internet access. If you did not expect this, check your connection — a dropped link, a captive portal, or a security tool may have cut it.",
         };
     }
 

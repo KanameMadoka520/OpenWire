@@ -107,6 +107,9 @@ public enum AlertKind
 
     /// <summary>The system internet proxy configuration changed.</summary>
     ProxySettingsChanged = 13,
+
+    /// <summary>Internet connectivity was lost or restored (connectivity-state change).</summary>
+    InternetAccessChanged = 14,
 }
 
 /// <summary>Severity used for colour-coding alerts.</summary>

@@ -51,6 +51,42 @@ public sealed class AlertEngine
         };
     }
 
+    /// <summary>A known application's on-disk metadata changed versus the recorded baseline — a new
+    /// version, a different Authenticode signer, or a binary that lost its signature. A silent change
+    /// to an already-trusted program is a classic replacement / hijack vector. Losing a signature is
+    /// treated as a warning; a routine version bump is informational.</summary>
+    public Alert? CheckAppInfo(AppInfo fresh, string prevPublisher, string prevVersion, bool prevSigned)
+    {
+        string nowPub = fresh.Publisher ?? "";
+        string nowVer = fresh.Version ?? "";
+
+        var changes = new List<string>();
+        if (!string.Equals(prevVersion, nowVer, StringComparison.Ordinal)
+            && !(prevVersion.Length == 0 && nowVer.Length == 0))
+            changes.Add($"version {Show(prevVersion)} → {Show(nowVer)}");
+        if (!string.Equals(prevPublisher, nowPub, StringComparison.Ordinal)
+            && !(prevPublisher.Length == 0 && nowPub.Length == 0))
+            changes.Add($"publisher {Show(prevPublisher)} → {Show(nowPub)}");
+        if (prevSigned != fresh.IsSigned)
+            changes.Add(fresh.IsSigned ? "now digitally signed" : "no longer digitally signed");
+
+        if (changes.Count == 0) return null;
+
+        bool lostSignature = prevSigned && !fresh.IsSigned;
+        return new Alert
+        {
+            Time = DateTimeOffset.UtcNow,
+            Kind = AlertKind.AppInfoChanged,
+            Severity = lostSignature ? AlertSeverity.Warning : AlertSeverity.Info,
+            Title = "Application changed",
+            Message = $"{fresh.Name} changed on disk: {string.Join("; ", changes)}. If you did not update this app, review it — a silent change to a trusted program can indicate tampering.",
+            AppId = fresh.Id,
+            AppName = fresh.Name,
+        };
+    }
+
+    private static string Show(string s) => string.IsNullOrEmpty(s) ? "(none)" : s;
+
     /// <summary>Devices joining (new) or leaving the LAN since the last full scan. The input is the
     /// set discovered online by the latest scan; anything that was online last time and is now absent
     /// is treated as having left. The first scan only seeds the baseline (no leave alerts).</summary>

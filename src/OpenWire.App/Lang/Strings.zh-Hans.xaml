@@ -265,6 +265,8 @@
     <sys:String x:Key="L.Set.MonArpSpoofing">ARP 欺骗（网关 MAC 变化）</sys:String>
     <sys:String x:Key="L.Set.MonProxyChanges">代理设置变更</sys:String>
     <sys:String x:Key="L.Set.MonRdp">远程桌面（RDP）连接</sys:String>
+    <sys:String x:Key="L.Set.MonAppInfo">应用变更（新版本 / 签名者）</sys:String>
+    <sys:String x:Key="L.Set.MonInternetAccess">断网或恢复联网</sys:String>
     <sys:String x:Key="L.Set.ShowNotifications">显示桌面通知</sys:String>
     <sys:String x:Key="L.Set.MinimizeToTray">最小化到系统托盘</sys:String>
     <sys:String x:Key="L.Set.Resolution">解析</sys:String>

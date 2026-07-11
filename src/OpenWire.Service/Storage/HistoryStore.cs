@@ -516,6 +516,24 @@ CREATE TABLE IF NOT EXISTS devices (
         }
     }
 
+    /// <summary>Stored metadata baseline for an app (publisher, version, signed-state),
+    /// or null if the app has never been recorded. Feeds the app-info-changed monitor.</summary>
+    public (string Publisher, string Version, bool IsSigned)? GetAppMeta(string appId)
+    {
+        lock (_lock)
+        {
+            using var cmd = _conn.CreateCommand();
+            cmd.CommandText = "SELECT publisher, version, is_signed FROM app_meta WHERE app_id=$a;";
+            Bind(cmd, "$a", appId);
+            using var r = cmd.ExecuteReader();
+            if (!r.Read()) return null;
+            return (
+                r.IsDBNull(0) ? "" : r.GetString(0),
+                r.IsDBNull(1) ? "" : r.GetString(1),
+                !r.IsDBNull(2) && r.GetInt64(2) != 0);
+        }
+    }
+
     public void UpsertHostMeta(string hostKey, string remoteAddr, string hostName, GeoInfo geo)
     {
         lock (_lock)

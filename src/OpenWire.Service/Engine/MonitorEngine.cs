@@ -38,6 +38,10 @@ public sealed class MonitorEngine : IAsyncDisposable
     private readonly object _settingsLock = new();
     private readonly Queue<TrafficSample> _ring = new();
     private readonly ConcurrentDictionary<string, AppUsage> _appStore = new();
+
+    // Last-observed on-disk write time per app path, so the app-info monitor only does the
+    // expensive metadata + signature re-read when a binary actually changed.
+    private readonly Dictionary<string, long> _appFileMtime = new(StringComparer.OrdinalIgnoreCase);
     private volatile ConcurrentDictionary<string, AppFirewallRule> _firewallCache = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, AppInfo> _pendingApps = new();
 
@@ -547,6 +551,15 @@ public sealed class MonitorEngine : IAsyncDisposable
             if (a is not null) Persist(a);
         }
 
+        if (_settings.MonitorInternetAccess)
+        {
+            var a = _integrity.CheckInternetAccess();
+            if (a is not null) Persist(a);
+        }
+
+        if (_settings.MonitorAppInfo)
+            CheckAppInfoChanges();
+
         if (_settings.DataPlan.Enabled)
         {
             _settings.DataPlan.UsedBytes = _store.DataPlanUsed(CycleStartBucket());
@@ -557,6 +570,48 @@ public sealed class MonitorEngine : IAsyncDisposable
         RefreshNetwork();
         RefreshFirewallCache();
         EvictIdleApps();
+    }
+
+    /// <summary>
+    /// Detect known apps whose on-disk binary changed (new version, different signer, or a lost
+    /// signature) since we last saw them. Gated on the file's last-write time so the expensive
+    /// metadata + Authenticode re-read only runs when the file actually changed; the very first
+    /// observation of each path just seeds the baseline. History (app_meta) carries the metadata
+    /// baseline across restarts, so a change is caught even if the engine was restarted in between.
+    /// </summary>
+    private void CheckAppInfoChanges()
+    {
+        foreach (var u in _appStore.Values)
+        {
+            string path = u.App.ExecutablePath;
+            if (string.IsNullOrEmpty(path)) continue;
+
+            long mtime;
+            try
+            {
+                if (!File.Exists(path)) continue;
+                mtime = File.GetLastWriteTimeUtc(path).Ticks;
+            }
+            catch { continue; }                              // unreadable — skip, never false-alarm
+
+            if (!_appFileMtime.TryGetValue(path, out var prevMtime))
+            {
+                _appFileMtime[path] = mtime;                 // first observation seeds the baseline
+                continue;
+            }
+            if (mtime == prevMtime) continue;
+            _appFileMtime[path] = mtime;
+
+            var baseline = _store.GetAppMeta(u.App.Id);
+            var fresh = _processes.ReadFresh(path);
+            _store.UpsertAppMeta(fresh);                     // advance the stored baseline
+            if (baseline is null) continue;                  // nothing to diff against yet
+
+            if (!_settings.IsAlertEnabled(AlertKind.AppInfoChanged)) continue;
+            var alert = _alerts.CheckAppInfo(
+                fresh, baseline.Value.Publisher, baseline.Value.Version, baseline.Value.IsSigned);
+            if (alert is not null) Persist(alert);
+        }
     }
 
     /// <summary>

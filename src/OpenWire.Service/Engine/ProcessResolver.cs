@@ -97,6 +97,18 @@ public sealed class ProcessResolver
         return info;
     }
 
+    /// <summary>
+    /// Re-read a path's metadata from disk, bypassing the path cache, and refresh the cache
+    /// with the result. Used by the app-info monitor to notice that an on-disk binary changed
+    /// (new version / signer / lost signature) after it was first cached.
+    /// </summary>
+    public AppInfo ReadFresh(string path)
+    {
+        var info = BuildFromPath(path);
+        _byPath[path] = info;
+        return info;
+    }
+
     private static string ExtractCommonName(string distinguishedName)
     {
         // Pull "CN=..." out of an X.500 subject; tolerate quoting/ordering.

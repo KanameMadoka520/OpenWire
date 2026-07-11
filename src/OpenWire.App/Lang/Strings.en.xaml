@@ -266,6 +266,8 @@
     <sys:String x:Key="L.Set.MonArpSpoofing">ARP spoofing (gateway MAC changes)</sys:String>
     <sys:String x:Key="L.Set.MonProxyChanges">Proxy setting changes</sys:String>
     <sys:String x:Key="L.Set.MonRdp">Remote Desktop (RDP) connections</sys:String>
+    <sys:String x:Key="L.Set.MonAppInfo">Application changes (new version / signer)</sys:String>
+    <sys:String x:Key="L.Set.MonInternetAccess">Internet access lost or restored</sys:String>
     <sys:String x:Key="L.Set.ShowNotifications">Show desktop notifications</sys:String>
     <sys:String x:Key="L.Set.MinimizeToTray">Minimize to the system tray</sys:String>
     <sys:String x:Key="L.Set.Resolution">RESOLUTION</sys:String>
