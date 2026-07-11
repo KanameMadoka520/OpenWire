@@ -117,6 +117,10 @@ public sealed class MonitorEngine : IAsyncDisposable
         _integrity.Seed();
 
         CanEnforceFirewall = _firewall.CanEnforce();
+        // Lockdown is a temporary UI-controlled overlay, not a persisted policy. Clear any
+        // stale generation left by a crash before the engine begins reporting its state.
+        if (CanEnforceFirewall)
+            try { _firewall.SetBlockAll(false); } catch { }
         _etwActive = _etw.TryStart();
         _hardware.Start();
         RefreshFirewallCache();
@@ -1460,6 +1464,9 @@ public sealed class MonitorEngine : IAsyncDisposable
         }
 
         try { FlushMinute(_currentBucket); } catch { }
+        // Never leave a user without the UI/control channel that can reverse lockdown.
+        if (CanEnforceFirewall)
+            try { _firewall.SetBlockAll(false); } catch { }
         _etw.Dispose();
         _reputation.Dispose();
         _hardware.Dispose();
