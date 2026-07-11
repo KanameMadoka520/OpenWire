@@ -12,6 +12,7 @@ public partial class HardwareView : UserControl
     // 4 Hz to match the engine's sample rate: frequent, fine graph updates read as a
     // continuous scroll rather than a once-a-second step.
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(250) };
+    private bool _refreshing;
 
     // Collapsible left process panel (GlassWire-style): hide it to give the graphs the
     // full width; the funnel button in the header brings it back. The star width is
@@ -26,7 +27,7 @@ public partial class HardwareView : UserControl
         Unloaded += OnUnloaded;
         // Skip the poll (and the engine's full-snapshot serialization it drives) while the window
         // is hidden to the tray — IsVisible goes false then, even though the timer keeps ticking.
-        _timer.Tick += async (_, _) => { if (_vm is not null && IsVisible) await _vm.RefreshAsync(); };
+        _timer.Tick += async (_, _) => await RefreshOnceAsync();
     }
 
     private async void OnLoaded(object sender, System.Windows.RoutedEventArgs e)
@@ -34,7 +35,7 @@ public partial class HardwareView : UserControl
         _vm = DataContext as HardwareViewModel;
         if (_vm is null) return;
         _vm.SnapshotUpdated += OnSnapshot;
-        try { await _vm.RefreshAsync(); } catch { }
+        await RefreshOnceAsync();
         _timer.Start();
     }
 
@@ -42,6 +43,15 @@ public partial class HardwareView : UserControl
     {
         _timer.Stop();
         if (_vm is not null) _vm.SnapshotUpdated -= OnSnapshot;
+    }
+
+    private async Task RefreshOnceAsync()
+    {
+        if (_vm is null || !IsVisible || _refreshing) return;
+        _refreshing = true;
+        try { await _vm.RefreshAsync(); }
+        catch { }
+        finally { _refreshing = false; }
     }
 
     /// <summary>Switch the left panel between the process list and the hardware-resource
