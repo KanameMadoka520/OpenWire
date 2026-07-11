@@ -5,6 +5,7 @@ using OpenWire.Core.Ipc;
 using OpenWire.Core.Util;
 using OpenWire.Service.Engine;
 using OpenWire.Service.Ipc;
+using OpenWire.Service.Storage;
 
 [assembly: SupportedOSPlatform("windows")]
 
@@ -58,8 +59,16 @@ internal static class Program
             return 0;
         }
 
-        string dataDir = ResolveDataDir(args);
-        Directory.CreateDirectory(dataDir);
+        string dataDir;
+        try
+        {
+            dataDir = StorageSecurity.EnsurePrivateDirectory(ResolveDataDir(args));
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Invalid or insecure data directory: {ex.Message}");
+            return 4;
+        }
         Console.WriteLine($"Data directory : {dataDir}");
         Console.WriteLine($"Elevated       : {IsElevated()}");
         if (!IsElevated())
@@ -182,24 +191,30 @@ internal static class Program
     {
         for (int i = 0; i < args.Length - 1; i++)
             if (args[i] is "--data" or "-d")
-                return args[i + 1];
+                return StorageSecurity.NormalizeLocalDirectory(args[i + 1]);
 
         // A datadir.txt pointer (written when the user relocates storage in Settings)
         // overrides the default location, so a moved database is found on restart.
+        string defaultDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+            "OpenWire");
         try
         {
+            StorageSecurity.EnsurePrivateDirectory(defaultDir);
             var pointer = OpenWire.Service.Engine.MonitorEngine.DataDirPointerPath;
             if (File.Exists(pointer))
             {
+                if ((File.GetAttributes(pointer) & FileAttributes.ReparsePoint) != 0)
+                    throw new IOException("The storage pointer is a reparse point.");
+                StorageSecurity.EnsurePrivateFile(pointer);
                 var dir = File.ReadAllText(pointer).Trim();
-                if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir)) return dir;
+                if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir))
+                    return StorageSecurity.NormalizeLocalDirectory(dir);
             }
         }
         catch { /* fall back to the default */ }
 
-        return Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-            "OpenWire");
+        return defaultDir;
     }
 
     private static bool IsElevated()

@@ -19,12 +19,22 @@ public sealed class HistoryStore : IDisposable
 
     public HistoryStore(string dbPath)
     {
-        DbPath = dbPath;
-        Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
-        _conn = new SqliteConnection($"Data Source={dbPath};Cache=Shared");
+        string directory = StorageSecurity.EnsurePrivateDirectory(Path.GetDirectoryName(dbPath)!);
+        DbPath = Path.Combine(directory, Path.GetFileName(dbPath));
+        var connectionString = new SqliteConnectionStringBuilder
+        {
+            DataSource = DbPath,
+            Mode = SqliteOpenMode.ReadWriteCreate,
+            Cache = SqliteCacheMode.Private,
+            Pooling = false,
+        };
+        _conn = new SqliteConnection(connectionString.ToString());
         _conn.Open();
         Exec("PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA busy_timeout=3000;");
         CreateSchema();
+        StorageSecurity.EnsurePrivateFile(DbPath);
+        StorageSecurity.EnsurePrivateFile(DbPath + "-wal");
+        StorageSecurity.EnsurePrivateFile(DbPath + "-shm");
     }
 
     /// <summary>Total bytes of the database (main file + WAL + SHM sidecars).</summary>
