@@ -84,7 +84,7 @@ public sealed class MonitorEngine : IAsyncDisposable
 
     public event Action<IpcMessage>? Events;
 
-    public string EngineVersion => "0.1.0";
+    public string EngineVersion => "0.1.1";
     public bool CanEnforceFirewall { get; private set; }
     public bool GeoIpAvailable => _geo.Available;
 
@@ -1124,7 +1124,16 @@ public sealed class MonitorEngine : IAsyncDisposable
         catch (Exception ex) { Console.Error.WriteLine($"[Engine] anomaly scan: {ex.Message}"); }
     }
 
-    public HardwareSnapshot GetHardware() => _hardware.GetSnapshot();
+    public HardwareSnapshot GetHardware(
+        string? historyStreamId = null,
+        long afterHistorySequence = 0,
+        bool includeDetails = true,
+        bool includeHistoryMetadata = true)
+        => _hardware.GetSnapshot(
+            historyStreamId,
+            afterHistorySequence,
+            includeDetails,
+            includeHistoryMetadata);
 
     /// <summary>Throttle the high-frequency hardware / per-process samplers when the UI isn't being
     /// viewed. The 1-second traffic tick (core recording) is never gated.</summary>

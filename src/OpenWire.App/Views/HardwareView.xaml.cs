@@ -25,8 +25,8 @@ public partial class HardwareView : UserControl
         InitializeComponent();
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
-        // Skip the poll (and the engine's full-snapshot serialization it drives) while the window
-        // is hidden to the tray — IsVisible goes false then, even though the timer keeps ticking.
+        // Skip polling while the window is hidden to the tray — IsVisible goes false then,
+        // even though the timer keeps ticking.
         _timer.Tick += async (_, _) => await RefreshOnceAsync();
     }
 
@@ -85,26 +85,10 @@ public partial class HardwareView : UserControl
 
     private void OnSnapshot(HardwareSnapshot hw)
     {
-        // One shared timestamp array (epoch seconds) feeds all four scrolling graphs.
-        int n = hw.History.Count;
-        var times = new double[n];
-        var cpu = new double[n];
-        var mem = new double[n];
-        var disk = new double[n];
-        var gpu = new double[n];
-        for (int i = 0; i < n; i++)
-        {
-            var s = hw.History[i];
-            times[i] = s.Time.ToUnixTimeMilliseconds() / 1000.0;
-            cpu[i] = s.CpuPercent;
-            mem[i] = s.MemoryPercent;
-            disk[i] = s.DiskBytesPerSec;
-            gpu[i] = s.GpuPercent;
-        }
-        CpuGraph.SetSamples(times, cpu, bytes: false);
-        MemGraph.SetSamples(times, mem, bytes: false);
-        DiskGraph.SetSamples(times, disk, bytes: true);
-        GpuGraph.SetSamples(times, gpu, bytes: false);
+        CpuGraph.SetSamples(hw.History, static s => s.CpuPercent, bytes: false);
+        MemGraph.SetSamples(hw.History, static s => s.MemoryPercent, bytes: false);
+        DiskGraph.SetSamples(hw.History, static s => s.DiskBytesPerSec, bytes: true);
+        GpuGraph.SetSamples(hw.History, static s => s.GpuPercent, bytes: false);
 
         // Time axis: 7 evenly-spaced absolute times across the displayed 5-minute
         // window. The graphs scroll a fixed window ending at now - DisplayDelay,

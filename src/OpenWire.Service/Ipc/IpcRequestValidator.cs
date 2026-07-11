@@ -19,10 +19,17 @@ internal static class IpcRequestValidator
             case HelloRequest hello:
                 return Text(hello.ClientVersion, MaxShortText, allowEmpty: true, "clientVersion", out error);
 
-            case GetStatusRequest or GetConnectionsRequest or GetHardwareRequest or GetFirewallRequest
+            case GetStatusRequest or GetConnectionsRequest or GetFirewallRequest
                 or GetSettingsRequest or GetGeoIpStatusRequest or UpdateGeoIpRequest
                 or GetStorageInfoRequest:
                 return true;
+
+            case GetHardwareRequest hardware:
+                if (hardware.AfterHistorySequence < 0)
+                    return Fail("Hardware history sequence cannot be negative.", out error);
+                return hardware.HistoryStreamId is null
+                    || Text(hardware.HistoryStreamId, MaxShortText, allowEmpty: true,
+                        "historyStreamId", out error);
 
             case GetGraphRequest graph:
                 return Defined(graph.Range, "range", out error);

@@ -6,8 +6,8 @@ using OpenWire.Core.Models;
 namespace OpenWire.Service.Engine;
 
 /// <summary>
-/// Samples CPU / memory / disk / GPU utilisation once a second and keeps a short
-/// rolling history for the Hardware Resources graphs.
+/// Samples CPU / memory / disk / GPU utilisation adaptively (4 Hz while viewed,
+/// low-frequency while idle) and keeps a short rolling graph history.
 /// </summary>
 [SupportedOSPlatform("windows")]
 public sealed class HardwareMonitor : IDisposable
@@ -17,9 +17,13 @@ public sealed class HardwareMonitor : IDisposable
     private const int SampleIntervalMs = 250;
 
     private const int MaxHistory = 5 * 60 * 1000 / SampleIntervalMs + 20; // 5 min @ 4 Hz + margin
+    private static readonly TimeSpan HistoryWindow = TimeSpan.FromMinutes(5) + TimeSpan.FromSeconds(10);
 
     private readonly object _lock = new();
     private readonly Queue<HardwareSample> _history = new();
+    private string _historyStreamId = Guid.NewGuid().ToString("N");
+    private long _historySequence;
+    private DateTimeOffset _lastHistoryTime;
 
     /// <summary>How often (in ticks) the GPU counter instance lists are re-enumerated (~5 s).</summary>
     private const int GpuRefreshTicks = 5000 / SampleIntervalMs;
@@ -286,19 +290,43 @@ public sealed class HardwareMonitor : IDisposable
                 foreach (var kv in perLuid) _gpuByLuid[kv.Key] = kv.Value;
                 _diskPct.Clear();
                 foreach (var kv in diskPct) _diskPct[kv.Key] = kv.Value;
-                _history.Enqueue(new HardwareSample
+                var sampleTime = NormalizeSampleTime(DateTimeOffset.UtcNow);
+
+                var sample = new HardwareSample
                 {
-                    Time = DateTimeOffset.UtcNow,
+                    Sequence = ++_historySequence,
+                    Time = sampleTime,
                     CpuPercent = cpu,
                     MemoryPercent = memPct,
                     DiskBytesPerSec = dr + dw,
                     GpuPercent = gpu,
-                });
-                while (_history.Count > MaxHistory) _history.Dequeue();
+                };
+                _history.Enqueue(sample);
+                while (_history.Count > MaxHistory
+                    || (_history.Count > 0 && sample.Time - _history.Peek().Time > HistoryWindow))
+                    _history.Dequeue();
             }
         }
         catch { /* transient counter error */ }
         finally { Volatile.Write(ref _sampling, 0); }
+    }
+
+    /// <summary>Keep graph timestamps ordered. A material wall-clock rollback starts a new
+    /// stream so clients discard points anchored to the old clock instead of drawing backwards.</summary>
+    private DateTimeOffset NormalizeSampleTime(DateTimeOffset sampleTime)
+    {
+        if (_lastHistoryTime != default && sampleTime < _lastHistoryTime - TimeSpan.FromSeconds(1))
+        {
+            _history.Clear();
+            _historySequence = 0;
+            _historyStreamId = Guid.NewGuid().ToString("N");
+        }
+        else if (sampleTime <= _lastHistoryTime)
+        {
+            sampleTime = _lastHistoryTime.AddTicks(1);
+        }
+        _lastHistoryTime = sampleTime;
+        return sampleTime;
     }
 
     private static double SafeNext(PerformanceCounter? c)
@@ -307,10 +335,38 @@ public sealed class HardwareMonitor : IDisposable
         catch { return 0; }
     }
 
-    public HardwareSnapshot GetSnapshot()
+    public HardwareSnapshot GetSnapshot(
+        string? historyStreamId = null,
+        long afterHistorySequence = 0,
+        bool includeDetails = true,
+        bool includeHistoryMetadata = true)
     {
         lock (_lock)
         {
+            long oldest = _history.Count > 0 ? _history.Peek().Sequence : _historySequence + 1;
+            bool canDelta = includeHistoryMetadata
+                && string.Equals(historyStreamId, _historyStreamId, StringComparison.Ordinal)
+                && afterHistorySequence >= oldest - 1
+                && afterHistorySequence <= _historySequence;
+            List<HardwareSample> history;
+            if (!includeHistoryMetadata)
+            {
+                history = _history.Select(static s => new HardwareSample
+                {
+                    Time = s.Time,
+                    CpuPercent = s.CpuPercent,
+                    MemoryPercent = s.MemoryPercent,
+                    DiskBytesPerSec = s.DiskBytesPerSec,
+                    GpuPercent = s.GpuPercent,
+                }).ToList();
+            }
+            else
+            {
+                history = canDelta
+                    ? _history.Where(s => s.Sequence > afterHistorySequence).ToList()
+                    : _history.ToList();
+            }
+
             return new HardwareSnapshot
             {
                 CpuPercent = _cpuV,
@@ -321,9 +377,12 @@ public sealed class HardwareMonitor : IDisposable
                 DiskWriteBytesPerSec = _diskW,
                 GpuPercent = _gpuV,
                 GpuMemoryUsedBytes = _gpuMemV,
-                History = _history.ToList(),
-                Processes = _procs.Snapshot(),
-                Resources = BuildResources(),
+                HistoryStreamId = includeHistoryMetadata ? _historyStreamId : null,
+                LatestHistorySequence = includeHistoryMetadata ? _historySequence : 0,
+                HistoryReset = includeHistoryMetadata && !canDelta,
+                History = history,
+                Processes = includeDetails ? _procs.Snapshot() : new List<ProcessResourceRow>(),
+                Resources = includeDetails ? BuildResources() : new List<HardwareResourceRow>(),
             };
         }
     }

@@ -3,6 +3,11 @@ namespace OpenWire.Core.Models;
 /// <summary>One point of system-resource telemetry.</summary>
 public sealed class HardwareSample
 {
+    /// <summary>Monotonic within one engine hardware-history stream.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public long Sequence { get; set; }
+
     public DateTimeOffset Time { get; set; }
 
     /// <summary>CPU utilisation, 0..100.</summary>
@@ -66,6 +71,21 @@ public sealed class HardwareSnapshot
     public double DiskWriteBytesPerSec { get; set; }
     public double GpuPercent { get; set; }
     public long GpuMemoryUsedBytes { get; set; }
+
+    /// <summary>Changes whenever the engine restarts, allowing clients to reject stale cursors.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public string? HistoryStreamId { get; set; }
+
+    /// <summary>Newest sequence present in the engine, even when this response has no new points.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public long LatestHistorySequence { get; set; }
+
+    /// <summary>True when History is a replacement snapshot rather than an incremental suffix.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool HistoryReset { get; set; }
 
     public List<HardwareSample> History { get; set; } = new();
 

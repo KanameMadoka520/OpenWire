@@ -107,7 +107,12 @@ public partial class HardwareViewModel : ObservableObject
     // refresh every 4 Hz poll; the table refreshes every 8th (~2 s, matching
     // GlassWire) so the scroll runs uncontended.
     private const int ProcRebuildEveryNthTick = 8;
+    private const int MaxClientHistory = 1_300;
     private int _tick;
+    private readonly List<HardwareSample> _history = new();
+    private string _historyStreamId = string.Empty;
+    private long _lastHistorySequence;
+    private int _refreshing;
 
     /// <summary>Raised each poll so the view can feed the four metric graphs.</summary>
     public event Action<HardwareSnapshot>? SnapshotUpdated;
@@ -118,29 +123,85 @@ public partial class HardwareViewModel : ObservableObject
 
     public async Task RefreshAsync()
     {
-        HardwareSnapshot hw;
-        try { hw = (await _client.GetHardwareAsync()).Hardware; }
-        catch { return; }
-
-        CpuText = $"{hw.CpuPercent:0} %";
-        MemoryText = ByteFormatter.Bytes(hw.MemoryUsedBytes);
-        MemoryPctText = $"{hw.MemoryPercent:0} %";
-        DiskReadText = ByteFormatter.Rate(hw.DiskReadBytesPerSec);
-        DiskWriteText = ByteFormatter.Rate(hw.DiskWriteBytesPerSec);
-        GpuText = $"{hw.GpuPercent:0} %";
-        GpuMemoryText = ByteFormatter.Bytes(hw.GpuMemoryUsedBytes);
-
-        // Graphs first (cheap, must stay smooth), then the heavier table on a
-        // slower cadence. The very first poll always builds the table so it
-        // isn't blank while waiting for the second tick.
-        SnapshotUpdated?.Invoke(hw);
-
-        if (_tick++ % ProcRebuildEveryNthTick == 0)
+        if (Interlocked.Exchange(ref _refreshing, 1) != 0) return;
+        try
         {
-            _lastProcs = hw.Processes;
-            RebuildProcesses();
-            RebuildResources(hw.Resources);
+            bool includeDetails = _tick % ProcRebuildEveryNthTick == 0;
+            HardwareSnapshot hw;
+            try
+            {
+                hw = (await _client.GetHardwareAsync(
+                    _historyStreamId,
+                    _lastHistorySequence,
+                    includeDetails)).Hardware;
+            }
+            catch { return; }
+
+            MergeHistory(hw);
+
+            CpuText = $"{hw.CpuPercent:0} %";
+            MemoryText = ByteFormatter.Bytes(hw.MemoryUsedBytes);
+            MemoryPctText = $"{hw.MemoryPercent:0} %";
+            DiskReadText = ByteFormatter.Rate(hw.DiskReadBytesPerSec);
+            DiskWriteText = ByteFormatter.Rate(hw.DiskWriteBytesPerSec);
+            GpuText = $"{hw.GpuPercent:0} %";
+            GpuMemoryText = ByteFormatter.Bytes(hw.GpuMemoryUsedBytes);
+
+            // Graphs first (cheap, must stay smooth), then the heavier table on a
+            // slower cadence. The very first poll always builds the table so it
+            // isn't blank while waiting for the second tick.
+            SnapshotUpdated?.Invoke(hw);
+
+            if (includeDetails)
+            {
+                _lastProcs = hw.Processes;
+                RebuildProcesses();
+                RebuildResources(hw.Resources);
+            }
+            _tick++;
         }
+        finally { Volatile.Write(ref _refreshing, 0); }
+    }
+
+    private void MergeHistory(HardwareSnapshot hw)
+    {
+        // Version-skew fallback: an older engine has no stream metadata and always sends a full list.
+        if (string.IsNullOrEmpty(hw.HistoryStreamId))
+        {
+            _history.Clear();
+            _history.AddRange(hw.History);
+            _historyStreamId = string.Empty;
+            _lastHistorySequence = 0;
+            hw.History = _history;
+            return;
+        }
+
+        if (hw.HistoryReset
+            || !string.Equals(_historyStreamId, hw.HistoryStreamId, StringComparison.Ordinal))
+        {
+            _history.Clear();
+            _lastHistorySequence = 0;
+        }
+
+        foreach (var sample in hw.History)
+        {
+            if (sample.Sequence <= _lastHistorySequence) continue;
+            _history.Add(sample);
+            _lastHistorySequence = sample.Sequence;
+        }
+
+        _historyStreamId = hw.HistoryStreamId;
+        _lastHistorySequence = Math.Max(_lastHistorySequence, hw.LatestHistorySequence);
+        if (_history.Count > 0)
+        {
+            var cutoff = _history[^1].Time - TimeSpan.FromMinutes(5) - TimeSpan.FromSeconds(10);
+            int remove = 0;
+            while (remove < _history.Count && _history[remove].Time < cutoff) remove++;
+            if (remove > 0) _history.RemoveRange(0, remove);
+        }
+        if (_history.Count > MaxClientHistory)
+            _history.RemoveRange(0, _history.Count - MaxClientHistory);
+        hw.History = _history;
     }
 
     /// <summary>Reconcile the hardware-resource rows in place (short, stable list).

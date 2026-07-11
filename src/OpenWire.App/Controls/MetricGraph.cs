@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Windows;
 using System.Windows.Media;
+using OpenWire.Core.Models;
 using OpenWire.Core.Util;
 
 namespace OpenWire.App.Controls;
@@ -135,9 +136,9 @@ public sealed class MetricGraph : FrameworkElement
 
     /// <summary>
     /// Push the rolling history as parallel timestamp/value lists (epoch seconds).
-    /// Called ~1 Hz with the full service buffer; the raster is rebuilt on the next
-    /// live frame. Points older than the displayed window (plus a small margin) are
-    /// dropped so a buffer spanning hours (e.g. across sleep) stays cheap.
+    /// Called with the client's rolling buffer; the raster is rebuilt on the next live frame.
+    /// Points older than the displayed window (plus a small margin) are dropped so a buffer
+    /// spanning a sleep/resume boundary stays cheap.
     /// </summary>
     public void SetSamples(IReadOnlyList<double> timesEpochSec, IReadOnlyList<double> values, bool bytes, double? unitScale = null)
     {
@@ -150,6 +151,31 @@ public sealed class MetricGraph : FrameworkElement
             if (timesEpochSec[i] >= cut)
                 _points.Add(new Pt(timesEpochSec[i], values[i]));
         _seriesDirty = true; // picked up by the next live frame
+    }
+
+    /// <summary>Hardware-specialized overload that avoids allocating five full parallel arrays
+    /// on every poll. The internal point list retains its capacity across refreshes.</summary>
+    public void SetSamples(
+        IReadOnlyList<HardwareSample> samples,
+        Func<HardwareSample, double> value,
+        bool bytes,
+        double? unitScale = null)
+    {
+        _bytes = bytes;
+        _floor = unitScale ?? (bytes ? 1_000_000 : 10);
+        _points.Clear();
+        int n = samples.Count;
+        double cut = n > 0
+            ? samples[n - 1].Time.ToUnixTimeMilliseconds() / 1000.0
+                - WindowSeconds - DisplayDelay - 10
+            : 0;
+        for (int i = 0; i < n; i++)
+        {
+            var sample = samples[i];
+            double time = sample.Time.ToUnixTimeMilliseconds() / 1000.0;
+            if (time >= cut) _points.Add(new Pt(time, value(sample)));
+        }
+        _seriesDirty = true;
     }
 
     /// <summary>Set the series without timestamps (compatibility overload): samples

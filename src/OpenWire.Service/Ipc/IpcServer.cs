@@ -20,6 +20,7 @@ public sealed class IpcServer : IAsyncDisposable
         public required IpcChannel Channel;
         public volatile bool Subscribed;
         public volatile bool WantsUiActive; // this client's last-reported "UI is being viewed" state
+        public volatile bool SupportsHardwareDelta;
         public CancellationTokenSource? Cts;
         public readonly Channel<IpcMessage> Outbound =
             System.Threading.Channels.Channel.CreateBounded<IpcMessage>(
@@ -277,7 +278,9 @@ public sealed class IpcServer : IAsyncDisposable
 
             switch (request)
             {
-                case HelloRequest:
+                case HelloRequest hello:
+                    client.SupportsHardwareDelta = Version.TryParse(hello.ClientVersion, out var clientVersion)
+                        && clientVersion.CompareTo(new Version(0, 1, 1)) >= 0;
                     return new HelloResponse
                     {
                         EngineVersion = _engine.EngineVersion,
@@ -305,8 +308,15 @@ public sealed class IpcServer : IAsyncDisposable
                 case GetConnectionsRequest:
                     return new ConnectionsResponse { Connections = _engine.GetConnections() };
 
-                case GetHardwareRequest:
-                    return new HardwareResponse { Hardware = _engine.GetHardware() };
+                case GetHardwareRequest hw:
+                    return new HardwareResponse
+                    {
+                        Hardware = _engine.GetHardware(
+                            hw.HistoryStreamId,
+                            hw.AfterHistorySequence,
+                            includeDetails: !hw.OmitDetails,
+                            includeHistoryMetadata: client.SupportsHardwareDelta),
+                    };
 
                 case GetFirewallRequest:
                 {

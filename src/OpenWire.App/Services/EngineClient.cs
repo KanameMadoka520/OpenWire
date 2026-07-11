@@ -18,6 +18,7 @@ public sealed class EngineClient : IDisposable
     private readonly ConcurrentDictionary<string, TaskCompletionSource<IpcMessage>> _pending = new();
     private readonly CancellationTokenSource _cts = new();
     private volatile IpcChannel? _channel;
+    private volatile bool _supportsHardwareDelta;
 
     public bool IsConnected { get; private set; }
 
@@ -44,7 +45,9 @@ public sealed class EngineClient : IDisposable
                 await pipe.ConnectAsync(2000, ct).ConfigureAwait(false);
                 VerifyServer(pipe);
                 channel = new IpcChannel(pipe);
-                await PerformHandshakeAsync(channel, ct).ConfigureAwait(false);
+                string engineVersion = await PerformHandshakeAsync(channel, ct).ConfigureAwait(false);
+                _supportsHardwareDelta = Version.TryParse(engineVersion, out var parsed)
+                    && parsed.CompareTo(new Version(0, 1, 1)) >= 0;
                 _channel = channel;
                 SetConnected(true);
 
@@ -58,6 +61,7 @@ public sealed class EngineClient : IDisposable
             finally
             {
                 _channel = null;
+                _supportsHardwareDelta = false;
                 // Release the OS pipe handle instead of leaking it to GC finalization on
                 // every reconnect cycle. Disposing the channel disposes the pipe; if the
                 // connect failed before wrapping, dispose the pipe directly.
@@ -83,13 +87,13 @@ public sealed class EngineClient : IDisposable
         }
     }
 
-    private static async Task PerformHandshakeAsync(IpcChannel channel, CancellationToken ct)
+    private static async Task<string> PerformHandshakeAsync(IpcChannel channel, CancellationToken ct)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeout.CancelAfter(TimeSpan.FromSeconds(5));
         string id = Guid.NewGuid().ToString("N");
         await channel.SendAsync(
-            new HelloRequest { CorrelationId = id, ClientVersion = "0.1.0" },
+            new HelloRequest { CorrelationId = id, ClientVersion = "0.1.1" },
             timeout.Token).ConfigureAwait(false);
         var response = await channel.ReceiveAsync(timeout.Token).ConfigureAwait(false);
         if (response is not HelloResponse hello
@@ -98,6 +102,7 @@ public sealed class EngineClient : IDisposable
         {
             throw new InvalidDataException("The engine did not complete the IPC handshake.");
         }
+        return hello.EngineVersion;
     }
 
     private async Task ReceiveLoopAsync(IpcChannel channel, CancellationToken ct)
@@ -168,7 +173,7 @@ public sealed class EngineClient : IDisposable
 
     // ---- typed API ----
 
-    public Task<HelloResponse> HelloAsync() => RequestAsync<HelloResponse>(new HelloRequest { ClientVersion = "0.1.0" });
+    public Task<HelloResponse> HelloAsync() => RequestAsync<HelloResponse>(new HelloRequest { ClientVersion = "0.1.1" });
     public Task<StatusResponse> GetStatusAsync() => RequestAsync<StatusResponse>(new GetStatusRequest());
     public Task<GraphResponse> GetGraphAsync(GraphRange range) => RequestAsync<GraphResponse>(new GetGraphRequest { Range = range });
     public Task<UsageResponse> GetUsageAsync(GraphRange range, UsageGroupBy groupBy) => RequestAsync<UsageResponse>(new GetUsageRequest { Range = range, GroupBy = groupBy });
@@ -178,7 +183,20 @@ public sealed class EngineClient : IDisposable
     public Task<InsightsResponse> GetInsightsAsync(long fromUnix, long toUnix)
         => RequestAsync<InsightsResponse>(new GetInsightsRequest { FromUnix = fromUnix, ToUnix = toUnix });
     public Task<ConnectionsResponse> GetConnectionsAsync() => RequestAsync<ConnectionsResponse>(new GetConnectionsRequest());
-    public Task<HardwareResponse> GetHardwareAsync() => RequestAsync<HardwareResponse>(new GetHardwareRequest());
+    public Task<HardwareResponse> GetHardwareAsync(
+        string historyStreamId,
+        long afterHistorySequence,
+        bool includeDetails)
+    {
+        var request = new GetHardwareRequest();
+        if (_supportsHardwareDelta)
+        {
+            request.HistoryStreamId = historyStreamId;
+            request.AfterHistorySequence = afterHistorySequence;
+            request.OmitDetails = !includeDetails;
+        }
+        return RequestAsync<HardwareResponse>(request);
+    }
     public Task<StorageInfoResponse> GetStorageInfoAsync() => RequestAsync<StorageInfoResponse>(new GetStorageInfoRequest());
     public Task<StorageInfoResponse> SetStorageLocationAsync(string dir) => RequestAsync<StorageInfoResponse>(new SetStorageLocationRequest { NewDirectory = dir });
     public Task<StorageInfoResponse> ClearDataAsync(ClearDataMode mode) => RequestAsync<StorageInfoResponse>(new ClearDataRequest { Mode = mode });

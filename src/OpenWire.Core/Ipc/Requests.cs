@@ -47,8 +47,19 @@ public sealed class GetInsightsRequest : IpcMessage
 /// <summary>Fetch the current live connection table.</summary>
 public sealed class GetConnectionsRequest : IpcMessage { }
 
-/// <summary>Fetch current hardware telemetry + recent history.</summary>
-public sealed class GetHardwareRequest : IpcMessage { }
+/// <summary>Fetch current hardware telemetry. Matching stream/sequence values request only
+/// history points added since the previous response; details can be sampled less often.</summary>
+public sealed class GetHardwareRequest : IpcMessage
+{
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public string? HistoryStreamId { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public long AfterHistorySequence { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool OmitDetails { get; set; }
+}
 
 /// <summary>Fetch firewall status, per-app rules and profiles.</summary>
 public sealed class GetFirewallRequest : IpcMessage { }
