@@ -73,6 +73,13 @@ public sealed class AppSettings
     public List<BlocklistSubscription> Blocklists { get; set; } = new();
 
     /// <summary>
+    /// Per-application data quotas. Each caps one app's traffic over a daily/weekly/monthly
+    /// period; the engine alerts as the cap is approached and reached, and — only when a
+    /// quota's own AutoBlock flag is set — blocks the app until the period resets.
+    /// </summary>
+    public List<AppQuota> AppQuotas { get; set; } = new();
+
+    /// <summary>
     /// Detect statistical usage anomalies over recorded history (per-app volume
     /// spikes vs a rolling baseline, upload-heavy apps, first contact with a new
     /// country, odd-hour activity) and raise them as alerts. Monitoring/recording

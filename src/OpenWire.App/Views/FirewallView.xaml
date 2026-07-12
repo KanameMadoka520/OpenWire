@@ -220,7 +220,7 @@
              so on a narrow window it scrolls sideways instead of columns colliding. -->
         <ScrollViewer x:Name="HScroll" Grid.Row="4" Margin="0,6,0,0"
                       HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-            <Grid Width="{Binding ViewportWidth, ElementName=HScroll}" MinWidth="1000">
+            <Grid Width="{Binding ViewportWidth, ElementName=HScroll}" MinWidth="1096">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="34" />
                     <RowDefinition Height="*" />
@@ -239,6 +239,7 @@
                         <ColumnDefinition Width="66" />
                         <ColumnDefinition Width="80" />
                         <ColumnDefinition Width="80" />
+                        <ColumnDefinition Width="96" />
                     </Grid.ColumnDefinitions>
                     <!-- Clickable sort headers: label + a ▲/▼ arrow on the active column. -->
                     <Grid.Resources>
@@ -280,6 +281,7 @@
                         <TextBlock Style="{StaticResource HdrText}"><Run Text="↑" /><Run>
                             <Run.Text><MultiBinding Converter="{StaticResource SortArrow}" ConverterParameter="up"><Binding Path="SortKey" /><Binding Path="SortAscending" /></MultiBinding></Run.Text></Run></TextBlock>
                     </Button>
+                    <TextBlock Grid.Column="10" Style="{StaticResource HdrText}" Text="{StaticResource L.Fw.ColQuota}" VerticalAlignment="Center" Margin="6,0,0,0" />
                 </Grid>
 
                 <!-- Rows: a ListBox virtualizes + recycles containers, so only the
@@ -319,6 +321,7 @@
                                         <ColumnDefinition Width="66" />
                                         <ColumnDefinition Width="80" />
                                         <ColumnDefinition Width="80" />
+                                        <ColumnDefinition Width="96" />
                                     </Grid.ColumnDefinitions>
                                     <ToggleButton Grid.Column="0" IsChecked="{Binding IsExpanded, Mode=TwoWay}" Cursor="Hand"
                                                   Visibility="{Binding HasChildren, Converter={StaticResource BoolVis}}" Background="Transparent" BorderThickness="0">
@@ -351,6 +354,30 @@
                                     <ctrl:Sparkline Grid.Column="7" Values="{Binding Spark}" Height="20" Width="56" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="0,0,8,0" />
                                     <TextBlock Grid.Column="8" Style="{StaticResource Mono}" FontSize="12" Foreground="{StaticResource InLine}" Text="{Binding DownText}" VerticalAlignment="Center" />
                                     <TextBlock Grid.Column="9" Style="{StaticResource Mono}" FontSize="12" Foreground="{StaticResource OutLine}" Text="{Binding UpText}" VerticalAlignment="Center" />
+                                    <!-- Data quota: click to set/edit. Amber when the app has reached its cap. -->
+                                    <Button Grid.Column="10" Style="{StaticResource SortHeaderBtn}" Command="{Binding EditQuotaCommand}"
+                                            HorizontalAlignment="Left" VerticalAlignment="Center" ToolTip="{StaticResource L.Fw.QuotaEditTip}" Cursor="Hand">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="&#xE7BA;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11"
+                                                       Foreground="{StaticResource Warning}" VerticalAlignment="Center" Margin="0,0,4,0"
+                                                       Visibility="{Binding QuotaOver, Converter={StaticResource BoolVis}}" />
+                                            <TextBlock Text="{Binding QuotaText}" FontSize="11.5" VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding HasQuota}" Value="True">
+                                                                <Setter Property="Foreground" Value="{StaticResource TextSecondary}" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding QuotaOver}" Value="True">
+                                                                <Setter Property="Foreground" Value="{StaticResource Warning}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Button>
                                 </Grid>
                             </Border>
                             <!-- child processes -->
@@ -369,6 +396,7 @@
                                                 <ColumnDefinition Width="66" />
                                                 <ColumnDefinition Width="80" />
                                                 <ColumnDefinition Width="80" />
+                                                <ColumnDefinition Width="96" />
                                             </Grid.ColumnDefinitions>
                                             <TextBlock Grid.Column="1" Margin="40,0,0,0" VerticalAlignment="Center" Foreground="{StaticResource TextMuted}" FontSize="12">
                                                 <Run Text="{StaticResource L.Fw.Pid}" /><Run Text=" " /><Run Text="{Binding Pid, Mode=OneWay}" />

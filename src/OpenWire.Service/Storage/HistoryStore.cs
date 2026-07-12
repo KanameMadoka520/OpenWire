@@ -761,6 +761,24 @@ CREATE TABLE IF NOT EXISTS blocklist_entry (
         }
     }
 
+    /// <summary>
+    /// Total bytes (in + out) attributed to one app since a local-day boundary, from the daily
+    /// rollup table. Day rollups are retained for years, so this is accurate for daily/weekly/
+    /// monthly quota windows regardless of minute-row pruning. <paramref name="sinceDay"/> must be
+    /// a <c>LocalDayStart</c> unix-seconds value.
+    /// </summary>
+    public long AppUsedSinceDay(string appId, long sinceDay)
+    {
+        lock (_lock)
+        {
+            using var cmd = _conn.CreateCommand();
+            cmd.CommandText = "SELECT COALESCE(SUM(bytes_in+bytes_out),0) FROM usage_app_day WHERE app_id=$a AND day>=$d;";
+            Bind(cmd, "$a", appId);
+            Bind(cmd, "$d", sinceDay);
+            return Convert.ToInt64(cmd.ExecuteScalar());
+        }
+    }
+
     public (long In, long Out) TotalTraffic()
     {
         lock (_lock)

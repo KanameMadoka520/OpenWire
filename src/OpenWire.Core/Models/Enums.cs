@@ -113,6 +113,22 @@ public enum AlertKind
 
     /// <summary>An application communicated with a host found on a subscribed blocklist.</summary>
     SuspiciousHost = 15,
+
+    /// <summary>An application approached or reached its per-app data quota.</summary>
+    DataQuotaReached = 16,
+}
+
+/// <summary>Reset cadence of a per-application data quota.</summary>
+public enum QuotaPeriod
+{
+    /// <summary>Resets at local midnight each day.</summary>
+    Daily = 0,
+
+    /// <summary>Resets at local midnight each Monday.</summary>
+    Weekly = 1,
+
+    /// <summary>Resets at local midnight on the first day of each month.</summary>
+    Monthly = 2,
 }
 
 /// <summary>Severity used for colour-coding alerts.</summary>

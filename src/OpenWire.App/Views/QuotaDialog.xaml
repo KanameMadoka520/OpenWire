@@ -1,0 +1,55 @@
+<Window x:Class="OpenWire.App.Views.QuotaDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="OpenWire" Width="460" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Background="{StaticResource BgApp}" FontFamily="{StaticResource UiFont}">
+    <Border Padding="24" Background="{StaticResource BgApp}">
+        <StackPanel>
+            <StackPanel Orientation="Horizontal">
+                <Border Width="42" Height="42" CornerRadius="10" Background="{StaticResource AccentSoft}" Margin="0,0,14,0">
+                    <TextBlock Text="&#xE9D9;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="20"
+                               Foreground="{StaticResource Accent}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="{StaticResource L.Fw.QuotaTitle}" FontSize="16" FontWeight="SemiBold" />
+                    <TextBlock x:Name="AppNameText" Foreground="{StaticResource TextSecondary}" FontSize="12.5" />
+                </StackPanel>
+            </StackPanel>
+
+            <TextBlock Text="{StaticResource L.Fw.QuotaLimit}" Foreground="{StaticResource TextSecondary}" FontSize="12" Margin="0,18,0,6" />
+            <StackPanel Orientation="Horizontal">
+                <TextBox x:Name="LimitBox" Style="{StaticResource Search}" Width="120" Text="1" />
+                <StackPanel Orientation="Horizontal" Background="{StaticResource BgSubtle}" Margin="10,0,0,0">
+                    <StackPanel.Resources>
+                        <Style TargetType="RadioButton" BasedOn="{StaticResource Seg}"><Setter Property="GroupName" Value="unit" /></Style>
+                    </StackPanel.Resources>
+                    <RadioButton x:Name="UnitMb" Content="MB" />
+                    <RadioButton x:Name="UnitGb" Content="GB" IsChecked="True" />
+                </StackPanel>
+            </StackPanel>
+
+            <TextBlock Text="{StaticResource L.Fw.QuotaPeriod}" Foreground="{StaticResource TextSecondary}" FontSize="12" Margin="0,16,0,6" />
+            <StackPanel Orientation="Horizontal" Background="{StaticResource BgSubtle}" HorizontalAlignment="Left">
+                <StackPanel.Resources>
+                    <Style TargetType="RadioButton" BasedOn="{StaticResource Seg}"><Setter Property="GroupName" Value="period" /></Style>
+                </StackPanel.Resources>
+                <RadioButton x:Name="PeriodDaily" Content="{StaticResource L.Fw.QuotaDaily}" />
+                <RadioButton x:Name="PeriodWeekly" Content="{StaticResource L.Fw.QuotaWeekly}" />
+                <RadioButton x:Name="PeriodMonthly" Content="{StaticResource L.Fw.QuotaMonthly}" IsChecked="True" />
+            </StackPanel>
+
+            <CheckBox x:Name="AutoBlockBox" Style="{StaticResource Switch}" Content="{StaticResource L.Fw.QuotaAutoBlock}" Margin="0,18,0,4" />
+            <TextBlock Text="{StaticResource L.Fw.QuotaAutoBlockHint}" Foreground="{StaticResource TextMuted}" FontSize="11.5" TextWrapping="Wrap" />
+
+            <Grid Margin="0,22,0,0">
+                <Button x:Name="RemoveButton" Content="{StaticResource L.Fw.QuotaRemove}" Style="{StaticResource BtnGhost}" Click="OnRemove" MinWidth="90"
+                        HorizontalAlignment="Left" />
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="{StaticResource L.Common.Cancel}" Style="{StaticResource BtnGhost}" Click="OnCancel" Margin="0,0,10,0" MinWidth="90" />
+                    <Button Content="{StaticResource L.Common.Save}" Style="{StaticResource Btn}" Click="OnSave" MinWidth="90" />
+                </StackPanel>
+            </Grid>
+        </StackPanel>
+    </Border>
+</Window>

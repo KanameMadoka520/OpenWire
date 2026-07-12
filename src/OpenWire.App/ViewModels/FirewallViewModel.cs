@@ -80,22 +80,45 @@ public partial class AppRowVM : ObservableObject
     public ObservableCollection<ProcRowVM> Processes { get; }
     public bool HasChildren => Processes.Count > 0;
 
+    // ---- per-app data quota ----
+    public AppQuota? Quota { get; }
+
+    /// <summary>True when the engine reports this app has reached its quota this period.</summary>
+    public bool QuotaOver { get; }
+
+    /// <summary>Column text: the limit + period, or a "+" affordance when none is set.</summary>
+    public string QuotaText => Quota is null
+        ? "＋"
+        : $"{ByteFormatter.Bytes(Quota.LimitBytes)} · {QuotaPeriodShort(Quota.Period)}";
+
+    public bool HasQuota => Quota is not null;
+
+    private static string QuotaPeriodShort(QuotaPeriod p) => p switch
+    {
+        QuotaPeriod.Daily => Loc.S("L.Fw.QuotaDailyShort"),
+        QuotaPeriod.Weekly => Loc.S("L.Fw.QuotaWeeklyShort"),
+        _ => Loc.S("L.Fw.QuotaMonthlyShort"),
+    };
+
     [ObservableProperty] private bool _isExpanded;
     [ObservableProperty] private bool _blockIn;
     [ObservableProperty] private bool _blockOut;
 
-    public AppRowVM(AppUsage usage, FirewallViewModel parent, AppFirewallRule? rule)
+    public AppRowVM(AppUsage usage, FirewallViewModel parent, AppFirewallRule? rule, AppQuota? quota, bool quotaOver)
     {
         Usage = usage;
         _parent = parent;
         _blockIn = rule?.BlockIncoming ?? false;
         _blockOut = rule?.BlockOutgoing ?? false;
+        Quota = quota;
+        QuotaOver = quotaOver;
         Processes = new ObservableCollection<ProcRowVM>(usage.Processes.Select(p => new ProcRowVM(p)));
     }
 
     [RelayCommand] private void ToggleExpand() => IsExpanded = !IsExpanded;
     [RelayCommand] private Task ToggleIn() => _parent.ApplyAsync(this);
     [RelayCommand] private Task ToggleOut() => _parent.ApplyAsync(this);
+    [RelayCommand] private void EditQuota() => _parent.RequestEditQuota(this);
 }
 
 /// <summary>One blocklist subscription row in the Firewall screen's blocklist panel.</summary>
@@ -169,6 +192,20 @@ public partial class FirewallViewModel : ObservableObject
 
     public FirewallViewModel(EngineClient client) => _client = client;
 
+    /// <summary>Raised when a row asks to edit its data quota; the View shows the modal editor.</summary>
+    public event Action<AppRowVM>? EditQuotaRequested;
+    public void RequestEditQuota(AppRowVM row) => EditQuotaRequested?.Invoke(row);
+
+    /// <summary>Persist a quota change from the editor dialog (null quota = remove), then reload.</summary>
+    public async Task SaveQuotaAsync(string appId, AppQuota? quota)
+    {
+        var settings = (await _client.GetSettingsAsync()).Settings;
+        settings.AppQuotas.RemoveAll(q => q.AppId.Equals(appId, StringComparison.OrdinalIgnoreCase));
+        if (quota is not null) settings.AppQuotas.Add(quota);
+        await _client.SetSettingsAsync(settings);
+        await LoadAsync();
+    }
+
     public async Task LoadAsync()
     {
         var fw = await _client.GetFirewallAsync();
@@ -185,8 +222,14 @@ public partial class FirewallViewModel : ObservableObject
                           ?? Profiles.FirstOrDefault();
         _suppressProfileSwitch = false;
 
+        var settings = (await _client.GetSettingsAsync()).Settings;
+        var quotas = settings.AppQuotas.ToDictionary(q => q.AppId, StringComparer.OrdinalIgnoreCase);
+        var over = new HashSet<string>(fw.Status.QuotaExceededAppIds, StringComparer.OrdinalIgnoreCase);
+
         var usage = await _client.GetUsageAsync(GraphRange.Day, UsageGroupBy.Apps);
-        _allApps = usage.Apps.Select(a => new AppRowVM(a, this, rules.GetValueOrDefault(a.App.Id))).ToList();
+        _allApps = usage.Apps.Select(a => new AppRowVM(
+            a, this, rules.GetValueOrDefault(a.App.Id),
+            quotas.GetValueOrDefault(a.App.Id), over.Contains(a.App.Id))).ToList();
         ApplyAppFilter();
 
         StatusText = CanEnforce

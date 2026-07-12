@@ -11,6 +11,7 @@ internal static class IpcRequestValidator
     private const int MaxProfiles = 32;
     private const int MaxBlockedAppsPerProfile = 5_000;
     private const int MaxBlocklists = 32;
+    private const int MaxQuotas = 500;
 
     public static bool TryValidate(IpcMessage message, out string error)
     {
@@ -167,6 +168,21 @@ internal static class IpcRequestValidator
                 || (uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != Uri.UriSchemeHttp))
                 return Fail("Blocklist URLs must be absolute http(s) addresses.", out error);
             if (!listIds.Add(list.Id)) return Fail("Blocklist ids must be unique.", out error);
+        }
+
+        if (settings.AppQuotas is null || settings.AppQuotas.Count > MaxQuotas)
+            return Fail($"At most {MaxQuotas} app quotas are allowed.", out error);
+        foreach (var quota in settings.AppQuotas)
+        {
+            if (quota is null) return Fail("Quota entries cannot be null.", out error);
+            if (!Text(quota.AppId, MaxPath, allowEmpty: false, "quota.appId", out error)) return false;
+            if (!Text(quota.ExecutablePath, MaxPath, allowEmpty: true, "quota.executablePath", out error)) return false;
+            if (!Text(quota.AppName, MaxShortText, allowEmpty: true, "quota.appName", out error)) return false;
+            if (quota.LimitBytes <= 0) return Fail("Quota limit must be positive.", out error);
+            if (!Defined(quota.Period, "quota.period", out error)) return false;
+            if (quota.AutoBlock && !string.IsNullOrEmpty(quota.ExecutablePath)
+                && !Path.IsPathFullyQualified(quota.ExecutablePath))
+                return Fail("Quota executable path must be fully qualified when auto-block is on.", out error);
         }
 
         return true;

@@ -104,6 +104,13 @@ public sealed class MonitorEngine : IAsyncDisposable
     private readonly object _blockedLock = new();
     private List<string> _blockedAddresses = new();
 
+    // Per-app quota alert de-duplication + which apps this feature auto-blocked. Keyed by appId.
+    private sealed class QuotaState { public long PeriodStart; public bool Warned; public bool Exceeded; }
+    private readonly Dictionary<string, QuotaState> _quotaState = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _quotaExceeded = new(StringComparer.OrdinalIgnoreCase);
+    private const string QuotaBlockedKey = "quota.blocked";
+    private HashSet<string> _quotaBlocked = new(StringComparer.OrdinalIgnoreCase);
+
     public event Action<IpcMessage>? Events;
 
     public string EngineVersion => "0.1.1";
@@ -157,6 +164,7 @@ public sealed class MonitorEngine : IAsyncDisposable
         EnsureBlocklistPresets();
         _blocklist.Configure(_settings.Blocklists);
         LoadBlockedAddresses();
+        LoadQuotaBlocked();
 
         CanEnforceFirewall = _firewall.CanEnforce();
         if (CanEnforceFirewall)
@@ -731,6 +739,196 @@ public sealed class MonitorEngine : IAsyncDisposable
         catch { /* corrupt state simply starts empty */ }
     }
 
+    // ---------------- per-app data quotas ----------------
+
+    /// <summary>Warn fraction: alert once when an app reaches this share of its quota.</summary>
+    private const double QuotaWarnFraction = 0.9;
+
+    /// <summary>
+    /// Evaluate every configured per-app quota against usage since the current period start.
+    /// Alerts once at the warn threshold and once at the limit per period; when a quota's
+    /// AutoBlock is set, blocks the app on exceed and lifts the block automatically when the
+    /// period resets. Nothing here blocks unless the user set AutoBlock on that quota.
+    /// </summary>
+    private void CheckAppQuotas()
+    {
+        List<AppQuota> quotas;
+        lock (_settingsLock) quotas = _settings.AppQuotas.ToList();
+        if (quotas.Count == 0)
+        {
+            if (_quotaState.Count > 0) _quotaState.Clear();
+            if (_quotaExceeded.Count > 0) _quotaExceeded.Clear();
+            return;
+        }
+
+        var live = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var quota in quotas)
+        {
+            if (string.IsNullOrEmpty(quota.AppId) || quota.LimitBytes <= 0) continue;
+            live.Add(quota.AppId);
+
+            long periodStart = QuotaPeriodStartDay(quota.Period);
+            if (!_quotaState.TryGetValue(quota.AppId, out var state))
+                _quotaState[quota.AppId] = state = new QuotaState { PeriodStart = periodStart };
+
+            // New period → re-arm alerts and lift any block this feature placed.
+            if (state.PeriodStart != periodStart)
+            {
+                state.PeriodStart = periodStart;
+                state.Warned = false;
+                state.Exceeded = false;
+                _quotaExceeded.Remove(quota.AppId);
+                if (_quotaBlocked.Contains(quota.AppId)) LiftQuotaBlock(quota.AppId);
+            }
+
+            long used = _store.AppUsedSinceDay(quota.AppId, periodStart);
+            double fraction = (double)used / quota.LimitBytes;
+            string name = quota.AppName.Length > 0 ? quota.AppName : quota.AppId;
+            string period = QuotaPeriodLabel(quota.Period);
+
+            if (fraction >= 1.0)
+            {
+                _quotaExceeded.Add(quota.AppId);
+                bool blocked = false;
+                if (quota.AutoBlock && CanEnforceFirewall && !_quotaBlocked.Contains(quota.AppId))
+                    blocked = ApplyQuotaBlock(quota);
+
+                if (!state.Exceeded)
+                {
+                    state.Exceeded = true;
+                    state.Warned = true;
+                    if (_settings.IsAlertEnabled(AlertKind.DataQuotaReached))
+                        Persist(new Alert
+                        {
+                            Time = DateTimeOffset.UtcNow,
+                            Kind = AlertKind.DataQuotaReached,
+                            Severity = AlertSeverity.Warning,
+                            Title = "Data quota reached",
+                            Message = $"{name} reached its {period} data quota "
+                                + $"({ByteFormatter.Bytes(used)} of {ByteFormatter.Bytes(quota.LimitBytes)})."
+                                + ((quota.AutoBlock && (blocked || _quotaBlocked.Contains(quota.AppId)))
+                                    ? " It is now blocked until the quota resets." : ""),
+                            AppId = quota.AppId,
+                            AppName = quota.AppName.Length > 0 ? quota.AppName : null,
+                        });
+                }
+            }
+            else if (fraction >= QuotaWarnFraction)
+            {
+                _quotaExceeded.Remove(quota.AppId);
+                if (!state.Warned)
+                {
+                    state.Warned = true;
+                    if (_settings.IsAlertEnabled(AlertKind.DataQuotaReached))
+                        Persist(new Alert
+                        {
+                            Time = DateTimeOffset.UtcNow,
+                            Kind = AlertKind.DataQuotaReached,
+                            Severity = AlertSeverity.Info,
+                            Title = "Data quota almost reached",
+                            Message = $"{name} has used {fraction:P0} of its {period} data quota "
+                                + $"({ByteFormatter.Bytes(used)} of {ByteFormatter.Bytes(quota.LimitBytes)}).",
+                            AppId = quota.AppId,
+                            AppName = quota.AppName.Length > 0 ? quota.AppName : null,
+                        });
+                }
+            }
+            else
+            {
+                _quotaExceeded.Remove(quota.AppId);
+            }
+        }
+
+        // Drop state for quotas the user removed; lift any block they left behind.
+        foreach (string appId in _quotaState.Keys.Where(k => !live.Contains(k)).ToList())
+            _quotaState.Remove(appId);
+        _quotaExceeded.RemoveWhere(a => !live.Contains(a));
+        foreach (string appId in _quotaBlocked.Where(a => !live.Contains(a)).ToList())
+            LiftQuotaBlock(appId);
+    }
+
+    /// <summary>Local-day-start unix seconds of the start of the quota's current period.</summary>
+    private static long QuotaPeriodStartDay(QuotaPeriod period)
+    {
+        var today = DateTime.Now.Date;
+        DateTime start = period switch
+        {
+            QuotaPeriod.Daily => today,
+            QuotaPeriod.Weekly => today.AddDays(-((int)today.DayOfWeek + 6) % 7), // most recent Monday
+            QuotaPeriod.Monthly => new DateTime(today.Year, today.Month, 1),
+            _ => today,
+        };
+        var offset = TimeZoneInfo.Local.GetUtcOffset(start);
+        return new DateTimeOffset(start, offset).ToUnixTimeSeconds();
+    }
+
+    private static string QuotaPeriodLabel(QuotaPeriod period) => period switch
+    {
+        QuotaPeriod.Daily => "daily",
+        QuotaPeriod.Weekly => "weekly",
+        QuotaPeriod.Monthly => "monthly",
+        _ => "monthly",
+    };
+
+    private bool ApplyQuotaBlock(AppQuota quota)
+    {
+        string exe = quota.ExecutablePath;
+        if (string.IsNullOrEmpty(exe) && _appStore.TryGetValue(quota.AppId, out var u)) exe = u.App.ExecutablePath;
+        if (string.IsNullOrWhiteSpace(exe) || !Path.IsPathFullyQualified(exe)) return false;
+        try
+        {
+            SetAppBlocked(quota.AppId, exe, blockIn: true, blockOut: true);
+            _quotaBlocked.Add(quota.AppId);
+            SaveQuotaBlocked();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[Engine] quota block failed: {ex.Message}");
+            return false;
+        }
+    }
+
+    private void LiftQuotaBlock(string appId)
+    {
+        if (!_quotaBlocked.Remove(appId)) return;
+        SaveQuotaBlocked();
+        try
+        {
+            string exe = _appStore.TryGetValue(appId, out var u) ? u.App.ExecutablePath : appId;
+            SetAppBlocked(appId, exe, blockIn: false, blockOut: false);
+        }
+        catch (Exception ex) { Console.Error.WriteLine($"[Engine] quota unblock failed: {ex.Message}"); }
+    }
+
+    /// <summary>Lift every quota block (called when quotas change so stale blocks don't persist).</summary>
+    private void ReconcileQuotaBlocks()
+    {
+        List<AppQuota> quotas;
+        lock (_settingsLock) quotas = _settings.AppQuotas.ToList();
+        var enforcing = quotas.Where(q => q.AutoBlock).Select(q => q.AppId).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (string appId in _quotaBlocked.Where(a => !enforcing.Contains(a)).ToList())
+            LiftQuotaBlock(appId);
+    }
+
+    private void SaveQuotaBlocked()
+    {
+        try { _store.SetStateValue(QuotaBlockedKey, JsonSerializer.Serialize(_quotaBlocked)); }
+        catch (Exception ex) { Console.Error.WriteLine($"[Engine] persist quota blocks: {ex.Message}"); }
+    }
+
+    private void LoadQuotaBlocked()
+    {
+        try
+        {
+            string? json = _store.GetStateValue(QuotaBlockedKey);
+            if (!string.IsNullOrEmpty(json))
+                _quotaBlocked = JsonSerializer.Deserialize<HashSet<string>>(json)
+                    ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        }
+        catch { /* corrupt state simply starts empty */ }
+    }
+
     public (List<BlocklistStatusItem> Lists, bool Refreshing, int BlockedAddressCount) GetBlocklistStatus()
     {
         int blockedCount;
@@ -780,6 +978,8 @@ public sealed class MonitorEngine : IAsyncDisposable
             var a = _alerts.CheckDataPlan(_settings.DataPlan);
             if (a is not null) Persist(a);
         }
+
+        CheckAppQuotas();
 
         RefreshNetwork();
         RefreshFirewallCache();
@@ -1503,6 +1703,7 @@ public sealed class MonitorEngine : IAsyncDisposable
                 PendingAppCount = _pendingApps.Count,
                 CanEnforce = CanEnforceFirewall,
                 LockdownActive = lockdown,
+                QuotaExceededAppIds = _quotaExceeded.ToList(),
             };
             // Deep-copy so the IPC writer thread serializes a stable snapshot even while
             // another thread mutates the live profile set / blocked-app lists.
@@ -1800,6 +2001,7 @@ public sealed class MonitorEngine : IAsyncDisposable
             settings.DataPlan.UsedBytes = _store.DataPlanUsed(CycleStartBucket());
         _blocklist.Configure(settings.Blocklists);
         if (!settings.BlocklistEnforce) ClearBlocklistEnforcement();
+        ReconcileQuotaBlocks();
         SetFirewallMode(settings.FirewallMode);
     }
 
