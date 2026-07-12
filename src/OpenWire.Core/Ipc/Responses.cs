@@ -101,6 +101,18 @@ public sealed class GeoIpStatusResponse : IpcMessage
     public string Message { get; set; } = "";
 }
 
+/// <summary>Runtime status of the blocklist subscriptions.</summary>
+public sealed class BlocklistStatusResponse : IpcMessage
+{
+    public List<BlocklistStatusItem> Lists { get; set; } = new();
+
+    /// <summary>True while a download pass is still running.</summary>
+    public bool Refreshing { get; set; }
+
+    /// <summary>Number of addresses currently held in the enforcement block rule.</summary>
+    public int BlockedAddressCount { get; set; }
+}
+
 /// <summary>Generic success acknowledgement for commands.</summary>
 public sealed class OkResponse : IpcMessage
 {

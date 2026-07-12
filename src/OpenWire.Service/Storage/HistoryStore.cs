@@ -207,6 +207,13 @@ CREATE TABLE IF NOT EXISTS devices (
     id TEXT PRIMARY KEY, name TEXT, custom_name TEXT, ip TEXT, mac TEXT, vendor TEXT,
     kind INTEGER, is_gateway INTEGER, is_this INTEGER, first_seen INTEGER, last_seen INTEGER, online INTEGER,
     description TEXT, os TEXT);
+
+-- Cached entries of downloaded blocklist subscriptions (kind 0 = domain, 1 = IP).
+-- Cache, not history: rebuilt on refresh, never pruned by retention.
+CREATE TABLE IF NOT EXISTS blocklist_entry (
+    list_id TEXT NOT NULL, kind INTEGER NOT NULL, value TEXT NOT NULL,
+    PRIMARY KEY (list_id, kind, value)
+) WITHOUT ROWID;
 ");
 
         // Lightweight migrations for databases created by earlier versions.
@@ -258,6 +265,88 @@ CREATE TABLE IF NOT EXISTS devices (
             ?? throw new InvalidOperationException("Settings could not be cloned for persistence.");
         persisted.VirusTotalApiKey = SettingsSecretProtector.Protect(settings.VirusTotalApiKey);
         return JsonSerializer.Serialize(persisted);
+    }
+
+    // ---------------- Engine state ----------------
+
+    /// <summary>Read a small engine-state value (blocklist metadata, timers, ...) from the kv table.</summary>
+    public string? GetStateValue(string key)
+    {
+        lock (_lock)
+            return GetKv(key);
+    }
+
+    /// <summary>Persist a small engine-state value in the kv table.</summary>
+    public void SetStateValue(string key, string value)
+    {
+        lock (_lock)
+            SetKv(key, value);
+    }
+
+    // ---------------- Blocklists ----------------
+
+    /// <summary>
+    /// Atomically replace the cached entries of one blocklist with a freshly downloaded set.
+    /// </summary>
+    public void ReplaceBlocklistEntries(string listId, IReadOnlyCollection<(int Kind, string Value)> entries)
+    {
+        lock (_lock)
+        {
+            using var transaction = _conn.BeginTransaction();
+            using (var del = _conn.CreateCommand())
+            {
+                del.Transaction = transaction;
+                del.CommandText = "DELETE FROM blocklist_entry WHERE list_id=$l;";
+                Bind(del, "$l", listId);
+                del.ExecuteNonQuery();
+            }
+
+            using (var ins = _conn.CreateCommand())
+            {
+                ins.Transaction = transaction;
+                ins.CommandText = "INSERT OR IGNORE INTO blocklist_entry(list_id,kind,value) VALUES($l,$k,$v);";
+                var pList = ins.Parameters.Add("$l", SqliteType.Text);
+                var pKind = ins.Parameters.Add("$k", SqliteType.Integer);
+                var pValue = ins.Parameters.Add("$v", SqliteType.Text);
+                pList.Value = listId;
+                foreach (var (kind, value) in entries)
+                {
+                    pKind.Value = kind;
+                    pValue.Value = value;
+                    ins.ExecuteNonQuery();
+                }
+            }
+
+            transaction.Commit();
+        }
+    }
+
+    /// <summary>Drop the cached entries of a removed or disabled blocklist.</summary>
+    public void DeleteBlocklistEntries(string listId)
+    {
+        lock (_lock)
+        {
+            using var cmd = _conn.CreateCommand();
+            cmd.CommandText = "DELETE FROM blocklist_entry WHERE list_id=$l;";
+            Bind(cmd, "$l", listId);
+            cmd.ExecuteNonQuery();
+        }
+    }
+
+    /// <summary>Load the cached entries of one list as (kind, value) pairs.</summary>
+    public List<(int Kind, string Value)> LoadBlocklistEntries(string listId)
+    {
+        lock (_lock)
+        {
+            var list = new List<(int, string)>();
+            using var cmd = _conn.CreateCommand();
+            cmd.CommandText = "SELECT kind, value FROM blocklist_entry WHERE list_id=$l;";
+            Bind(cmd, "$l", listId);
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+                list.Add((r.GetInt32(0), r.GetString(1)));
+            return list;
+        }
     }
 
     // ---------------- Traffic rollups ----------------

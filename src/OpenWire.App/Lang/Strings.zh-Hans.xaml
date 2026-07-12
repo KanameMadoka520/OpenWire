@@ -99,6 +99,17 @@
     <sys:String x:Key="L.Fw.LockdownTip">一键禁止所有应用联网；再次点击解除</sys:String>
     <sys:String x:Key="L.Fw.LockdownBanner">网络已锁定 — 所有应用都被禁止联网，直到你解除。</sys:String>
     <sys:String x:Key="L.Fw.NotElevated">⚠  引擎未以管理员身份运行 — 无法执行拦截，也无法统计每应用速率。请以管理员身份启动 OpenWire.Service。</sys:String>
+    <sys:String x:Key="L.Fw.Blocklists">主机黑名单</sys:String>
+    <sys:String x:Key="L.Fw.BlocklistSummaryFmt">已启用 {0} 个清单 · 共 {1} 条 · 已拦截 {2} 个地址</sys:String>
+    <sys:String x:Key="L.Fw.BlocklistEnforce">拦截命中主机</sys:String>
+    <sys:String x:Key="L.Fw.BlocklistEnforceTip">命中黑名单的地址会同时写入 OpenWire 防火墙规则，切断后续流量。关闭时只检测告警，不做任何拦截。</sys:String>
+    <sys:String x:Key="L.Fw.BlocklistRefreshTip">立即重新下载已启用的清单</sys:String>
+    <sys:String x:Key="L.Fw.BlocklistRefreshing">更新中…</sys:String>
+    <sys:String x:Key="L.Fw.BlocklistNameHint">清单名称</sys:String>
+    <sys:String x:Key="L.Fw.BlocklistUrlHint">https://…（hosts 或每行一个域名格式）</sys:String>
+    <sys:String x:Key="L.Fw.BlocklistAdd">添加清单</sys:String>
+    <sys:String x:Key="L.Fw.BlocklistRemoveTip">移除该清单</sys:String>
+    <sys:String x:Key="L.Fw.BlocklistHint">清单仅在启用后才会下载，并在本地与实时连接比对。命中会产生“可疑主机”告警；除非打开“拦截命中主机”，否则不会拦截任何流量。</sys:String>
     <sys:String x:Key="L.Fw.Profile">配置</sys:String>
     <sys:String x:Key="L.Fw.NewProfileTip">以当前状态新建配置</sys:String>
     <sys:String x:Key="L.Fw.DeleteProfileTip">删除此配置</sys:String>
@@ -267,6 +278,7 @@
     <sys:String x:Key="L.Set.MonRdp">远程桌面（RDP）连接</sys:String>
     <sys:String x:Key="L.Set.MonAppInfo">应用变更（新版本 / 签名者）</sys:String>
     <sys:String x:Key="L.Set.MonInternetAccess">断网或恢复联网</sys:String>
+    <sys:String x:Key="L.Set.MonSuspiciousHosts">可疑主机（黑名单命中）</sys:String>
     <sys:String x:Key="L.Set.ShowNotifications">显示桌面通知</sys:String>
     <sys:String x:Key="L.Set.MinimizeToTray">最小化到系统托盘</sys:String>
     <sys:String x:Key="L.Set.Resolution">解析</sys:String>

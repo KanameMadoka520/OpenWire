@@ -110,6 +110,9 @@ public enum AlertKind
 
     /// <summary>Internet connectivity was lost or restored (connectivity-state change).</summary>
     InternetAccessChanged = 14,
+
+    /// <summary>An application communicated with a host found on a subscribed blocklist.</summary>
+    SuspiciousHost = 15,
 }
 
 /// <summary>Severity used for colour-coding alerts.</summary>

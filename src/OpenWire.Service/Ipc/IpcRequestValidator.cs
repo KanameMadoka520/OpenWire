@@ -10,6 +10,7 @@ internal static class IpcRequestValidator
     private const int MaxPath = 32_767;
     private const int MaxProfiles = 32;
     private const int MaxBlockedAppsPerProfile = 5_000;
+    private const int MaxBlocklists = 32;
 
     public static bool TryValidate(IpcMessage message, out string error)
     {
@@ -21,8 +22,12 @@ internal static class IpcRequestValidator
 
             case GetStatusRequest or GetConnectionsRequest or GetFirewallRequest
                 or GetSettingsRequest or GetGeoIpStatusRequest or UpdateGeoIpRequest
-                or GetStorageInfoRequest:
+                or GetStorageInfoRequest or GetBlocklistStatusRequest:
                 return true;
+
+            case RefreshBlocklistsRequest refresh:
+                return refresh.ListId is null
+                    || Text(refresh.ListId, MaxShortText, allowEmpty: false, "listId", out error);
 
             case GetHardwareRequest hardware:
                 if (hardware.AfterHistorySequence < 0)
@@ -148,6 +153,21 @@ internal static class IpcRequestValidator
         if (settings.EnabledAlerts is null) return Fail("Alert settings are required.", out error);
         foreach (var kind in settings.EnabledAlerts.Keys)
             if (!Enum.IsDefined(typeof(AlertKind), kind)) return Fail("Alert settings contain an unknown kind.", out error);
+
+        if (settings.Blocklists is null || settings.Blocklists.Count > MaxBlocklists)
+            return Fail($"At most {MaxBlocklists} blocklist subscriptions are allowed.", out error);
+        var listIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var list in settings.Blocklists)
+        {
+            if (list is null) return Fail("Blocklist entries cannot be null.", out error);
+            if (!Text(list.Id, MaxShortText, allowEmpty: false, "blocklist.id", out error)) return false;
+            if (!Text(list.Name, MaxShortText, allowEmpty: false, "blocklist.name", out error)) return false;
+            if (!Text(list.Url, 2048, allowEmpty: false, "blocklist.url", out error)) return false;
+            if (!Uri.TryCreate(list.Url, UriKind.Absolute, out var uri)
+                || (uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != Uri.UriSchemeHttp))
+                return Fail("Blocklist URLs must be absolute http(s) addresses.", out error);
+            if (!listIds.Add(list.Id)) return Fail("Blocklist ids must be unique.", out error);
+        }
 
         return true;
     }

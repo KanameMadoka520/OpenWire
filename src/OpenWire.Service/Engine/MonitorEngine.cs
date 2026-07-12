@@ -33,6 +33,7 @@ public sealed class MonitorEngine : IAsyncDisposable
     private readonly ReputationService _reputation = new();
     private readonly IntegrityMonitor _integrity = new();
     private readonly HistoryStore _store;
+    private readonly BlocklistService _blocklist;
 
     private readonly object _ringLock = new();
     private readonly object _settingsLock = new();
@@ -91,6 +92,18 @@ public sealed class MonitorEngine : IAsyncDisposable
     private readonly HashSet<string> _anomaliesAlertedToday = new(StringComparer.OrdinalIgnoreCase);
     private long _anomalyDayStamp = -1;
 
+    // Suspicious-host alert de-duplication: each (blocklist entry, app) pair alerts at most
+    // once per local day, mirroring the usage-anomaly pattern above.
+    private readonly HashSet<string> _suspiciousAlertedToday = new(StringComparer.OrdinalIgnoreCase);
+    private long _suspiciousDayStamp = -1;
+
+    // Addresses currently held in the OpenWire blocklist firewall rule (enforcement on).
+    // Bounded FIFO; persisted so the rule can be reconciled across engine restarts.
+    private const int MaxBlockedAddresses = 256;
+    private const string BlockedAddressesKey = "blocklist.blocked";
+    private readonly object _blockedLock = new();
+    private List<string> _blockedAddresses = new();
+
     public event Action<IpcMessage>? Events;
 
     public string EngineVersion => "0.1.1";
@@ -106,6 +119,7 @@ public sealed class MonitorEngine : IAsyncDisposable
     {
         _dataDir = dataDir;
         _store = new HistoryStore(Path.Combine(dataDir, "openwire.db"));
+        _blocklist = new BlocklistService(_store);
         // Priority: an in-app-updated database (writable data dir) wins, then a user-supplied
         // MaxMind GeoLite2, then the DB-IP Lite database bundled beside the engine (CC-BY 4.0,
         // see NOTICE). Keeping the download in the data dir decouples the GeoIP database from the
@@ -140,6 +154,9 @@ public sealed class MonitorEngine : IAsyncDisposable
         _alerts.SeedKnownDevices(_store.GetKnownDeviceIds());
         _alerts.SeedDns(_scanner.GetLocalInfo().DnsServers);
         _integrity.Seed();
+        EnsureBlocklistPresets();
+        _blocklist.Configure(_settings.Blocklists);
+        LoadBlockedAddresses();
 
         CanEnforceFirewall = _firewall.CanEnforce();
         if (CanEnforceFirewall)
@@ -161,6 +178,24 @@ public sealed class MonitorEngine : IAsyncDisposable
             {
                 CanEnforceFirewall = false;
                 Console.Error.WriteLine($"[Firewall] startup reconciliation failed: {ex.Message}");
+            }
+
+            // Reconcile the blocklist rule the same way: re-apply the persisted addresses
+            // while enforcement is on, remove any stale rule while it is off.
+            if (CanEnforceFirewall)
+            {
+                try
+                {
+                    lock (_blockedLock)
+                    {
+                        _firewall.SetBlocklistAddresses(
+                            _settings.BlocklistEnforce ? _blockedAddresses : Array.Empty<string>());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine($"[Firewall] blocklist reconciliation failed: {ex.Message}");
+                }
             }
         }
         _etwActive = _etw.TryStart();
@@ -259,9 +294,11 @@ public sealed class MonitorEngine : IAsyncDisposable
         // 5) periodic security checks
         if (_tick % 30 == 0) RunPeriodicChecks();
 
-        // 5b) usage-anomaly scan (~10 min) and history pruning (~hourly)
+        // 5b) usage-anomaly scan (~10 min), history pruning and blocklist re-download (~hourly;
+        // the service itself skips lists refreshed within the last 12 h)
         if (_tick % 600 == 0) RunUsageAnomalyChecks();
         if (_tick % 3600 == 0) PruneHistory();
+        if (_tick % 3600 == 0) _ = _blocklist.RefreshAsync(listId: null, force: false);
 
         // 5c) per-minute: drop caches keyed by dead PIDs (process-churn-heavy
         // machines otherwise grow them forever, and dead flows clog the ETW
@@ -521,12 +558,189 @@ public sealed class MonitorEngine : IAsyncDisposable
 
             if (_settings.MonitorRdp)
                 foreach (var a in _alerts.CheckRdp(list)) Persist(a);
+
+            if (_settings.MonitorSuspiciousHosts || _settings.BlocklistEnforce)
+                CheckSuspiciousHosts(list);
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"[Engine] connection refresh: {ex.Message}");
         }
     }
+
+    // ---------------- blocklists ----------------
+
+    private static readonly BlocklistSubscription[] BlocklistPresets =
+    {
+        new()
+        {
+            Id = "urlhaus",
+            Name = "URLhaus malware hosts (abuse.ch)",
+            Url = "https://urlhaus.abuse.ch/downloads/hostfile/",
+            IsPreset = true,
+        },
+        new()
+        {
+            Id = "stevenblack",
+            Name = "StevenBlack ads + malware",
+            Url = "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts",
+            IsPreset = true,
+        },
+        new()
+        {
+            Id = "peterlowe",
+            Name = "Peter Lowe ad/tracking servers",
+            Url = "https://pgl.yoyo.org/adservers/serverlist.php?hostformat=hosts&showintro=0&mimetype=plaintext",
+            IsPreset = true,
+        },
+    };
+
+    /// <summary>Seed the built-in blocklist presets (all disabled — downloading is opt-in), so
+    /// upgrades gain new presets while user toggles and custom lists are preserved.</summary>
+    private void EnsureBlocklistPresets()
+    {
+        lock (_settingsLock)
+        {
+            bool changed = false;
+            foreach (var preset in BlocklistPresets)
+            {
+                var existing = _settings.Blocklists.FirstOrDefault(
+                    b => b.Id.Equals(preset.Id, StringComparison.OrdinalIgnoreCase));
+                if (existing is null)
+                {
+                    _settings.Blocklists.Add(new BlocklistSubscription
+                    {
+                        Id = preset.Id, Name = preset.Name, Url = preset.Url,
+                        Enabled = false, IsPreset = true,
+                    });
+                    changed = true;
+                }
+                else if (!existing.IsPreset)
+                {
+                    existing.IsPreset = true;
+                    changed = true;
+                }
+            }
+            if (changed)
+                try { _store.SaveSettings(_settings); }
+                catch (Exception ex) { Console.Error.WriteLine($"[Engine] persist blocklists: {ex.Message}"); }
+        }
+    }
+
+    /// <summary>
+    /// Match the live connection table against the enabled blocklists. A hit raises a
+    /// SuspiciousHost alert (once per entry + app per local day) and — only when the user
+    /// switched enforcement on — adds the address to the OpenWire blocklist firewall rule.
+    /// </summary>
+    private void CheckSuspiciousHosts(List<ConnectionInfo> connections)
+    {
+        long today = LocalDayStart(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+        if (today != _suspiciousDayStamp)
+        {
+            _suspiciousDayStamp = today;
+            _suspiciousAlertedToday.Clear();
+        }
+
+        foreach (var c in connections)
+        {
+            if (!ConnectionEnumerator.HasRemotePeer(c)) continue;
+            var hit = _blocklist.Match(c.RemoteAddress, c.RemoteHost);
+            if (hit is null) continue;
+            var (_, listName, matched) = hit.Value;
+
+            bool blocked = false;
+            if (_settings.BlocklistEnforce && CanEnforceFirewall)
+                blocked = EnforceBlocklistAddress(c.RemoteAddress);
+
+            if (!_settings.MonitorSuspiciousHosts) continue;
+            if (!_settings.IsAlertEnabled(AlertKind.SuspiciousHost)) continue;
+            if (!_suspiciousAlertedToday.Add($"{matched}|{c.AppId}")) continue;
+
+            string host = c.RemoteHost.Length > 0 ? c.RemoteHost : c.RemoteAddress;
+            string app = c.AppName.Length > 0 ? c.AppName : "An application";
+            Persist(new Alert
+            {
+                Time = DateTimeOffset.UtcNow,
+                Kind = AlertKind.SuspiciousHost,
+                Severity = AlertSeverity.Warning,
+                Title = "Suspicious host contacted",
+                Message = $"{app} connected to {host} ({c.RemoteAddress}), which is listed on \"{listName}\"."
+                    + (blocked ? " Further traffic to this address is now blocked." : ""),
+                AppId = c.AppId.Length > 0 ? c.AppId : null,
+                AppName = c.AppName.Length > 0 ? c.AppName : null,
+                RemoteHost = host,
+            });
+        }
+    }
+
+    /// <summary>Add one observed address to the blocklist firewall rule. Returns true when the
+    /// address is (already or newly) enforced. Bounded FIFO so the rule can't grow unbounded.</summary>
+    private bool EnforceBlocklistAddress(string address)
+    {
+        if (address.Length == 0) return false;
+        lock (_blockedLock)
+        {
+            if (_blockedAddresses.Contains(address, StringComparer.OrdinalIgnoreCase)) return true;
+            _blockedAddresses.Add(address);
+            while (_blockedAddresses.Count > MaxBlockedAddresses) _blockedAddresses.RemoveAt(0);
+            try
+            {
+                _firewall.SetBlocklistAddresses(_blockedAddresses);
+                SaveBlockedAddresses();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _blockedAddresses.Remove(address);
+                Console.Error.WriteLine($"[Engine] blocklist enforce: {ex.Message}");
+                return false;
+            }
+        }
+    }
+
+    /// <summary>Lift the blocklist firewall rule and forget the accumulated addresses
+    /// (called when the user switches enforcement off).</summary>
+    private void ClearBlocklistEnforcement()
+    {
+        lock (_blockedLock)
+        {
+            if (_blockedAddresses.Count == 0 && !CanEnforceFirewall) return;
+            _blockedAddresses.Clear();
+            SaveBlockedAddresses();
+            if (CanEnforceFirewall)
+                try { _firewall.SetBlocklistAddresses(Array.Empty<string>()); }
+                catch (Exception ex) { Console.Error.WriteLine($"[Engine] blocklist clear: {ex.Message}"); }
+        }
+    }
+
+    private void SaveBlockedAddresses()
+    {
+        try { _store.SetStateValue(BlockedAddressesKey, JsonSerializer.Serialize(_blockedAddresses)); }
+        catch (Exception ex) { Console.Error.WriteLine($"[Engine] persist blocked addresses: {ex.Message}"); }
+    }
+
+    private void LoadBlockedAddresses()
+    {
+        try
+        {
+            string? json = _store.GetStateValue(BlockedAddressesKey);
+            if (!string.IsNullOrEmpty(json))
+                lock (_blockedLock)
+                    _blockedAddresses = JsonSerializer.Deserialize<List<string>>(json) ?? new List<string>();
+        }
+        catch { /* corrupt state simply starts empty */ }
+    }
+
+    public (List<BlocklistStatusItem> Lists, bool Refreshing, int BlockedAddressCount) GetBlocklistStatus()
+    {
+        int blockedCount;
+        lock (_blockedLock) blockedCount = _blockedAddresses.Count;
+        return (_blocklist.GetStatus(), _blocklist.Refreshing, blockedCount);
+    }
+
+    /// <summary>Kick a forced re-download of the enabled blocklists (fire-and-forget).</summary>
+    public void RefreshBlocklists(string? listId)
+        => _ = _blocklist.RefreshAsync(listId, force: true);
 
     private void RunPeriodicChecks()
     {
@@ -1584,6 +1798,8 @@ public sealed class MonitorEngine : IAsyncDisposable
         _reputation.SetApiKey(settings.VirusTotalApiKey);
         if (settings.DataPlan.Enabled)
             settings.DataPlan.UsedBytes = _store.DataPlanUsed(CycleStartBucket());
+        _blocklist.Configure(settings.Blocklists);
+        if (!settings.BlocklistEnforce) ClearBlocklistEnforcement();
         SetFirewallMode(settings.FirewallMode);
     }
 
@@ -1717,6 +1933,7 @@ public sealed class MonitorEngine : IAsyncDisposable
         catch { }
         _etw.Dispose();
         _reputation.Dispose();
+        _blocklist.Dispose();
         _hardware.Dispose();
         _geo.Dispose();
         _store.Dispose();

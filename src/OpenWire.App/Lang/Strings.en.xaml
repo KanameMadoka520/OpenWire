@@ -100,6 +100,17 @@
     <sys:String x:Key="L.Fw.LockdownTip">Block every app from the network in one click; click again to lift it</sys:String>
     <sys:String x:Key="L.Fw.LockdownBanner">Network locked down — every app is blocked from the network until you lift it.</sys:String>
     <sys:String x:Key="L.Fw.NotElevated">⚠  The engine is not running elevated — blocks can't be enforced and per-app rates are unavailable. Start OpenWire.Service as administrator.</sys:String>
+    <sys:String x:Key="L.Fw.Blocklists">Blocklists</sys:String>
+    <sys:String x:Key="L.Fw.BlocklistSummaryFmt">{0} enabled · {1} entries · {2} addresses blocked</sys:String>
+    <sys:String x:Key="L.Fw.BlocklistEnforce">Block matched hosts</sys:String>
+    <sys:String x:Key="L.Fw.BlocklistEnforceTip">Also add matched addresses to an OpenWire firewall rule so further traffic to them is cut. Off = detect and alert only.</sys:String>
+    <sys:String x:Key="L.Fw.BlocklistRefreshTip">Re-download the enabled lists now</sys:String>
+    <sys:String x:Key="L.Fw.BlocklistRefreshing">Updating…</sys:String>
+    <sys:String x:Key="L.Fw.BlocklistNameHint">List name</sys:String>
+    <sys:String x:Key="L.Fw.BlocklistUrlHint">https://… (hosts or domain-per-line format)</sys:String>
+    <sys:String x:Key="L.Fw.BlocklistAdd">Add list</sys:String>
+    <sys:String x:Key="L.Fw.BlocklistRemoveTip">Remove this list</sys:String>
+    <sys:String x:Key="L.Fw.BlocklistHint">Lists are downloaded only while enabled and matched locally against live connections. A match raises a Suspicious host alert; nothing is blocked unless “Block matched hosts” is switched on.</sys:String>
     <sys:String x:Key="L.Fw.Profile">Profile</sys:String>
     <sys:String x:Key="L.Fw.NewProfileTip">New profile from current state</sys:String>
     <sys:String x:Key="L.Fw.DeleteProfileTip">Delete this profile</sys:String>
@@ -268,6 +279,7 @@
     <sys:String x:Key="L.Set.MonRdp">Remote Desktop (RDP) connections</sys:String>
     <sys:String x:Key="L.Set.MonAppInfo">Application changes (new version / signer)</sys:String>
     <sys:String x:Key="L.Set.MonInternetAccess">Internet access lost or restored</sys:String>
+    <sys:String x:Key="L.Set.MonSuspiciousHosts">Suspicious hosts (blocklist matches)</sys:String>
     <sys:String x:Key="L.Set.ShowNotifications">Show desktop notifications</sys:String>
     <sys:String x:Key="L.Set.MinimizeToTray">Minimize to the system tray</sys:String>
     <sys:String x:Key="L.Set.Resolution">RESOLUTION</sys:String>

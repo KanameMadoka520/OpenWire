@@ -99,6 +99,17 @@
     <sys:String x:Key="L.Fw.LockdownTip">一鍵禁止所有應用連線；再次點擊解除</sys:String>
     <sys:String x:Key="L.Fw.LockdownBanner">網路已鎖定 — 所有應用都被禁止連線，直到你解除。</sys:String>
     <sys:String x:Key="L.Fw.NotElevated">⚠  引擎未以系統管理員身分執行 — 無法執行攔截，也無法統計每應用速率。請以系統管理員身分啟動 OpenWire.Service。</sys:String>
+    <sys:String x:Key="L.Fw.Blocklists">主機黑名單</sys:String>
+    <sys:String x:Key="L.Fw.BlocklistSummaryFmt">已啟用 {0} 個清單 · 共 {1} 條 · 已攔截 {2} 個位址</sys:String>
+    <sys:String x:Key="L.Fw.BlocklistEnforce">攔截命中主機</sys:String>
+    <sys:String x:Key="L.Fw.BlocklistEnforceTip">命中黑名單的位址會同時寫入 OpenWire 防火牆規則，切斷後續流量。關閉時僅偵測告警，不做任何攔截。</sys:String>
+    <sys:String x:Key="L.Fw.BlocklistRefreshTip">立即重新下載已啟用的清單</sys:String>
+    <sys:String x:Key="L.Fw.BlocklistRefreshing">更新中…</sys:String>
+    <sys:String x:Key="L.Fw.BlocklistNameHint">清單名稱</sys:String>
+    <sys:String x:Key="L.Fw.BlocklistUrlHint">https://…（hosts 或每行一個網域格式）</sys:String>
+    <sys:String x:Key="L.Fw.BlocklistAdd">新增清單</sys:String>
+    <sys:String x:Key="L.Fw.BlocklistRemoveTip">移除該清單</sys:String>
+    <sys:String x:Key="L.Fw.BlocklistHint">清單僅在啟用後才會下載，並在本機與即時連線比對。命中會產生「可疑主機」告警；除非開啟「攔截命中主機」，否則不會攔截任何流量。</sys:String>
     <sys:String x:Key="L.Fw.Profile">設定檔</sys:String>
     <sys:String x:Key="L.Fw.NewProfileTip">以目前狀態新增設定檔</sys:String>
     <sys:String x:Key="L.Fw.DeleteProfileTip">刪除此設定檔</sys:String>
@@ -267,6 +278,7 @@
     <sys:String x:Key="L.Set.MonRdp">遠端桌面（RDP）連線</sys:String>
     <sys:String x:Key="L.Set.MonAppInfo">應用變更（新版本 / 簽署者）</sys:String>
     <sys:String x:Key="L.Set.MonInternetAccess">斷網或恢復連網</sys:String>
+    <sys:String x:Key="L.Set.MonSuspiciousHosts">可疑主機（黑名單命中）</sys:String>
     <sys:String x:Key="L.Set.ShowNotifications">顯示桌面通知</sys:String>
     <sys:String x:Key="L.Set.MinimizeToTray">最小化到系統匣</sys:String>
     <sys:String x:Key="L.Set.Resolution">解析</sys:String>

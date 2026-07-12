@@ -17,6 +17,7 @@ public sealed class FirewallManager
     private const string LegacyGroup = "OpenWire";
     private const string OwnerPrefix = "OpenWire.ManagedRule/v1;Tag=";
     private const string LockdownTag = "LOCKDOWN";
+    private const string BlocklistTag = "BLOCKLIST";
     private const int ActionBlock = 0;
     private const int DirIn = 1;
     private const int DirOut = 2;
@@ -197,6 +198,64 @@ public sealed class FirewallManager
         }
     }
 
+    /// <summary>
+    /// Replace the OpenWire blocklist rules with a pair blocking exactly <paramref name="addresses"/>
+    /// (all programs, both directions). An empty set removes the rules. Same add-before-remove
+    /// generational swap as the app and lockdown rules; tagged separately so app-rule
+    /// reconciliation and mode switches never touch them.
+    /// </summary>
+    public void SetBlocklistAddresses(IReadOnlyCollection<string> addresses)
+    {
+        lock (_lock)
+        {
+            object policy = CreatePolicy();
+            if (addresses.Count == 0)
+            {
+                RemoveWhere(policy, IsOwnedBlocklistRule, exceptNames: null);
+                if (CountWhere(policy, IsOwnedBlocklistRule, exceptNames: null) != 0)
+                    throw new InvalidOperationException("One or more blocklist rules could not be removed.");
+                return;
+            }
+
+            string remoteAddresses = string.Join(",", addresses);
+            string generation = Guid.NewGuid().ToString("N")[..8].ToUpperInvariant();
+            var added = new HashSet<string>(StringComparer.Ordinal);
+            try
+            {
+                string outName = $"OpenWire: Blocklist [Out] #{generation}";
+                AddBlocklistRule(policy, outName, DirOut, remoteAddresses);
+                added.Add(outName);
+                string inName = $"OpenWire: Blocklist [In] #{generation}";
+                AddBlocklistRule(policy, inName, DirIn, remoteAddresses);
+                added.Add(inName);
+            }
+            catch
+            {
+                RemoveOwnedNames(policy, added, OwnedDescription(BlocklistTag));
+                throw;
+            }
+
+            RemoveWhere(policy, IsOwnedBlocklistRule, added);
+        }
+    }
+
+    private static void AddBlocklistRule(object policyObject, string name, int dir, string remoteAddresses)
+    {
+        dynamic policy = policyObject;
+        dynamic rule = CreateRule();
+        rule.Name = name;
+        rule.Description = OwnedDescription(BlocklistTag);
+        rule.Grouping = Group;
+        rule.Protocol = ProtocolAny;
+        rule.Action = ActionBlock;
+        rule.Direction = dir;
+        rule.RemoteAddresses = remoteAddresses;
+        rule.Enabled = true;
+        rule.Profiles = ProfileAll;
+        rule.InterfaceTypes = "All";
+        policy.Rules.Add(rule);
+    }
+
     private static void AddLockdownRule(object policyObject, string name, int dir)
     {
         dynamic policy = policyObject;
@@ -278,7 +337,9 @@ public sealed class FirewallManager
             object policy;
             try { policy = CreatePolicy(); }
             catch { return 0; }
-            return RemoveWhere(policy, rule => IsManagedAppRule(rule) || IsOwnedLockdownRule(rule), exceptNames: null);
+            return RemoveWhere(policy,
+                rule => IsManagedAppRule(rule) || IsOwnedLockdownRule(rule) || IsOwnedBlocklistRule(rule),
+                exceptNames: null);
         }
     }
 
@@ -324,9 +385,21 @@ public sealed class FirewallManager
         if (string.Equals(grouping, Group, StringComparison.Ordinal)
             && name.StartsWith("OpenWire:", StringComparison.Ordinal)
             && desc.StartsWith(OwnerPrefix, StringComparison.Ordinal)
-            && !desc.Equals(OwnedDescription(LockdownTag), StringComparison.Ordinal))
+            && !desc.Equals(OwnedDescription(LockdownTag), StringComparison.Ordinal)
+            && !desc.Equals(OwnedDescription(BlocklistTag), StringComparison.Ordinal))
             return true;
         return IsOwnedAppRule(ruleObject);
+    }
+
+    private static bool IsOwnedBlocklistRule(object ruleObject)
+    {
+        dynamic rule = ruleObject;
+        string? grouping = TryGet(() => (string)rule.Grouping);
+        string desc = TryGet(() => (string)rule.Description) ?? string.Empty;
+        string name = TryGet(() => (string)rule.Name) ?? string.Empty;
+        return string.Equals(grouping, Group, StringComparison.Ordinal)
+            && desc.Equals(OwnedDescription(BlocklistTag), StringComparison.Ordinal)
+            && name.StartsWith("OpenWire: Blocklist ", StringComparison.Ordinal);
     }
 
     private static bool IsOwnedLockdownRule(object ruleObject)

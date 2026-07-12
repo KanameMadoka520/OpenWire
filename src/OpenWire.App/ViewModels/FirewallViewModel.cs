@@ -3,6 +3,7 @@ using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OpenWire.App.Services;
+using OpenWire.App.Util;
 using OpenWire.Core.Models;
 using OpenWire.Core.Util;
 
@@ -97,6 +98,41 @@ public partial class AppRowVM : ObservableObject
     [RelayCommand] private Task ToggleOut() => _parent.ApplyAsync(this);
 }
 
+/// <summary>One blocklist subscription row in the Firewall screen's blocklist panel.</summary>
+public partial class BlocklistRowVM : ObservableObject
+{
+    private readonly FirewallViewModel _parent;
+
+    public string Id { get; }
+    public string Name { get; }
+    public string Url { get; }
+    public bool IsPreset { get; }
+    public string EntryCountText { get; }
+    public string LastFetchText { get; }
+    public string LastError { get; }
+    public bool HasError => LastError.Length > 0;
+
+    [ObservableProperty] private bool _enabled;
+
+    public BlocklistRowVM(FirewallViewModel parent, BlocklistSubscription sub, BlocklistStatusItem? status)
+    {
+        _parent = parent;
+        Id = sub.Id;
+        Name = sub.Name;
+        Url = sub.Url;
+        IsPreset = sub.IsPreset;
+        _enabled = sub.Enabled;
+        EntryCountText = status is { EntryCount: > 0 } ? status.EntryCount.ToString("N0") : "—";
+        LastFetchText = status is { LastFetchUnix: > 0 }
+            ? DateTimeOffset.FromUnixTimeSeconds(status.LastFetchUnix).ToLocalTime().ToString("MM-dd HH:mm")
+            : "—";
+        LastError = status?.LastError ?? "";
+    }
+
+    [RelayCommand] private Task Toggle() => _parent.SetBlocklistEnabledAsync(this);
+    [RelayCommand] private Task Remove() => _parent.RemoveBlocklistAsync(this);
+}
+
 /// <summary>Firewall screen: mode selector + the per-app allow/block table.</summary>
 public partial class FirewallViewModel : ObservableObject
 {
@@ -120,6 +156,16 @@ public partial class FirewallViewModel : ObservableObject
     [ObservableProperty] private string _networkName = "";
     private string _networkFingerprint = "";
     private bool _suppressProfileSwitch;
+
+    // Blocklist subscriptions panel.
+    [ObservableProperty] private ObservableCollection<BlocklistRowVM> _blocklists = new();
+    [ObservableProperty] private bool _blocklistsExpanded;
+    [ObservableProperty] private bool _blocklistEnforce;
+    [ObservableProperty] private bool _blocklistRefreshing;
+    [ObservableProperty] private string _blocklistSummary = "";
+    [ObservableProperty] private string _newListName = "";
+    [ObservableProperty] private string _newListUrl = "";
+    private bool _suppressBlocklistApply;
 
     public FirewallViewModel(EngineClient client) => _client = client;
 
@@ -146,6 +192,89 @@ public partial class FirewallViewModel : ObservableObject
         StatusText = CanEnforce
             ? $"{fw.Status.BlockedAppCount} blocked · {_allApps.Count} active applications · profile “{fw.Status.ActiveProfile}”"
             : "Run the engine as administrator to enforce blocks and show per-app rates";
+
+        await LoadBlocklistsAsync();
+    }
+
+    // ---- blocklist subscriptions ----
+
+    public async Task LoadBlocklistsAsync()
+    {
+        var settings = (await _client.GetSettingsAsync()).Settings;
+        var status = await _client.GetBlocklistStatusAsync();
+        var byId = status.Lists.ToDictionary(l => l.Id, StringComparer.OrdinalIgnoreCase);
+
+        _suppressBlocklistApply = true;
+        BlocklistEnforce = settings.BlocklistEnforce;
+        _suppressBlocklistApply = false;
+
+        BlocklistRefreshing = status.Refreshing;
+        Blocklists = new ObservableCollection<BlocklistRowVM>(
+            settings.Blocklists.Select(b => new BlocklistRowVM(this, b, byId.GetValueOrDefault(b.Id))));
+
+        int enabledCount = settings.Blocklists.Count(b => b.Enabled);
+        long entries = status.Lists.Where(l => l.Enabled).Sum(l => (long)l.EntryCount);
+        BlocklistSummary = string.Format(Loc.S("L.Fw.BlocklistSummaryFmt"),
+            enabledCount, entries.ToString("N0"), status.BlockedAddressCount);
+    }
+
+    /// <summary>Load-modify-save round trip for the blocklist part of the settings, then
+    /// re-read so the panel reflects what the engine actually accepted.</summary>
+    private async Task MutateSettingsAsync(Action<AppSettings> mutate)
+    {
+        var settings = (await _client.GetSettingsAsync()).Settings;
+        mutate(settings);
+        await _client.SetSettingsAsync(settings);
+        await LoadBlocklistsAsync();
+    }
+
+    public Task SetBlocklistEnabledAsync(BlocklistRowVM row) => MutateSettingsAsync(s =>
+    {
+        var sub = s.Blocklists.FirstOrDefault(b => b.Id.Equals(row.Id, StringComparison.OrdinalIgnoreCase));
+        if (sub is not null) sub.Enabled = row.Enabled;
+    });
+
+    public Task RemoveBlocklistAsync(BlocklistRowVM row) => row.IsPreset
+        ? Task.CompletedTask
+        : MutateSettingsAsync(s => s.Blocklists.RemoveAll(b => b.Id.Equals(row.Id, StringComparison.OrdinalIgnoreCase)));
+
+    partial void OnBlocklistEnforceChanged(bool value)
+    {
+        if (_suppressBlocklistApply) return;
+        _ = MutateSettingsAsync(s => s.BlocklistEnforce = value);
+    }
+
+    [RelayCommand]
+    private async Task AddBlocklist()
+    {
+        string name = NewListName.Trim();
+        string url = NewListUrl.Trim();
+        if (name.Length == 0
+            || !Uri.TryCreate(url, UriKind.Absolute, out var uri)
+            || (uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != Uri.UriSchemeHttp))
+            return;
+
+        await MutateSettingsAsync(s => s.Blocklists.Add(new BlocklistSubscription
+        {
+            Id = "user-" + Guid.NewGuid().ToString("N")[..8],
+            Name = name,
+            Url = url,
+            Enabled = true,
+            IsPreset = false,
+        }));
+        NewListName = "";
+        NewListUrl = "";
+    }
+
+    [RelayCommand]
+    private async Task RefreshBlocklists()
+    {
+        await _client.RefreshBlocklistsAsync();
+        BlocklistRefreshing = true;
+        // Give the download a moment, then re-read; slow lists finish in the background
+        // and show up on the next visit or manual refresh.
+        await Task.Delay(1500);
+        await LoadBlocklistsAsync();
     }
 
     partial void OnSearchTextChanged(string value) => ApplyAppFilter();

@@ -87,6 +87,7 @@
                         <CheckBox Style="{StaticResource Switch}" Content="{StaticResource L.Set.MonRdp}" IsChecked="{Binding MonitorRdp}" Margin="0,0,0,14" />
                         <CheckBox Style="{StaticResource Switch}" Content="{StaticResource L.Set.MonAppInfo}" IsChecked="{Binding MonitorAppInfo}" Margin="0,0,0,14" />
                         <CheckBox Style="{StaticResource Switch}" Content="{StaticResource L.Set.MonInternetAccess}" IsChecked="{Binding MonitorInternetAccess}" Margin="0,0,0,14" />
+                        <CheckBox Style="{StaticResource Switch}" Content="{StaticResource L.Set.MonSuspiciousHosts}" IsChecked="{Binding MonitorSuspiciousHosts}" Margin="0,0,0,14" />
                         <CheckBox Style="{StaticResource Switch}" Content="{StaticResource L.Set.ShowNotifications}" IsChecked="{Binding ShowNotifications}" />
                     </StackPanel>
                 </Border>

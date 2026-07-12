@@ -43,6 +43,7 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool _monitorProxyChanges = true;
     [ObservableProperty] private bool _monitorAppInfo = true;
     [ObservableProperty] private bool _monitorInternetAccess = true;
+    [ObservableProperty] private bool _monitorSuspiciousHosts = true;
     [ObservableProperty] private int _historyRetentionDays = 90;
     [ObservableProperty] private bool _showNotifications = true;
     [ObservableProperty] private bool _minimizeToTray = true;
@@ -106,6 +107,7 @@ public partial class SettingsViewModel : ObservableObject
         MonitorProxyChanges = s.MonitorProxyChanges;
         MonitorAppInfo = s.MonitorAppInfo;
         MonitorInternetAccess = s.MonitorInternetAccess;
+        MonitorSuspiciousHosts = s.MonitorSuspiciousHosts;
         HistoryRetentionDays = s.HistoryRetentionDays;
         ShowNotifications = s.ShowDesktopNotifications;
         MinimizeToTray = s.MinimizeToTray;
@@ -332,6 +334,7 @@ public partial class SettingsViewModel : ObservableObject
         _settings.MonitorProxyChanges = MonitorProxyChanges;
         _settings.MonitorAppInfo = MonitorAppInfo;
         _settings.MonitorInternetAccess = MonitorInternetAccess;
+        _settings.MonitorSuspiciousHosts = MonitorSuspiciousHosts;
         _settings.HistoryRetentionDays = Math.Clamp(HistoryRetentionDays, 0, 3650);
         _settings.ShowDesktopNotifications = ShowNotifications;
         _settings.MinimizeToTray = MinimizeToTray;

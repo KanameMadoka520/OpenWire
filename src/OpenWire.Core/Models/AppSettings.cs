@@ -52,6 +52,27 @@ public sealed class AppSettings
     public bool MonitorInternetAccess { get; set; } = true;
 
     /// <summary>
+    /// Match observed connections against the enabled blocklist subscriptions and raise
+    /// a SuspiciousHost alert when an application talks to a listed host. Detection only —
+    /// nothing is blocked unless <see cref="BlocklistEnforce"/> is also switched on.
+    /// Does nothing until at least one list in <see cref="Blocklists"/> is enabled.
+    /// </summary>
+    public bool MonitorSuspiciousHosts { get; set; } = true;
+
+    /// <summary>
+    /// When a blocklisted host is observed, also add its address to an OpenWire-owned
+    /// firewall block rule so further connections are cut. Off by default: out of the box
+    /// the blocklists only detect and alert, they never touch the network.
+    /// </summary>
+    public bool BlocklistEnforce { get; set; } = false;
+
+    /// <summary>
+    /// Blocklist subscriptions. The engine seeds the built-in presets (all disabled) on
+    /// startup; users can toggle presets and add their own list URLs.
+    /// </summary>
+    public List<BlocklistSubscription> Blocklists { get; set; } = new();
+
+    /// <summary>
     /// Detect statistical usage anomalies over recorded history (per-app volume
     /// spikes vs a rolling baseline, upload-heavy apps, first contact with a new
     /// country, odd-hour activity) and raise them as alerts. Monitoring/recording

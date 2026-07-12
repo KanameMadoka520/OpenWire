@@ -226,6 +226,8 @@ public sealed class EngineClient : IDisposable
 
     public void SetUiActive(bool active) => Send(new SetUiActiveRequest { Active = active });
     public Task<GeoIpStatusResponse> GetGeoIpStatusAsync() => RequestAsync<GeoIpStatusResponse>(new GetGeoIpStatusRequest());
+    public Task<BlocklistStatusResponse> GetBlocklistStatusAsync() => RequestAsync<BlocklistStatusResponse>(new GetBlocklistStatusRequest());
+    public Task<OkResponse> RefreshBlocklistsAsync(string? listId = null) => RequestAsync<OkResponse>(new RefreshBlocklistsRequest { ListId = listId });
 
     /// <summary>Trigger an on-demand GeoIP database download (a longer timeout than usual — it
     /// fetches a few MB over the network).</summary>

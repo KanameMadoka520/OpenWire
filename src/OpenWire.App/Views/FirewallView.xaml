@@ -13,6 +13,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
@@ -111,10 +112,113 @@
             </Grid>
         </Grid>
 
+        <!-- Blocklist subscriptions (collapsible): community host lists matched against live
+             connections. Detection alerts by default; blocking only via the explicit switch. -->
+        <Border Grid.Row="3" Style="{StaticResource Card}" Padding="0" Margin="0,0,0,4">
+            <StackPanel>
+                <Grid Margin="14,9">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <ToggleButton Grid.Column="0" IsChecked="{Binding BlocklistsExpanded, Mode=TwoWay}" Cursor="Hand"
+                                  Background="Transparent" BorderThickness="0" VerticalAlignment="Center" Margin="0,0,10,0" Width="18">
+                        <ToggleButton.Template>
+                            <ControlTemplate TargetType="ToggleButton">
+                                <TextBlock x:Name="chev" Text="&#xE76C;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10"
+                                           Foreground="{StaticResource TextMuted}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsChecked" Value="True">
+                                        <Setter TargetName="chev" Property="Text" Value="&#xE70D;" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </ToggleButton.Template>
+                    </ToggleButton>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="&#xE8FD;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="13"
+                                   Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <TextBlock Text="{StaticResource L.Fw.Blocklists}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                        <TextBlock Text="{Binding BlocklistSummary}" Style="{StaticResource Caption}" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <TextBlock Grid.Column="2" Text="{StaticResource L.Fw.BlocklistRefreshing}" Style="{StaticResource Caption}"
+                               VerticalAlignment="Center" Margin="0,0,10,0"
+                               Visibility="{Binding BlocklistRefreshing, Converter={StaticResource BoolVis}}" />
+                    <CheckBox Grid.Column="3" Style="{StaticResource Switch}" Content="{StaticResource L.Fw.BlocklistEnforce}"
+                              ToolTip="{StaticResource L.Fw.BlocklistEnforceTip}" IsEnabled="{Binding CanEnforce}"
+                              IsChecked="{Binding BlocklistEnforce, Mode=TwoWay}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                    <Button Grid.Column="4" Style="{StaticResource IconBtn}" Content="&#xE72C;" ToolTip="{StaticResource L.Fw.BlocklistRefreshTip}"
+                            Command="{Binding RefreshBlocklistsCommand}" VerticalAlignment="Center" />
+                </Grid>
+                <StackPanel Visibility="{Binding BlocklistsExpanded, Converter={StaticResource BoolVis}}" Margin="14,0,14,12">
+                    <ItemsControl ItemsSource="{Binding Blocklists}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderBrush="{StaticResource Border}" BorderThickness="0,1,0,0" Padding="0,8">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="90" />
+                                            <ColumnDefinition Width="110" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="34" />
+                                        </Grid.ColumnDefinitions>
+                                        <CheckBox Grid.Column="0" Style="{StaticResource Switch}" IsChecked="{Binding Enabled, Mode=TwoWay}"
+                                                  Command="{Binding ToggleCommand}" VerticalAlignment="Center" />
+                                        <StackPanel Grid.Column="1" Margin="12,0,10,0" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Name}" FontSize="12.5" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding Url}" Foreground="{StaticResource TextMuted}" FontSize="11" TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="2" Style="{StaticResource Mono}" FontSize="12" Foreground="{StaticResource TextSecondary}"
+                                                   Text="{Binding EntryCountText}" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="3" Foreground="{StaticResource TextMuted}" FontSize="12"
+                                                   Text="{Binding LastFetchText}" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="4" Text="&#xE7BA;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="13"
+                                                   Foreground="{StaticResource Warning}" VerticalAlignment="Center" Margin="0,0,8,0"
+                                                   ToolTip="{Binding LastError}"
+                                                   Visibility="{Binding HasError, Converter={StaticResource BoolVis}}" />
+                                        <Button Grid.Column="5" Style="{StaticResource IconBtn}" Content="&#xE74D;" ToolTip="{StaticResource L.Fw.BlocklistRemoveTip}"
+                                                Command="{Binding RemoveCommand}" VerticalAlignment="Center"
+                                                Visibility="{Binding IsPreset, Converter={StaticResource BoolVis}, ConverterParameter=invert}" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Grid Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="2*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Grid Grid.Column="0">
+                            <TextBox Style="{StaticResource Search}" Text="{Binding NewListName, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Text="{StaticResource L.Fw.BlocklistNameHint}" Foreground="{StaticResource TextMuted}" FontSize="13"
+                                       Margin="12,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                                       Visibility="{Binding NewListName.Length, Converter={StaticResource ZeroVis}, ConverterParameter=invert}" />
+                        </Grid>
+                        <Grid Grid.Column="1" Margin="8,0,0,0">
+                            <TextBox Style="{StaticResource Search}" Text="{Binding NewListUrl, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Text="{StaticResource L.Fw.BlocklistUrlHint}" Foreground="{StaticResource TextMuted}" FontSize="13"
+                                       Margin="12,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                                       Visibility="{Binding NewListUrl.Length, Converter={StaticResource ZeroVis}, ConverterParameter=invert}" />
+                        </Grid>
+                        <Button Grid.Column="2" Style="{StaticResource BtnGhost}" Padding="12,6" Margin="8,0,0,0"
+                                Content="{StaticResource L.Fw.BlocklistAdd}" Command="{Binding AddBlocklistCommand}" />
+                    </Grid>
+                    <TextBlock Text="{StaticResource L.Fw.BlocklistHint}" Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,8,0,0" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
         <!-- Header + rows share one column layout and one horizontal scrollbar:
              the content tracks the viewport width but never shrinks below MinWidth,
              so on a narrow window it scrolls sideways instead of columns colliding. -->
-        <ScrollViewer x:Name="HScroll" Grid.Row="3" Margin="0,6,0,0"
+        <ScrollViewer x:Name="HScroll" Grid.Row="4" Margin="0,6,0,0"
                       HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
             <Grid Width="{Binding ViewportWidth, ElementName=HScroll}" MinWidth="1000">
                 <Grid.RowDefinitions>

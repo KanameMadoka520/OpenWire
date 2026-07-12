@@ -193,6 +193,16 @@ public sealed class SetUiActiveRequest : IpcMessage
     public bool Active { get; set; } = true;
 }
 
+/// <summary>Fetch per-blocklist runtime status (cache freshness, entry counts, fetch errors).</summary>
+public sealed class GetBlocklistStatusRequest : IpcMessage { }
+
+/// <summary>Re-download enabled blocklists now (one list when <see cref="ListId"/> is set,
+/// otherwise all). The download runs in the background; poll status to see it finish.</summary>
+public sealed class RefreshBlocklistsRequest : IpcMessage
+{
+    public string? ListId { get; set; }
+}
+
 /// <summary>Fetch the current GeoIP database status (source, build date, last update).</summary>
 public sealed class GetGeoIpStatusRequest : IpcMessage { }
 

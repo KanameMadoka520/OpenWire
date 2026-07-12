@@ -378,6 +378,21 @@ public sealed class IpcServer : IAsyncDisposable
                     _engine.SetSettings(ss.Settings);
                     return new OkResponse();
 
+                case GetBlocklistStatusRequest:
+                {
+                    var (lists, refreshing, blockedCount) = _engine.GetBlocklistStatus();
+                    return new BlocklistStatusResponse
+                    {
+                        Lists = lists,
+                        Refreshing = refreshing,
+                        BlockedAddressCount = blockedCount,
+                    };
+                }
+
+                case RefreshBlocklistsRequest rb:
+                    _engine.RefreshBlocklists(rb.ListId);
+                    return new OkResponse();
+
                 case GetGeoIpStatusRequest:
                     return _engine.GetGeoIpStatus();
 
