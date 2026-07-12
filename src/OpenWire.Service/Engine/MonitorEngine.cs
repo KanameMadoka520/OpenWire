@@ -104,12 +104,16 @@ public sealed class MonitorEngine : IAsyncDisposable
     private readonly object _blockedLock = new();
     private List<string> _blockedAddresses = new();
 
-    // Per-app quota alert de-duplication + which apps this feature auto-blocked. Keyed by appId.
-    private sealed class QuotaState { public long PeriodStart; public bool Warned; public bool Exceeded; }
-    private readonly Dictionary<string, QuotaState> _quotaState = new(StringComparer.OrdinalIgnoreCase);
+    // Per-app quota alert de-duplication. Persisted so a restart mid-period neither re-fires an
+    // already-delivered alert nor misses a period rollover that happened while the engine was off.
+    private sealed class QuotaState { public long PeriodStart { get; set; } public bool Warned { get; set; } public bool Exceeded { get; set; } }
+    private const string QuotaStateKey = "quota.state";
+    private Dictionary<string, QuotaState> _quotaState = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _quotaExceeded = new(StringComparer.OrdinalIgnoreCase);
+    // Apps this feature auto-blocked, appId -> executable path. Its own firewall rule set (QUOTA
+    // tag), kept entirely separate from profile/manual blocks. Persisted for restart reconciliation.
     private const string QuotaBlockedKey = "quota.blocked";
-    private HashSet<string> _quotaBlocked = new(StringComparer.OrdinalIgnoreCase);
+    private Dictionary<string, string> _quotaBlocked = new(StringComparer.OrdinalIgnoreCase);
 
     // Timed lock-down ("panic"): unix seconds when the block-all auto-lifts (0 = none/indefinite).
     // Persisted so a timed panic survives an engine restart and resumes for its remaining time.
@@ -172,6 +176,7 @@ public sealed class MonitorEngine : IAsyncDisposable
         _blocklist.Configure(_settings.Blocklists);
         LoadBlockedAddresses();
         LoadQuotaBlocked();
+        LoadQuotaState();
 
         CanEnforceFirewall = _firewall.CanEnforce();
         if (CanEnforceFirewall)
@@ -215,6 +220,9 @@ public sealed class MonitorEngine : IAsyncDisposable
                 // Resume a still-valid timed panic; the startup SetBlockAll(false) above already
                 // cleared any expired one.
                 RestorePanicLockdown();
+
+                // Re-apply quota auto-blocks still valid this period; drop any that reset while off.
+                ReconcileQuotaBlocksOnStartup();
             }
         }
         _etwActive = _etw.TryStart();
@@ -792,7 +800,7 @@ public sealed class MonitorEngine : IAsyncDisposable
                 state.Warned = false;
                 state.Exceeded = false;
                 _quotaExceeded.Remove(quota.AppId);
-                if (_quotaBlocked.Contains(quota.AppId)) LiftQuotaBlock(quota.AppId);
+                if (_quotaBlocked.ContainsKey(quota.AppId)) LiftQuotaBlock(quota.AppId);
             }
 
             long used = _store.AppUsedSinceDay(quota.AppId, periodStart);
@@ -804,7 +812,7 @@ public sealed class MonitorEngine : IAsyncDisposable
             {
                 _quotaExceeded.Add(quota.AppId);
                 bool blocked = false;
-                if (quota.AutoBlock && CanEnforceFirewall && !_quotaBlocked.Contains(quota.AppId))
+                if (quota.AutoBlock && CanEnforceFirewall && !_quotaBlocked.ContainsKey(quota.AppId))
                     blocked = ApplyQuotaBlock(quota);
 
                 if (!state.Exceeded)
@@ -820,7 +828,7 @@ public sealed class MonitorEngine : IAsyncDisposable
                             Title = "Data quota reached",
                             Message = $"{name} reached its {period} data quota "
                                 + $"({ByteFormatter.Bytes(used)} of {ByteFormatter.Bytes(quota.LimitBytes)})."
-                                + ((quota.AutoBlock && (blocked || _quotaBlocked.Contains(quota.AppId)))
+                                + ((quota.AutoBlock && (blocked || _quotaBlocked.ContainsKey(quota.AppId)))
                                     ? " It is now blocked until the quota resets." : ""),
                             AppId = quota.AppId,
                             AppName = quota.AppName.Length > 0 ? quota.AppName : null,
@@ -857,8 +865,10 @@ public sealed class MonitorEngine : IAsyncDisposable
         foreach (string appId in _quotaState.Keys.Where(k => !live.Contains(k)).ToList())
             _quotaState.Remove(appId);
         _quotaExceeded.RemoveWhere(a => !live.Contains(a));
-        foreach (string appId in _quotaBlocked.Where(a => !live.Contains(a)).ToList())
+        foreach (string appId in _quotaBlocked.Keys.Where(a => !live.Contains(a)).ToList())
             LiftQuotaBlock(appId);
+
+        SaveQuotaState();
     }
 
     /// <summary>Local-day-start unix seconds of the start of the quota's current period.</summary>
@@ -889,40 +899,81 @@ public sealed class MonitorEngine : IAsyncDisposable
         string exe = quota.ExecutablePath;
         if (string.IsNullOrEmpty(exe) && _appStore.TryGetValue(quota.AppId, out var u)) exe = u.App.ExecutablePath;
         if (string.IsNullOrWhiteSpace(exe) || !Path.IsPathFullyQualified(exe)) return false;
-        try
+        _quotaBlocked[quota.AppId] = exe;
+        if (ReapplyQuotaFirewall())
         {
-            SetAppBlocked(quota.AppId, exe, blockIn: true, blockOut: true);
-            _quotaBlocked.Add(quota.AppId);
             SaveQuotaBlocked();
             return true;
         }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine($"[Engine] quota block failed: {ex.Message}");
-            return false;
-        }
+        _quotaBlocked.Remove(quota.AppId); // rule programming failed; don't claim it is blocked
+        return false;
     }
 
     private void LiftQuotaBlock(string appId)
     {
         if (!_quotaBlocked.Remove(appId)) return;
+        ReapplyQuotaFirewall();
         SaveQuotaBlocked();
-        try
-        {
-            string exe = _appStore.TryGetValue(appId, out var u) ? u.App.ExecutablePath : appId;
-            SetAppBlocked(appId, exe, blockIn: false, blockOut: false);
-        }
-        catch (Exception ex) { Console.Error.WriteLine($"[Engine] quota unblock failed: {ex.Message}"); }
     }
 
-    /// <summary>Lift every quota block (called when quotas change so stale blocks don't persist).</summary>
+    /// <summary>Reconcile the QUOTA-tagged firewall rules to exactly the current _quotaBlocked set.
+    /// Returns false (and logs) if the firewall rejected the change.</summary>
+    private bool ReapplyQuotaFirewall()
+    {
+        if (!CanEnforceFirewall) return false;
+        try
+        {
+            _firewall.SetQuotaBlockedApps(_quotaBlocked.Values.ToList());
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[Engine] quota firewall reconcile failed: {ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>Lift quota blocks whose quota was removed or had AutoBlock switched off
+    /// (called when settings change so stale blocks don't persist).</summary>
     private void ReconcileQuotaBlocks()
     {
         List<AppQuota> quotas;
         lock (_settingsLock) quotas = _settings.AppQuotas.ToList();
         var enforcing = quotas.Where(q => q.AutoBlock).Select(q => q.AppId).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        foreach (string appId in _quotaBlocked.Where(a => !enforcing.Contains(a)).ToList())
+        foreach (string appId in _quotaBlocked.Keys.Where(a => !enforcing.Contains(a)).ToList())
             LiftQuotaBlock(appId);
+    }
+
+    /// <summary>
+    /// On startup, re-evaluate each persisted quota block against its quota's current period: drop
+    /// apps whose quota is gone / no longer auto-blocking / now under the limit (the period reset
+    /// while the engine was off), then re-apply the surviving quota firewall rules exactly once.
+    /// </summary>
+    private void ReconcileQuotaBlocksOnStartup()
+    {
+        if (_quotaBlocked.Count == 0)
+        {
+            ReapplyQuotaFirewall(); // clears any stale QUOTA rules from a previous run
+            return;
+        }
+
+        List<AppQuota> quotas;
+        lock (_settingsLock) quotas = _settings.AppQuotas.ToList();
+        var byId = quotas.ToDictionary(q => q.AppId, StringComparer.OrdinalIgnoreCase);
+
+        foreach (string appId in _quotaBlocked.Keys.ToList())
+        {
+            if (!byId.TryGetValue(appId, out var quota) || !quota.AutoBlock || quota.LimitBytes <= 0)
+            {
+                _quotaBlocked.Remove(appId);
+                continue;
+            }
+            long used = _store.AppUsedSinceDay(appId, QuotaPeriodStartDay(quota.Period));
+            if (used < quota.LimitBytes) _quotaBlocked.Remove(appId); // period reset while off
+        }
+
+        SaveQuotaBlocked();
+        ReapplyQuotaFirewall();
     }
 
     private void SaveQuotaBlocked()
@@ -936,9 +987,27 @@ public sealed class MonitorEngine : IAsyncDisposable
         try
         {
             string? json = _store.GetStateValue(QuotaBlockedKey);
-            if (!string.IsNullOrEmpty(json))
-                _quotaBlocked = JsonSerializer.Deserialize<HashSet<string>>(json)
-                    ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var loaded = string.IsNullOrEmpty(json) ? null : JsonSerializer.Deserialize<Dictionary<string, string>>(json);
+            if (loaded is not null)
+                _quotaBlocked = new Dictionary<string, string>(loaded, StringComparer.OrdinalIgnoreCase);
+        }
+        catch { /* corrupt state simply starts empty */ }
+    }
+
+    private void SaveQuotaState()
+    {
+        try { _store.SetStateValue(QuotaStateKey, JsonSerializer.Serialize(_quotaState)); }
+        catch (Exception ex) { Console.Error.WriteLine($"[Engine] persist quota state: {ex.Message}"); }
+    }
+
+    private void LoadQuotaState()
+    {
+        try
+        {
+            string? json = _store.GetStateValue(QuotaStateKey);
+            var loaded = string.IsNullOrEmpty(json) ? null : JsonSerializer.Deserialize<Dictionary<string, QuotaState>>(json);
+            if (loaded is not null)
+                _quotaState = new Dictionary<string, QuotaState>(loaded, StringComparer.OrdinalIgnoreCase);
         }
         catch { /* corrupt state simply starts empty */ }
     }
@@ -1934,32 +2003,43 @@ public sealed class MonitorEngine : IAsyncDisposable
         Events?.Invoke(new StatusChangedEvent { Status = _status });
     }
 
-    /// <summary>Lift a timed lock-down whose deadline has passed. Runs on the tick thread.</summary>
+    /// <summary>Lift a timed lock-down whose deadline has passed. Runs on the tick thread. The
+    /// deadline is only cleared AFTER the block is actually lifted, so a transient firewall
+    /// failure leaves _panicUntil set and the next tick retries — the user is never stranded
+    /// offline past the promised expiry.</summary>
     private void ExpirePanicIfDue(long nowUnix)
     {
         if (_panicUntil <= 0 || nowUnix < _panicUntil) return;
-        _panicUntil = 0;
-        SavePanicUntil();
+        if (!CanEnforceFirewall)
+        {
+            // Nothing to lift (no enforcement capability); just clear the stale timer.
+            _panicUntil = 0;
+            SavePanicUntil();
+            return;
+        }
         try
         {
-            if (CanEnforceFirewall)
-            {
-                _firewall.SetBlockAll(false);
-                _lockdownActive = false;
-                if (_settings.IsAlertEnabled(AlertKind.Lockdown))
-                    Persist(new Alert
-                    {
-                        Time = DateTimeOffset.UtcNow,
-                        Kind = AlertKind.Lockdown,
-                        Severity = AlertSeverity.Info,
-                        Title = "Lock-down expired",
-                        Message = "The timed lock-down ended; apps can reach the network again.",
-                    });
-                _status = BuildStatus(DateTimeOffset.UtcNow, 0, 0);
-                Events?.Invoke(new StatusChangedEvent { Status = _status });
-            }
+            _firewall.SetBlockAll(false);
+            _lockdownActive = false;
+            _panicUntil = 0;
+            SavePanicUntil();
+            if (_settings.IsAlertEnabled(AlertKind.Lockdown))
+                Persist(new Alert
+                {
+                    Time = DateTimeOffset.UtcNow,
+                    Kind = AlertKind.Lockdown,
+                    Severity = AlertSeverity.Info,
+                    Title = "Lock-down expired",
+                    Message = "The timed lock-down ended; apps can reach the network again.",
+                });
+            _status = BuildStatus(DateTimeOffset.UtcNow, 0, 0);
+            Events?.Invoke(new StatusChangedEvent { Status = _status });
         }
-        catch (Exception ex) { Console.Error.WriteLine($"[Engine] panic expiry lift failed: {ex.Message}"); }
+        catch (Exception ex)
+        {
+            // Leave _panicUntil > 0 so the next tick retries; never strand the user offline.
+            Console.Error.WriteLine($"[Engine] panic expiry lift failed (will retry): {ex.Message}");
+        }
     }
 
     /// <summary>On startup, resume a timed panic that has not yet expired, or clear a stale one.</summary>

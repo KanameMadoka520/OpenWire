@@ -18,6 +18,7 @@ public sealed class FirewallManager
     private const string OwnerPrefix = "OpenWire.ManagedRule/v1;Tag=";
     private const string LockdownTag = "LOCKDOWN";
     private const string BlocklistTag = "BLOCKLIST";
+    private const string QuotaTag = "QUOTA";
     private const int ActionBlock = 0;
     private const int DirIn = 1;
     private const int DirOut = 2;
@@ -239,6 +240,82 @@ public sealed class FirewallManager
         }
     }
 
+    /// <summary>
+    /// Replace the OpenWire per-app data-quota block rules with block rules (both directions) for
+    /// exactly the given executables. An empty set removes them. Kept separate from the profile /
+    /// per-app rules and tagged QUOTA so that firewall-mode reconciliation, profile switches and
+    /// manual user blocks never touch quota blocks — and quota blocks never mutate a user's rules.
+    /// </summary>
+    public void SetQuotaBlockedApps(IReadOnlyCollection<string> exePaths)
+    {
+        lock (_lock)
+        {
+            object policy = CreatePolicy();
+            var paths = exePaths
+                .Where(p => !string.IsNullOrWhiteSpace(p))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (paths.Count == 0)
+            {
+                RemoveWhere(policy, IsOwnedQuotaRule, exceptNames: null);
+                if (CountWhere(policy, IsOwnedQuotaRule, exceptNames: null) != 0)
+                    throw new InvalidOperationException("One or more quota rules could not be removed.");
+                return;
+            }
+
+            string generation = Guid.NewGuid().ToString("N")[..8].ToUpperInvariant();
+            var added = new HashSet<string>(StringComparer.Ordinal);
+            try
+            {
+                foreach (string exe in paths)
+                {
+                    string tag = Tag(exe.ToLowerInvariant());
+                    string outName = $"OpenWire: Quota {tag} [Out] #{generation}";
+                    AddQuotaRule(policy, outName, exe, DirOut);
+                    added.Add(outName);
+                    string inName = $"OpenWire: Quota {tag} [In] #{generation}";
+                    AddQuotaRule(policy, inName, exe, DirIn);
+                    added.Add(inName);
+                }
+            }
+            catch
+            {
+                RemoveOwnedNames(policy, added, OwnedDescription(QuotaTag));
+                throw;
+            }
+
+            RemoveWhere(policy, IsOwnedQuotaRule, added);
+        }
+    }
+
+    private static void AddQuotaRule(object policyObject, string name, string exePath, int dir)
+    {
+        dynamic policy = policyObject;
+        dynamic rule = CreateRule();
+        rule.Name = name;
+        rule.Description = OwnedDescription(QuotaTag);
+        rule.Grouping = Group;
+        rule.ApplicationName = exePath;
+        rule.Protocol = ProtocolAny;
+        rule.Action = ActionBlock;
+        rule.Direction = dir;
+        rule.Enabled = true;
+        rule.Profiles = ProfileAll;
+        rule.InterfaceTypes = "All";
+        policy.Rules.Add(rule);
+    }
+
+    private static bool IsOwnedQuotaRule(object ruleObject)
+    {
+        dynamic rule = ruleObject;
+        string? grouping = TryGet(() => (string)rule.Grouping);
+        string desc = TryGet(() => (string)rule.Description) ?? string.Empty;
+        string name = TryGet(() => (string)rule.Name) ?? string.Empty;
+        return string.Equals(grouping, Group, StringComparison.Ordinal)
+            && desc.Equals(OwnedDescription(QuotaTag), StringComparison.Ordinal)
+            && name.StartsWith("OpenWire: Quota ", StringComparison.Ordinal);
+    }
+
     private static void AddBlocklistRule(object policyObject, string name, int dir, string remoteAddresses)
     {
         dynamic policy = policyObject;
@@ -338,7 +415,8 @@ public sealed class FirewallManager
             try { policy = CreatePolicy(); }
             catch { return 0; }
             return RemoveWhere(policy,
-                rule => IsManagedAppRule(rule) || IsOwnedLockdownRule(rule) || IsOwnedBlocklistRule(rule),
+                rule => IsManagedAppRule(rule) || IsOwnedLockdownRule(rule)
+                    || IsOwnedBlocklistRule(rule) || IsOwnedQuotaRule(rule),
                 exceptNames: null);
         }
     }
@@ -355,6 +433,7 @@ public sealed class FirewallManager
         if (string.Equals(grouping, Group, StringComparison.Ordinal)
             && desc.StartsWith(OwnerPrefix, StringComparison.Ordinal)
             && !desc.Equals(OwnedDescription(LockdownTag), StringComparison.Ordinal)
+            && !desc.Equals(OwnedDescription(QuotaTag), StringComparison.Ordinal)
             && !string.IsNullOrWhiteSpace(path))
         {
             appId = path.ToLowerInvariant();
@@ -386,7 +465,8 @@ public sealed class FirewallManager
             && name.StartsWith("OpenWire:", StringComparison.Ordinal)
             && desc.StartsWith(OwnerPrefix, StringComparison.Ordinal)
             && !desc.Equals(OwnedDescription(LockdownTag), StringComparison.Ordinal)
-            && !desc.Equals(OwnedDescription(BlocklistTag), StringComparison.Ordinal))
+            && !desc.Equals(OwnedDescription(BlocklistTag), StringComparison.Ordinal)
+            && !desc.Equals(OwnedDescription(QuotaTag), StringComparison.Ordinal))
             return true;
         return IsOwnedAppRule(ruleObject);
     }

@@ -236,37 +236,44 @@ public sealed class BlocklistService : IDisposable
 
             string line = span.ToString();
             string[] tokens = line.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
-            string candidate;
-            if (tokens.Length >= 2 && IPAddress.TryParse(tokens[0], out var redirect))
+            IEnumerable<string> candidates;
+            if (tokens.Length >= 2 && IPAddress.TryParse(tokens[0], out _))
             {
                 // hosts-file format: only the null/loopback redirect forms are block entries.
+                // A single line may list several hostnames for one redirect address.
                 if (tokens[0] is not ("0.0.0.0" or "127.0.0.1" or "::" or "::1")) continue;
-                _ = redirect;
-                candidate = tokens[1];
+                candidates = tokens.Skip(1);
             }
             else if (tokens.Length == 1)
             {
-                candidate = tokens[0];
+                candidates = tokens;
             }
             else
             {
                 continue;
             }
 
-            if (IPAddress.TryParse(candidate, out var ip))
+            foreach (string candidate in candidates)
             {
-                string value = ip.ToString();
-                if (value is "0.0.0.0" or "127.0.0.1" or "::" or "::1") continue;
-                if (seen.Add("i" + value)) entries.Add((KindIp, value));
-                continue;
-            }
+                if (entries.Count >= MaxEntriesPerList) break;
 
-            string domain = candidate.TrimEnd('.').ToLowerInvariant();
-            if (domain.Length is 0 or > 253) continue;
-            if (!domain.Contains('.')) continue;
-            if (SkipHosts.Contains(domain)) continue;
-            if (domain.Any(c => !(char.IsAsciiLetterOrDigit(c) || c is '.' or '-' or '_'))) continue;
-            if (seen.Add("d" + domain)) entries.Add((KindDomain, domain));
+                if (IPAddress.TryParse(candidate, out var ip))
+                {
+                    string value = ip.ToString();
+                    if (value is "0.0.0.0" or "127.0.0.1" or "::" or "::1") continue;
+                    if (seen.Add("i" + value)) entries.Add((KindIp, value));
+                    continue;
+                }
+
+                // Trim both trailing AND leading dots (leading-dot forms like ".ads.example"
+                // appear in some domain lists but reverse-DNS names never carry one).
+                string domain = candidate.Trim('.').ToLowerInvariant();
+                if (domain.Length is 0 or > 253) continue;
+                if (!domain.Contains('.')) continue;
+                if (SkipHosts.Contains(domain)) continue;
+                if (domain.Any(c => !(char.IsAsciiLetterOrDigit(c) || c is '.' or '-' or '_'))) continue;
+                if (seen.Add("d" + domain)) entries.Add((KindDomain, domain));
+            }
         }
 
         return entries;

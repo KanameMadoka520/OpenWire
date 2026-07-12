@@ -165,9 +165,10 @@ internal static class IpcRequestValidator
             if (!Text(list.Id, MaxShortText, allowEmpty: false, "blocklist.id", out error)) return false;
             if (!Text(list.Name, MaxShortText, allowEmpty: false, "blocklist.name", out error)) return false;
             if (!Text(list.Url, 2048, allowEmpty: false, "blocklist.url", out error)) return false;
-            if (!Uri.TryCreate(list.Url, UriKind.Absolute, out var uri)
-                || (uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != Uri.UriSchemeHttp))
-                return Fail("Blocklist URLs must be absolute http(s) addresses.", out error);
+            // Require HTTPS: the list body is fed into firewall block rules when enforcement is on,
+            // so a plaintext transport would let an on-path attacker inject destinations to cut.
+            if (!Uri.TryCreate(list.Url, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps)
+                return Fail("Blocklist URLs must be absolute https addresses.", out error);
             if (!listIds.Add(list.Id)) return Fail("Blocklist ids must be unique.", out error);
         }
 

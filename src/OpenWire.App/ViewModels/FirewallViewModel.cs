@@ -299,7 +299,7 @@ public partial class FirewallViewModel : ObservableObject
         string url = NewListUrl.Trim();
         if (name.Length == 0
             || !Uri.TryCreate(url, UriKind.Absolute, out var uri)
-            || (uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != Uri.UriSchemeHttp))
+            || uri.Scheme != Uri.UriSchemeHttps)
             return;
 
         await MutateSettingsAsync(s => s.Blocklists.Add(new BlocklistSubscription
