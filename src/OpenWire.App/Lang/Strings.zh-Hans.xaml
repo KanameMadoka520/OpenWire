@@ -27,6 +27,11 @@
     <sys:String x:Key="L.Shell.TraySnooze1h">1 小时</sys:String>
     <sys:String x:Key="L.Shell.TraySnooze8h">8 小时</sys:String>
     <sys:String x:Key="L.Shell.TrayResume">恢复通知</sys:String>
+    <sys:String x:Key="L.Shell.TrayPanic">锁定网络</sys:String>
+    <sys:String x:Key="L.Shell.TrayPanic15m">锁定 15 分钟</sys:String>
+    <sys:String x:Key="L.Shell.TrayPanic1h">锁定 1 小时</sys:String>
+    <sys:String x:Key="L.Shell.TrayPanicUntil">直到我手动解除</sys:String>
+    <sys:String x:Key="L.Shell.TrayLiftPanic">解除锁定</sys:String>
     <sys:String x:Key="L.Shell.TraySnoozedTip">OpenWire — 通知已暂停</sys:String>
 
     <!-- traffic screen -->
@@ -98,6 +103,11 @@
     <sys:String x:Key="L.Fw.LockdownOn">已锁定</sys:String>
     <sys:String x:Key="L.Fw.LockdownTip">一键禁止所有应用联网；再次点击解除</sys:String>
     <sys:String x:Key="L.Fw.LockdownBanner">网络已锁定 — 所有应用都被禁止联网，直到你解除。</sys:String>
+    <sys:String x:Key="L.Fw.LockdownUntilFmt">至 {0}</sys:String>
+    <sys:String x:Key="L.Fw.PanicTip">锁定一段时间（到时自动解除）</sys:String>
+    <sys:String x:Key="L.Fw.Panic15">锁定 15 分钟</sys:String>
+    <sys:String x:Key="L.Fw.Panic60">锁定 1 小时</sys:String>
+    <sys:String x:Key="L.Fw.Panic480">锁定 8 小时</sys:String>
     <sys:String x:Key="L.Fw.NotElevated">⚠  引擎未以管理员身份运行 — 无法执行拦截，也无法统计每应用速率。请以管理员身份启动 OpenWire.Service。</sys:String>
     <sys:String x:Key="L.Fw.Blocklists">主机黑名单</sys:String>
     <sys:String x:Key="L.Fw.BlocklistSummaryFmt">已启用 {0} 个清单 · 共 {1} 条 · 已拦截 {2} 个地址</sys:String>

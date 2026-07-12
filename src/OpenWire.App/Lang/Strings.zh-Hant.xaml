@@ -27,6 +27,11 @@
     <sys:String x:Key="L.Shell.TraySnooze1h">1 小時</sys:String>
     <sys:String x:Key="L.Shell.TraySnooze8h">8 小時</sys:String>
     <sys:String x:Key="L.Shell.TrayResume">恢復通知</sys:String>
+    <sys:String x:Key="L.Shell.TrayPanic">鎖定網路</sys:String>
+    <sys:String x:Key="L.Shell.TrayPanic15m">鎖定 15 分鐘</sys:String>
+    <sys:String x:Key="L.Shell.TrayPanic1h">鎖定 1 小時</sys:String>
+    <sys:String x:Key="L.Shell.TrayPanicUntil">直到我手動解除</sys:String>
+    <sys:String x:Key="L.Shell.TrayLiftPanic">解除鎖定</sys:String>
     <sys:String x:Key="L.Shell.TraySnoozedTip">OpenWire — 通知已暫停</sys:String>
 
     <!-- traffic screen -->
@@ -98,6 +103,11 @@
     <sys:String x:Key="L.Fw.LockdownOn">已鎖定</sys:String>
     <sys:String x:Key="L.Fw.LockdownTip">一鍵禁止所有應用連線；再次點擊解除</sys:String>
     <sys:String x:Key="L.Fw.LockdownBanner">網路已鎖定 — 所有應用都被禁止連線，直到你解除。</sys:String>
+    <sys:String x:Key="L.Fw.LockdownUntilFmt">至 {0}</sys:String>
+    <sys:String x:Key="L.Fw.PanicTip">鎖定一段時間（到時自動解除）</sys:String>
+    <sys:String x:Key="L.Fw.Panic15">鎖定 15 分鐘</sys:String>
+    <sys:String x:Key="L.Fw.Panic60">鎖定 1 小時</sys:String>
+    <sys:String x:Key="L.Fw.Panic480">鎖定 8 小時</sys:String>
     <sys:String x:Key="L.Fw.NotElevated">⚠  引擎未以系統管理員身分執行 — 無法執行攔截，也無法統計每應用速率。請以系統管理員身分啟動 OpenWire.Service。</sys:String>
     <sys:String x:Key="L.Fw.Blocklists">主機黑名單</sys:String>
     <sys:String x:Key="L.Fw.BlocklistSummaryFmt">已啟用 {0} 個清單 · 共 {1} 條 · 已攔截 {2} 個位址</sys:String>

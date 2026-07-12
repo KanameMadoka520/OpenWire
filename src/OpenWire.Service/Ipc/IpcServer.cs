@@ -329,7 +329,7 @@ public sealed class IpcServer : IAsyncDisposable
                     return new OkResponse();
 
                 case SetLockdownRequest ld:
-                    _engine.SetLockdown(ld.On);
+                    _engine.SetLockdown(ld.On, ld.DurationSeconds);
                     return new OkResponse();
 
                 case SetAppBlockedRequest ab:

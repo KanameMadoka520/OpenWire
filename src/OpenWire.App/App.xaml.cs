@@ -79,6 +79,11 @@ public partial class App : Application
         _tray.ExitRequested += () => Dispatcher.Invoke(Shutdown);
         _tray.SnoozeRequested += d => Dispatcher.Invoke(() => Snooze(d));
         _tray.ResumeRequested += () => Dispatcher.Invoke(ResumeNotifications);
+        _tray.PanicRequested += d => Dispatcher.Invoke(() => EngagePanic(d));
+        _tray.LiftPanicRequested += () => Dispatcher.Invoke(LiftPanic);
+
+        // Keep the tray's "lift lock-down" item in sync with the engine's lock-down state.
+        Client.StatusChanged += s => _tray?.SetLockdown(s.Status.LockdownActive);
 
         HookWindow(_window);
 
@@ -220,6 +225,19 @@ public partial class App : Application
         _snoozeTimer?.Stop();
         _snoozeUntil = default;
         _tray?.SetSnoozed(false);
+    }
+
+    /// <summary>Engage a timed network lock-down from the tray (0 = until manually lifted).</summary>
+    private async void EngagePanic(TimeSpan duration)
+    {
+        try { await Client.SetLockdownAsync(true, (long)duration.TotalSeconds); }
+        catch { /* engine unavailable / not elevated — the tray item is best-effort */ }
+    }
+
+    private async void LiftPanic()
+    {
+        try { await Client.SetLockdownAsync(false); }
+        catch { /* engine unavailable */ }
     }
 
     /// <summary>When no engine is reachable, start one once (elevated — the engine needs admin for

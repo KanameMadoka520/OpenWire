@@ -65,6 +65,19 @@
                         </TextBlock>
                     </StackPanel>
                 </Button>
+                <Button x:Name="PanicButton" Style="{StaticResource IconBtn}" Content="&#xE916;" Margin="4,0,0,0"
+                        ToolTip="{StaticResource L.Fw.PanicTip}" IsEnabled="{Binding CanEnforce}" Click="OnPanicMenu">
+                    <Button.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="{StaticResource L.Fw.Panic15}" CommandParameter="15"
+                                      Command="{Binding PlacementTarget.DataContext.PanicForCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                            <MenuItem Header="{StaticResource L.Fw.Panic60}" CommandParameter="60"
+                                      Command="{Binding PlacementTarget.DataContext.PanicForCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                            <MenuItem Header="{StaticResource L.Fw.Panic480}" CommandParameter="480"
+                                      Command="{Binding PlacementTarget.DataContext.PanicForCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                        </ContextMenu>
+                    </Button.ContextMenu>
+                </Button>
             </StackPanel>
         </Grid>
 
@@ -81,6 +94,8 @@
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="&#xE72E;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14" Foreground="White" VerticalAlignment="Center" Margin="0,0,10,0" />
                 <TextBlock Text="{StaticResource L.Fw.LockdownBanner}" Foreground="White" FontSize="12.5" TextWrapping="Wrap" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding LockdownUntilText}" Foreground="White" FontWeight="SemiBold" FontSize="12.5" VerticalAlignment="Center" Margin="6,0,0,0"
+                           Visibility="{Binding LockdownUntilText.Length, Converter={StaticResource ZeroVis}}" />
             </StackPanel>
         </Border>
 

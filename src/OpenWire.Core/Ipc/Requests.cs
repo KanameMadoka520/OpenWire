@@ -77,6 +77,10 @@ public sealed class SetLockdownRequest : IpcMessage
 {
     [JsonRequired]
     public bool On { get; set; }
+
+    /// <summary>When engaging, auto-lift the lock-down after this many seconds (0 = stay until
+    /// manually lifted). Ignored when <see cref="On"/> is false.</summary>
+    public long DurationSeconds { get; set; }
 }
 
 /// <summary>Block or unblock an application in a given direction.</summary>

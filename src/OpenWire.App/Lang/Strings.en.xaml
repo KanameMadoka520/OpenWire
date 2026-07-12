@@ -28,6 +28,11 @@
     <sys:String x:Key="L.Shell.TraySnooze1h">For 1 hour</sys:String>
     <sys:String x:Key="L.Shell.TraySnooze8h">For 8 hours</sys:String>
     <sys:String x:Key="L.Shell.TrayResume">Resume notifications</sys:String>
+    <sys:String x:Key="L.Shell.TrayPanic">Lock down network</sys:String>
+    <sys:String x:Key="L.Shell.TrayPanic15m">For 15 minutes</sys:String>
+    <sys:String x:Key="L.Shell.TrayPanic1h">For 1 hour</sys:String>
+    <sys:String x:Key="L.Shell.TrayPanicUntil">Until I lift it</sys:String>
+    <sys:String x:Key="L.Shell.TrayLiftPanic">Lift lock-down</sys:String>
     <sys:String x:Key="L.Shell.TraySnoozedTip">OpenWire — notifications snoozed</sys:String>
 
     <!-- traffic screen -->
@@ -99,6 +104,11 @@
     <sys:String x:Key="L.Fw.LockdownOn">Locked down</sys:String>
     <sys:String x:Key="L.Fw.LockdownTip">Block every app from the network in one click; click again to lift it</sys:String>
     <sys:String x:Key="L.Fw.LockdownBanner">Network locked down — every app is blocked from the network until you lift it.</sys:String>
+    <sys:String x:Key="L.Fw.LockdownUntilFmt">until {0}</sys:String>
+    <sys:String x:Key="L.Fw.PanicTip">Lock down for a set time (auto-lifts)</sys:String>
+    <sys:String x:Key="L.Fw.Panic15">Lock down 15 minutes</sys:String>
+    <sys:String x:Key="L.Fw.Panic60">Lock down 1 hour</sys:String>
+    <sys:String x:Key="L.Fw.Panic480">Lock down 8 hours</sys:String>
     <sys:String x:Key="L.Fw.NotElevated">⚠  The engine is not running elevated — blocks can't be enforced and per-app rates are unavailable. Start OpenWire.Service as administrator.</sys:String>
     <sys:String x:Key="L.Fw.Blocklists">Blocklists</sys:String>
     <sys:String x:Key="L.Fw.BlocklistSummaryFmt">{0} enabled · {1} entries · {2} addresses blocked</sys:String>

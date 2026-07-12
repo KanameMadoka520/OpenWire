@@ -40,4 +40,7 @@ public sealed class EngineStatus
 
     /// <summary>True if the engine has the privileges/driver to actually block traffic.</summary>
     public bool CanEnforceFirewall { get; set; }
+
+    /// <summary>True while a global network lock-down (block-all) is engaged.</summary>
+    public bool LockdownActive { get; set; }
 }

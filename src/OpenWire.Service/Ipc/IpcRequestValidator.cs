@@ -59,8 +59,9 @@ internal static class IpcRequestValidator
             case SetFirewallModeRequest firewallMode:
                 return Defined(firewallMode.Mode, "mode", out error);
 
-            case SetLockdownRequest:
-                return true;
+            case SetLockdownRequest lockdown:
+                return lockdown.DurationSeconds is >= 0 and <= 86_400
+                    || Fail("Lock-down duration must be between 0 and 86400 seconds.", out error);
 
             case SetAppBlockedRequest app:
                 if (!Text(app.AppId, MaxPath, allowEmpty: false, "appId", out error)) return false;

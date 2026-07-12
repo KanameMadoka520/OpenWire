@@ -166,6 +166,7 @@ public partial class FirewallViewModel : ObservableObject
     [ObservableProperty] private string _statusText = "";
     [ObservableProperty] private bool _canEnforce;
     [ObservableProperty] private bool _lockdownActive;
+    [ObservableProperty] private string _lockdownUntilText = "";
     [ObservableProperty] private string _searchText = "";
 
     // Column sort: empty key = natural order (by total, as the engine returned it).
@@ -212,6 +213,10 @@ public partial class FirewallViewModel : ObservableObject
         Mode = fw.Status.Mode;
         CanEnforce = fw.Status.CanEnforce;
         LockdownActive = fw.Status.LockdownActive;
+        LockdownUntilText = fw.Status.LockdownUntilUnix > 0
+            ? string.Format(Loc.S("L.Fw.LockdownUntilFmt"),
+                DateTimeOffset.FromUnixTimeSeconds(fw.Status.LockdownUntilUnix).ToLocalTime().ToString("HH:mm"))
+            : "";
         NetworkName = fw.Status.NetworkName;
         _networkFingerprint = fw.Status.NetworkFingerprint;
         var rules = fw.Rules.ToDictionary(r => r.AppId, StringComparer.OrdinalIgnoreCase);
@@ -441,6 +446,15 @@ public partial class FirewallViewModel : ObservableObject
     {
         if (!CanEnforce) return;
         await _client.SetLockdownAsync(!LockdownActive);
+        await LoadAsync();
+    }
+
+    /// <summary>Engage a timed "panic" lock-down for the given number of minutes; it auto-lifts.</summary>
+    [RelayCommand]
+    private async Task PanicFor(string minutes)
+    {
+        if (!CanEnforce || !int.TryParse(minutes, out int m) || m <= 0) return;
+        await _client.SetLockdownAsync(true, m * 60L);
         await LoadAsync();
     }
 }

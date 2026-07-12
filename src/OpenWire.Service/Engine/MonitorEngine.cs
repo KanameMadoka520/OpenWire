@@ -111,6 +111,13 @@ public sealed class MonitorEngine : IAsyncDisposable
     private const string QuotaBlockedKey = "quota.blocked";
     private HashSet<string> _quotaBlocked = new(StringComparer.OrdinalIgnoreCase);
 
+    // Timed lock-down ("panic"): unix seconds when the block-all auto-lifts (0 = none/indefinite).
+    // Persisted so a timed panic survives an engine restart and resumes for its remaining time.
+    private const string PanicUntilKey = "panic.until";
+    private long _panicUntil;
+    // Cached lock-down state so the per-tick status build never makes a COM firewall call.
+    private volatile bool _lockdownActive;
+
     public event Action<IpcMessage>? Events;
 
     public string EngineVersion => "0.1.1";
@@ -204,6 +211,10 @@ public sealed class MonitorEngine : IAsyncDisposable
                 {
                     Console.Error.WriteLine($"[Firewall] blocklist reconciliation failed: {ex.Message}");
                 }
+
+                // Resume a still-valid timed panic; the startup SetBlockAll(false) above already
+                // cleared any expired one.
+                RestorePanicLockdown();
             }
         }
         _etwActive = _etw.TryStart();
@@ -319,6 +330,9 @@ public sealed class MonitorEngine : IAsyncDisposable
                 System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
             GC.Collect(2, GCCollectionMode.Aggressive);
         }
+
+        // 5d) auto-lift a timed lock-down the instant its deadline passes (cheap long compare)
+        if (_panicUntil > 0) ExpirePanicIfDue(now.ToUnixTimeSeconds());
 
         // 6) scheduled device rescan (only when auto-scan is enabled)
         if (_settings.AutoScanDevices && now - _lastDeviceScan > TimeSpan.FromMinutes(30))
@@ -1180,6 +1194,7 @@ public sealed class MonitorEngine : IAsyncDisposable
             MonitoringSince = _monitoringSince,
             DataPlan = plan,
             CanEnforceFirewall = CanEnforceFirewall,
+            LockdownActive = _lockdownActive,
         };
     }
 
@@ -1704,6 +1719,7 @@ public sealed class MonitorEngine : IAsyncDisposable
                 CanEnforce = CanEnforceFirewall,
                 LockdownActive = lockdown,
                 QuotaExceededAppIds = _quotaExceeded.ToList(),
+                LockdownUntilUnix = lockdown ? _panicUntil : 0,
             };
             // Deep-copy so the IPC writer thread serializes a stable snapshot even while
             // another thread mutates the live profile set / blocked-app lists.
@@ -1885,15 +1901,120 @@ public sealed class MonitorEngine : IAsyncDisposable
         Events?.Invoke(new StatusChangedEvent { Status = _status });
     }
 
-    /// <summary>Engage or lift the temporary global lock-down overlay.</summary>
-    public void SetLockdown(bool on)
+    /// <summary>Engage or lift the temporary global lock-down overlay. When engaging with a
+    /// positive <paramref name="durationSeconds"/> the lock-down auto-lifts after that time
+    /// (a "panic" timer that also survives an engine restart).</summary>
+    public void SetLockdown(bool on, long durationSeconds = 0)
     {
         if (!CanEnforceFirewall) throw new InvalidOperationException("Windows Firewall enforcement is unavailable.");
         _firewall.SetBlockAll(on);
         if (_firewall.IsBlockAllActive() != on)
             throw new InvalidOperationException("Windows Firewall did not converge to the requested lockdown state.");
+        _lockdownActive = on;
+
+        long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        _panicUntil = on && durationSeconds > 0 ? now + durationSeconds : 0;
+        SavePanicUntil();
+
+        if (_settings.IsAlertEnabled(AlertKind.Lockdown))
+            Persist(new Alert
+            {
+                Time = DateTimeOffset.UtcNow,
+                Kind = AlertKind.Lockdown,
+                Severity = on ? AlertSeverity.Warning : AlertSeverity.Info,
+                Title = on ? "Network locked down" : "Lock-down lifted",
+                Message = on
+                    ? (durationSeconds > 0
+                        ? $"Every app is blocked from the network for {FormatDuration(durationSeconds)}."
+                        : "Every app is blocked from the network until you lift it.")
+                    : "Apps can reach the network again.",
+            });
+
         _status = BuildStatus(DateTimeOffset.UtcNow, 0, 0);
         Events?.Invoke(new StatusChangedEvent { Status = _status });
+    }
+
+    /// <summary>Lift a timed lock-down whose deadline has passed. Runs on the tick thread.</summary>
+    private void ExpirePanicIfDue(long nowUnix)
+    {
+        if (_panicUntil <= 0 || nowUnix < _panicUntil) return;
+        _panicUntil = 0;
+        SavePanicUntil();
+        try
+        {
+            if (CanEnforceFirewall)
+            {
+                _firewall.SetBlockAll(false);
+                _lockdownActive = false;
+                if (_settings.IsAlertEnabled(AlertKind.Lockdown))
+                    Persist(new Alert
+                    {
+                        Time = DateTimeOffset.UtcNow,
+                        Kind = AlertKind.Lockdown,
+                        Severity = AlertSeverity.Info,
+                        Title = "Lock-down expired",
+                        Message = "The timed lock-down ended; apps can reach the network again.",
+                    });
+                _status = BuildStatus(DateTimeOffset.UtcNow, 0, 0);
+                Events?.Invoke(new StatusChangedEvent { Status = _status });
+            }
+        }
+        catch (Exception ex) { Console.Error.WriteLine($"[Engine] panic expiry lift failed: {ex.Message}"); }
+    }
+
+    /// <summary>On startup, resume a timed panic that has not yet expired, or clear a stale one.</summary>
+    private void RestorePanicLockdown()
+    {
+        long until = LoadPanicUntil();
+        long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        if (until > now)
+        {
+            try
+            {
+                _firewall.SetBlockAll(true);
+                _panicUntil = until;
+                _lockdownActive = true;
+                Console.WriteLine($"[Engine] resumed timed lock-down, {until - now}s remaining");
+            }
+            catch (Exception ex)
+            {
+                _panicUntil = 0;
+                SavePanicUntil();
+                Console.Error.WriteLine($"[Engine] panic resume failed: {ex.Message}");
+            }
+        }
+        else if (until != 0)
+        {
+            _panicUntil = 0;
+            SavePanicUntil();
+        }
+    }
+
+    private void SavePanicUntil()
+    {
+        try { _store.SetStateValue(PanicUntilKey, _panicUntil.ToString(System.Globalization.CultureInfo.InvariantCulture)); }
+        catch (Exception ex) { Console.Error.WriteLine($"[Engine] persist panic timer: {ex.Message}"); }
+    }
+
+    private long LoadPanicUntil()
+    {
+        try
+        {
+            string? raw = _store.GetStateValue(PanicUntilKey);
+            if (!string.IsNullOrEmpty(raw)
+                && long.TryParse(raw, System.Globalization.NumberStyles.Integer,
+                    System.Globalization.CultureInfo.InvariantCulture, out long v))
+                return v;
+        }
+        catch { /* absent/corrupt = no timer */ }
+        return 0;
+    }
+
+    private static string FormatDuration(long seconds)
+    {
+        if (seconds % 3600 == 0 && seconds >= 3600) return $"{seconds / 3600} h";
+        if (seconds >= 3600) return $"{seconds / 3600} h {seconds % 3600 / 60} min";
+        return $"{Math.Max(1, seconds / 60)} min";
     }
 
     public void SetAppBlocked(string appId, string exePath, bool blockIn, bool blockOut)

@@ -116,6 +116,9 @@ public enum AlertKind
 
     /// <summary>An application approached or reached its per-app data quota.</summary>
     DataQuotaReached = 16,
+
+    /// <summary>The global network lock-down was engaged or lifted.</summary>
+    Lockdown = 17,
 }
 
 /// <summary>Reset cadence of a per-application data quota.</summary>

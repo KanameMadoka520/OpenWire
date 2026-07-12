@@ -19,7 +19,13 @@ public sealed class TrayService : IDisposable
     public event Action<TimeSpan>? SnoozeRequested;
     public event Action? ResumeRequested;
 
+    /// <summary>Engage a timed network lock-down for the given duration (0 = until lifted).</summary>
+    public event Action<TimeSpan>? PanicRequested;
+    /// <summary>Lift an active network lock-down.</summary>
+    public event Action? LiftPanicRequested;
+
     private WinForms.ToolStripMenuItem? _resumeItem;
+    private WinForms.ToolStripMenuItem? _liftPanicItem;
 
     public TrayService()
     {
@@ -42,6 +48,15 @@ public sealed class TrayService : IDisposable
 
         _resumeItem = new WinForms.ToolStripMenuItem(Loc.S("L.Shell.TrayResume"), null, (_, _) => ResumeRequested?.Invoke()) { Visible = false };
         menu.Items.Add(_resumeItem);
+
+        var panic = new WinForms.ToolStripMenuItem(Loc.S("L.Shell.TrayPanic"));
+        panic.DropDownItems.Add(Loc.S("L.Shell.TrayPanic15m"), null, (_, _) => PanicRequested?.Invoke(TimeSpan.FromMinutes(15)));
+        panic.DropDownItems.Add(Loc.S("L.Shell.TrayPanic1h"), null, (_, _) => PanicRequested?.Invoke(TimeSpan.FromHours(1)));
+        panic.DropDownItems.Add(Loc.S("L.Shell.TrayPanicUntil"), null, (_, _) => PanicRequested?.Invoke(TimeSpan.Zero));
+        menu.Items.Add(panic);
+
+        _liftPanicItem = new WinForms.ToolStripMenuItem(Loc.S("L.Shell.TrayLiftPanic"), null, (_, _) => LiftPanicRequested?.Invoke()) { Visible = false };
+        menu.Items.Add(_liftPanicItem);
 
         menu.Items.Add(new WinForms.ToolStripSeparator());
         menu.Items.Add(Loc.S("L.Shell.TrayExit"), null, (_, _) => ExitRequested?.Invoke());
@@ -69,6 +84,12 @@ public sealed class TrayService : IDisposable
         if (_resumeItem is not null) _resumeItem.Visible = snoozed;
         try { _icon.Text = snoozed ? Loc.S("L.Shell.TraySnoozedTip") : Loc.S("L.Shell.TrayTooltip"); }
         catch { /* tooltip unavailable */ }
+    }
+
+    /// <summary>Show the "lift lock-down" item only while a lock-down is active.</summary>
+    public void SetLockdown(bool active)
+    {
+        if (_liftPanicItem is not null) _liftPanicItem.Visible = active;
     }
 
     // The packaged app icon (Assets/app.ico); falls back to a runtime-drawn mark

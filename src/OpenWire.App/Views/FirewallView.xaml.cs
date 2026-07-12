@@ -21,6 +21,15 @@ public partial class FirewallView : UserControl
         if (_vm is not null) _vm.EditQuotaRequested += OnEditQuota;
     }
 
+    private void OnPanicMenu(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { ContextMenu: { } menu } button)
+        {
+            menu.PlacementTarget = button;
+            menu.IsOpen = true;
+        }
+    }
+
     private async void OnEditQuota(AppRowVM row)
     {
         var dlg = new QuotaDialog(row.AppId, row.Name, row.Path, row.Quota);

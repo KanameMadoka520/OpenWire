@@ -25,6 +25,9 @@ public sealed class FirewallStatus
 
     /// <summary>App ids that have reached their data quota this period (for the row's over-limit badge).</summary>
     public List<string> QuotaExceededAppIds { get; set; } = new();
+
+    /// <summary>Unix seconds when a timed lock-down auto-lifts (0 = not active or no expiry).</summary>
+    public long LockdownUntilUnix { get; set; }
 }
 
 /// <summary>A per-application firewall rule / decision.</summary>
