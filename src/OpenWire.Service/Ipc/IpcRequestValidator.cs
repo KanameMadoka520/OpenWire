@@ -197,10 +197,23 @@ internal static class IpcRequestValidator
         if (!Text(profile.AutoActivateOnNetwork, 512, allowEmpty: true, "profile.autoActivateOnNetwork", out error)) return false;
         if (!Text(profile.NetworkLabel, 256, allowEmpty: true, "profile.networkLabel", out error)) return false;
         if (!Defined(profile.Mode, "profile.mode", out error)) return false;
-        if (profile.BlockedAppIds is null || profile.BlockedAppIds.Count > MaxBlockedAppsPerProfile)
+        if (profile.BlockedAppIds is null || profile.BlockedApps is null)
+            return Fail("Profile blocked-app collections cannot be null.", out error);
+        int distinctRuleCount = profile.BlockedAppIds
+            .Concat(profile.BlockedApps.Where(r => r is not null).Select(r => r.AppId))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Count();
+        if (distinctRuleCount > MaxBlockedAppsPerProfile)
             return Fail($"A profile may contain at most {MaxBlockedAppsPerProfile} blocked apps.", out error);
         foreach (string appId in profile.BlockedAppIds)
             if (!Text(appId, MaxPath, allowEmpty: false, "profile.blockedAppIds", out error)) return false;
+        foreach (var rule in profile.BlockedApps)
+        {
+            if (rule is null) return Fail("Profile app rules cannot be null.", out error);
+            if (!Text(rule.AppId, MaxPath, allowEmpty: false, "profile.blockedApps.appId", out error)) return false;
+            if (!rule.BlockIncoming && !rule.BlockOutgoing)
+                return Fail("A profile app rule must block at least one direction.", out error);
+        }
         return true;
     }
 

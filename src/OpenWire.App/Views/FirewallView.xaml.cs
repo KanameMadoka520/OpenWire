@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using OpenWire.App.Util;
 using OpenWire.App.ViewModels;
 
 namespace OpenWire.App.Views;
@@ -38,14 +39,35 @@ public partial class FirewallView : UserControl
         dlg.ShowDialog();
 
         if (_vm is null) return;
-        switch (dlg.Result)
+        while (true)
         {
-            case QuotaDialog.DialogResultKind.Save:
-                await _vm.SaveQuotaAsync(row.AppId, dlg.Quota);
+            try
+            {
+                switch (dlg.Result)
+                {
+                    case QuotaDialog.DialogResultKind.Save:
+                        await _vm.SaveQuotaAsync(row.AppId, dlg.Quota);
+                        break;
+                    case QuotaDialog.DialogResultKind.Remove:
+                        await _vm.SaveQuotaAsync(row.AppId, null);
+                        break;
+                }
                 break;
-            case QuotaDialog.DialogResultKind.Remove:
-                await _vm.SaveQuotaAsync(row.AppId, null);
+            }
+            catch (FirewallViewModel.QuotaRefreshException ex)
+            {
+                MessageBox.Show(
+                    string.Format(Loc.S("L.Fw.QuotaRefreshErrorFmt"), ex.InnerException?.Message ?? ex.Message),
+                    Loc.S("L.Fw.QuotaTitle"), MessageBoxButton.OK, MessageBoxImage.Warning);
                 break;
+            }
+            catch (Exception ex)
+            {
+                var retry = MessageBox.Show(
+                    string.Format(Loc.S("L.Fw.QuotaSaveErrorFmt"), ex.Message),
+                    Loc.S("L.Fw.QuotaTitle"), MessageBoxButton.YesNo, MessageBoxImage.Error);
+                if (retry != MessageBoxResult.Yes) break;
+            }
         }
     }
 }

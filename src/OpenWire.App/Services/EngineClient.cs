@@ -205,7 +205,7 @@ public sealed class EngineClient : IDisposable
     public Task<OkResponse> SetLockdownAsync(bool on, long durationSeconds = 0) => RequestAsync<OkResponse>(new SetLockdownRequest { On = on, DurationSeconds = durationSeconds });
     public Task<OkResponse> SetAppBlockedAsync(string appId, string path, bool blockIn, bool blockOut)
         => RequestAsync<OkResponse>(new SetAppBlockedRequest { AppId = appId, ExecutablePath = path, BlockIncoming = blockIn, BlockOutgoing = blockOut });
-    public Task<OkResponse> ResolveAppDecisionAsync(string appId, bool allow) => RequestAsync<OkResponse>(new ResolveAppDecisionRequest { AppId = appId, Allow = allow });
+    public Task<OkResponse> ResolveAppDecisionAsync(string appId, bool allow, bool remember = true) => RequestAsync<OkResponse>(new ResolveAppDecisionRequest { AppId = appId, Allow = allow, Remember = remember });
     public Task<OkResponse> SaveFirewallProfileAsync(FirewallProfile profile) => RequestAsync<OkResponse>(new SaveFirewallProfileRequest { Profile = profile });
     public Task<OkResponse> DeleteFirewallProfileAsync(string name) => RequestAsync<OkResponse>(new DeleteFirewallProfileRequest { Name = name });
     public Task<OkResponse> ActivateFirewallProfileAsync(string name) => RequestAsync<OkResponse>(new ActivateFirewallProfileRequest { Name = name });

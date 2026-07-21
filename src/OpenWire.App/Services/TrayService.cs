@@ -24,8 +24,16 @@ public sealed class TrayService : IDisposable
     /// <summary>Lift an active network lock-down.</summary>
     public event Action? LiftPanicRequested;
 
+    private readonly WinForms.ContextMenuStrip _menu;
+    private readonly WinForms.ToolStripMenuItem _openItem;
+    private readonly WinForms.ToolStripMenuItem _snoozeItem;
+    private readonly WinForms.ToolStripMenuItem[] _snoozeDurations;
+    private readonly WinForms.ToolStripMenuItem _panicItem;
+    private readonly WinForms.ToolStripMenuItem[] _panicDurations;
+    private readonly WinForms.ToolStripMenuItem _exitItem;
     private WinForms.ToolStripMenuItem? _resumeItem;
     private WinForms.ToolStripMenuItem? _liftPanicItem;
+    private bool _snoozed;
 
     public TrayService()
     {
@@ -36,31 +44,41 @@ public sealed class TrayService : IDisposable
             Text = Loc.S("L.Shell.TrayTooltip"),
         };
 
-        var menu = new WinForms.ContextMenuStrip();
-        menu.Items.Add(Loc.S("L.Shell.TrayOpen"), null, (_, _) => OpenRequested?.Invoke());
-        menu.Items.Add(new WinForms.ToolStripSeparator());
+        _menu = new WinForms.ContextMenuStrip();
+        _openItem = new WinForms.ToolStripMenuItem(Loc.S("L.Shell.TrayOpen"), null, (_, _) => OpenRequested?.Invoke());
+        _menu.Items.Add(_openItem);
+        _menu.Items.Add(new WinForms.ToolStripSeparator());
 
-        var snooze = new WinForms.ToolStripMenuItem(Loc.S("L.Shell.TraySnooze"));
-        snooze.DropDownItems.Add(Loc.S("L.Shell.TraySnooze30m"), null, (_, _) => SnoozeRequested?.Invoke(TimeSpan.FromMinutes(30)));
-        snooze.DropDownItems.Add(Loc.S("L.Shell.TraySnooze1h"), null, (_, _) => SnoozeRequested?.Invoke(TimeSpan.FromHours(1)));
-        snooze.DropDownItems.Add(Loc.S("L.Shell.TraySnooze8h"), null, (_, _) => SnoozeRequested?.Invoke(TimeSpan.FromHours(8)));
-        menu.Items.Add(snooze);
+        _snoozeItem = new WinForms.ToolStripMenuItem(Loc.S("L.Shell.TraySnooze"));
+        _snoozeDurations =
+        [
+            new(Loc.S("L.Shell.TraySnooze30m"), null, (_, _) => SnoozeRequested?.Invoke(TimeSpan.FromMinutes(30))),
+            new(Loc.S("L.Shell.TraySnooze1h"), null, (_, _) => SnoozeRequested?.Invoke(TimeSpan.FromHours(1))),
+            new(Loc.S("L.Shell.TraySnooze8h"), null, (_, _) => SnoozeRequested?.Invoke(TimeSpan.FromHours(8))),
+        ];
+        _snoozeItem.DropDownItems.AddRange(_snoozeDurations);
+        _menu.Items.Add(_snoozeItem);
 
         _resumeItem = new WinForms.ToolStripMenuItem(Loc.S("L.Shell.TrayResume"), null, (_, _) => ResumeRequested?.Invoke()) { Visible = false };
-        menu.Items.Add(_resumeItem);
+        _menu.Items.Add(_resumeItem);
 
-        var panic = new WinForms.ToolStripMenuItem(Loc.S("L.Shell.TrayPanic"));
-        panic.DropDownItems.Add(Loc.S("L.Shell.TrayPanic15m"), null, (_, _) => PanicRequested?.Invoke(TimeSpan.FromMinutes(15)));
-        panic.DropDownItems.Add(Loc.S("L.Shell.TrayPanic1h"), null, (_, _) => PanicRequested?.Invoke(TimeSpan.FromHours(1)));
-        panic.DropDownItems.Add(Loc.S("L.Shell.TrayPanicUntil"), null, (_, _) => PanicRequested?.Invoke(TimeSpan.Zero));
-        menu.Items.Add(panic);
+        _panicItem = new WinForms.ToolStripMenuItem(Loc.S("L.Shell.TrayPanic"));
+        _panicDurations =
+        [
+            new(Loc.S("L.Shell.TrayPanic15m"), null, (_, _) => PanicRequested?.Invoke(TimeSpan.FromMinutes(15))),
+            new(Loc.S("L.Shell.TrayPanic1h"), null, (_, _) => PanicRequested?.Invoke(TimeSpan.FromHours(1))),
+            new(Loc.S("L.Shell.TrayPanicUntil"), null, (_, _) => PanicRequested?.Invoke(TimeSpan.Zero)),
+        ];
+        _panicItem.DropDownItems.AddRange(_panicDurations);
+        _menu.Items.Add(_panicItem);
 
         _liftPanicItem = new WinForms.ToolStripMenuItem(Loc.S("L.Shell.TrayLiftPanic"), null, (_, _) => LiftPanicRequested?.Invoke()) { Visible = false };
-        menu.Items.Add(_liftPanicItem);
+        _menu.Items.Add(_liftPanicItem);
 
-        menu.Items.Add(new WinForms.ToolStripSeparator());
-        menu.Items.Add(Loc.S("L.Shell.TrayExit"), null, (_, _) => ExitRequested?.Invoke());
-        _icon.ContextMenuStrip = menu;
+        _menu.Items.Add(new WinForms.ToolStripSeparator());
+        _exitItem = new WinForms.ToolStripMenuItem(Loc.S("L.Shell.TrayExit"), null, (_, _) => ExitRequested?.Invoke());
+        _menu.Items.Add(_exitItem);
+        _icon.ContextMenuStrip = _menu;
 
         _icon.DoubleClick += (_, _) => OpenRequested?.Invoke();
     }
@@ -81,9 +99,27 @@ public sealed class TrayService : IDisposable
     /// <summary>Reflect the snooze state in the tray menu (show a Resume item) and the tooltip.</summary>
     public void SetSnoozed(bool snoozed)
     {
+        _snoozed = snoozed;
         if (_resumeItem is not null) _resumeItem.Visible = snoozed;
         try { _icon.Text = snoozed ? Loc.S("L.Shell.TraySnoozedTip") : Loc.S("L.Shell.TrayTooltip"); }
         catch { /* tooltip unavailable */ }
+    }
+
+    public void RefreshLanguage()
+    {
+        _openItem.Text = Loc.S("L.Shell.TrayOpen");
+        _snoozeItem.Text = Loc.S("L.Shell.TraySnooze");
+        _snoozeDurations[0].Text = Loc.S("L.Shell.TraySnooze30m");
+        _snoozeDurations[1].Text = Loc.S("L.Shell.TraySnooze1h");
+        _snoozeDurations[2].Text = Loc.S("L.Shell.TraySnooze8h");
+        if (_resumeItem is not null) _resumeItem.Text = Loc.S("L.Shell.TrayResume");
+        _panicItem.Text = Loc.S("L.Shell.TrayPanic");
+        _panicDurations[0].Text = Loc.S("L.Shell.TrayPanic15m");
+        _panicDurations[1].Text = Loc.S("L.Shell.TrayPanic1h");
+        _panicDurations[2].Text = Loc.S("L.Shell.TrayPanicUntil");
+        if (_liftPanicItem is not null) _liftPanicItem.Text = Loc.S("L.Shell.TrayLiftPanic");
+        _exitItem.Text = Loc.S("L.Shell.TrayExit");
+        SetSnoozed(_snoozed);
     }
 
     /// <summary>Show the "lift lock-down" item only while a lock-down is active.</summary>

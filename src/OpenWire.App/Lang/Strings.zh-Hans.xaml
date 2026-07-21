@@ -150,6 +150,23 @@
     <sys:String x:Key="L.Fw.Block">拦截</sys:String>
     <sys:String x:Key="L.Fw.PromptAppFallback">一个应用程序</sys:String>
     <sys:String x:Key="L.Fw.PromptWantsConnect">正请求连接网络</sys:String>
+    <sys:String x:Key="L.Fw.PromptDetail">此应用首次访问网络。你可以允许，也可以暂时拦截，稍后再决定。</sys:String>
+    <sys:String x:Key="L.Fw.PromptRemoteFmt">远程端点：{0}:{1}</sys:String>
+    <sys:String x:Key="L.Fw.RememberDecision">为当前配置记住此决定</sys:String>
+    <sys:String x:Key="L.Fw.StatusFmt">已拦截 {0} 个 · {1} 个活跃应用 · 配置“{2}”</sys:String>
+    <sys:String x:Key="L.Fw.AdminWarning">请以管理员身份运行引擎，以执行拦截并显示每应用速率</sys:String>
+    <sys:String x:Key="L.Fw.ConnectionCountFmt">{0} 个连接</sys:String>
+    <sys:String x:Key="L.Fw.MoreHostsFmt">{0}  另有 {1} 个</sys:String>
+    <sys:String x:Key="L.Fw.ReputationClean">安全</sys:String>
+    <sys:String x:Key="L.Fw.ReputationUnlisted">未收录</sys:String>
+    <sys:String x:Key="L.Fw.ReputationUnavailable">不可用</sys:String>
+    <sys:String x:Key="L.Fw.ReputationChecking">正在查询 VirusTotal…</sys:String>
+    <sys:String x:Key="L.Fw.ReputationCleanTipFmt">VirusTotal：安全 · {0} 个引擎&#x0a;{1}</sys:String>
+    <sys:String x:Key="L.Fw.ReputationFlaggedTipFmt">VirusTotal：{0}/{1} 个引擎将此文件标记为恶意&#x0a;{2}</sys:String>
+    <sys:String x:Key="L.Fw.ReputationNotFoundTip">VirusTotal 数据集中未收录</sys:String>
+    <sys:String x:Key="L.Fw.ReputationErrorTipFmt">VirusTotal：{0}</sys:String>
+    <sys:String x:Key="L.Fw.QuotaSaveErrorFmt">无法保存配额更改。原设置未变，是否重试？&#x0a;&#x0a;{0}</sys:String>
+    <sys:String x:Key="L.Fw.QuotaRefreshErrorFmt">配额更改已保存，但此页面刷新失败。请重新打开防火墙页面确认。&#x0a;&#x0a;{0}</sys:String>
 
     <!-- alerts -->
     <sys:String x:Key="L.Alerts.Title">警报</sys:String>

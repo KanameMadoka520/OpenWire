@@ -47,6 +47,14 @@ public sealed class AppFirewallRule
     public DateTimeOffset Updated { get; set; }
 }
 
+/// <summary>A persisted per-app block decision, including independent directions.</summary>
+public sealed class FirewallProfileRule
+{
+    public string AppId { get; set; } = string.Empty;
+    public bool BlockIncoming { get; set; } = true;
+    public bool BlockOutgoing { get; set; } = true;
+}
+
 /// <summary>
 /// A named firewall profile (e.g. "Home", "Work", "Public"). Rules are scoped to a
 /// profile so the active set can switch automatically with the connected network.
@@ -64,8 +72,11 @@ public sealed class FirewallProfile
 
     public FirewallMode Mode { get; set; } = FirewallMode.Off;
 
-    /// <summary>App ids blocked while this profile is active (scoped rule set).</summary>
+    /// <summary>Legacy ID-only entries. On load they migrate to bidirectional <see cref="BlockedApps"/> rules.</summary>
     public List<string> BlockedAppIds { get; set; } = new();
+
+    /// <summary>Directional app rules persisted for this profile.</summary>
+    public List<FirewallProfileRule> BlockedApps { get; set; } = new();
 
     public bool IsActive { get; set; }
 }

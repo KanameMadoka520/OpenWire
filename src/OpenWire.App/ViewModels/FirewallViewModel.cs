@@ -42,9 +42,10 @@ public partial class AppRowVM : ObservableObject
     {
         get
         {
-            if (string.IsNullOrEmpty(Usage.PrimaryHost)) return $"{Usage.ActiveConnections} conn.";
+            if (string.IsNullOrEmpty(Usage.PrimaryHost))
+                return string.Format(Loc.S("L.Fw.ConnectionCountFmt"), Usage.ActiveConnections);
             int more = Math.Max(0, Usage.HostCount - 1);
-            return more > 0 ? $"{Usage.PrimaryHost}  +{more} more" : Usage.PrimaryHost;
+            return more > 0 ? string.Format(Loc.S("L.Fw.MoreHostsFmt"), Usage.PrimaryHost, more) : Usage.PrimaryHost;
         }
     }
 
@@ -60,20 +61,20 @@ public partial class AppRowVM : ObservableObject
     public string ReputationText => Usage.Reputation is not { } r ? "" : r.State switch
     {
         ReputationState.Scanning => "···",
-        ReputationState.Clean => "clean",
+        ReputationState.Clean => Loc.S("L.Fw.ReputationClean"),
         ReputationState.Flagged => $"{r.Malicious}/{r.Total}",
-        ReputationState.NotFound => "unlisted",
-        ReputationState.Error => "n/a",
+        ReputationState.NotFound => Loc.S("L.Fw.ReputationUnlisted"),
+        ReputationState.Error => Loc.S("L.Fw.ReputationUnavailable"),
         _ => "",
     };
 
     public string ReputationTip => Usage.Reputation is not { } r ? "" : r.State switch
     {
-        ReputationState.Scanning => "Checking VirusTotal…",
-        ReputationState.Clean => $"VirusTotal: clean · {r.Total} engines\n{r.Sha256}",
-        ReputationState.Flagged => $"VirusTotal: {r.Malicious} of {r.Total} engines flagged this file\n{r.Sha256}",
-        ReputationState.NotFound => "Not present in VirusTotal's dataset",
-        ReputationState.Error => $"VirusTotal: {r.Detail}",
+        ReputationState.Scanning => Loc.S("L.Fw.ReputationChecking"),
+        ReputationState.Clean => string.Format(Loc.S("L.Fw.ReputationCleanTipFmt"), r.Total, r.Sha256),
+        ReputationState.Flagged => string.Format(Loc.S("L.Fw.ReputationFlaggedTipFmt"), r.Malicious, r.Total, r.Sha256),
+        ReputationState.NotFound => Loc.S("L.Fw.ReputationNotFoundTip"),
+        ReputationState.Error => string.Format(Loc.S("L.Fw.ReputationErrorTipFmt"), r.Detail),
         _ => "",
     };
 
@@ -113,6 +114,14 @@ public partial class AppRowVM : ObservableObject
         Quota = quota;
         QuotaOver = quotaOver;
         Processes = new ObservableCollection<ProcRowVM>(usage.Processes.Select(p => new ProcRowVM(p)));
+    }
+
+    public void RefreshLocalizedProperties()
+    {
+        OnPropertyChanged(nameof(HostText));
+        OnPropertyChanged(nameof(ReputationText));
+        OnPropertyChanged(nameof(ReputationTip));
+        OnPropertyChanged(nameof(QuotaText));
     }
 
     [RelayCommand] private void ToggleExpand() => IsExpanded = !IsExpanded;
@@ -203,8 +212,24 @@ public partial class FirewallViewModel : ObservableObject
         var settings = (await _client.GetSettingsAsync()).Settings;
         settings.AppQuotas.RemoveAll(q => q.AppId.Equals(appId, StringComparison.OrdinalIgnoreCase));
         if (quota is not null) settings.AppQuotas.Add(quota);
+        // SetSettings is the commit point. If the following refresh fails, do not tell the user
+        // that the old value is intact or ask them to repeat the already committed write.
         await _client.SetSettingsAsync(settings);
-        await LoadAsync();
+        try { await LoadAsync(); }
+        catch (Exception ex) { throw new QuotaRefreshException(ex); }
+    }
+
+    public sealed class QuotaRefreshException : Exception
+    {
+        public QuotaRefreshException(Exception inner) : base("Quota saved, but the view could not refresh.", inner) { }
+    }
+
+    public void RefreshLocalizedProperties()
+    {
+        OnPropertyChanged(nameof(StatusText));
+        OnPropertyChanged(nameof(BlocklistSummary));
+        foreach (var row in _allApps)
+            row.RefreshLocalizedProperties();
     }
 
     public async Task LoadAsync()
@@ -238,8 +263,8 @@ public partial class FirewallViewModel : ObservableObject
         ApplyAppFilter();
 
         StatusText = CanEnforce
-            ? $"{fw.Status.BlockedAppCount} blocked · {_allApps.Count} active applications · profile “{fw.Status.ActiveProfile}”"
-            : "Run the engine as administrator to enforce blocks and show per-app rates";
+            ? string.Format(Loc.S("L.Fw.StatusFmt"), fw.Status.BlockedAppCount, _allApps.Count, fw.Status.ActiveProfile)
+            : Loc.S("L.Fw.AdminWarning");
 
         await LoadBlocklistsAsync();
     }
@@ -410,7 +435,13 @@ public partial class FirewallViewModel : ObservableObject
             Mode = Mode,
             NetworkLabel = NetworkName,
             AutoActivateOnNetwork = _networkFingerprint, // bind to the current network
-            BlockedAppIds = Apps.Where(a => a.BlockIn || a.BlockOut).Select(a => a.AppId).ToList(),
+            BlockedAppIds = new List<string>(),
+            BlockedApps = Apps.Where(a => a.BlockIn || a.BlockOut).Select(a => new FirewallProfileRule
+            {
+                AppId = a.AppId,
+                BlockIncoming = a.BlockIn,
+                BlockOutgoing = a.BlockOut,
+            }).ToList(),
         };
         await _client.SaveFirewallProfileAsync(prof);
         await _client.ActivateFirewallProfileAsync(name);

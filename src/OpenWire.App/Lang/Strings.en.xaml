@@ -151,6 +151,23 @@
     <sys:String x:Key="L.Fw.Block">Block</sys:String>
     <sys:String x:Key="L.Fw.PromptAppFallback">An application</sys:String>
     <sys:String x:Key="L.Fw.PromptWantsConnect">wants to connect to the network</sys:String>
+    <sys:String x:Key="L.Fw.PromptDetail">This app reached the network for the first time. Allow it, or block it until you decide.</sys:String>
+    <sys:String x:Key="L.Fw.PromptRemoteFmt">Remote endpoint: {0}:{1}</sys:String>
+    <sys:String x:Key="L.Fw.RememberDecision">Remember this decision for the active profile</sys:String>
+    <sys:String x:Key="L.Fw.StatusFmt">{0} blocked · {1} active applications · profile “{2}”</sys:String>
+    <sys:String x:Key="L.Fw.AdminWarning">Run the engine as administrator to enforce blocks and show per-app rates</sys:String>
+    <sys:String x:Key="L.Fw.ConnectionCountFmt">{0} conn.</sys:String>
+    <sys:String x:Key="L.Fw.MoreHostsFmt">{0}  +{1} more</sys:String>
+    <sys:String x:Key="L.Fw.ReputationClean">clean</sys:String>
+    <sys:String x:Key="L.Fw.ReputationUnlisted">unlisted</sys:String>
+    <sys:String x:Key="L.Fw.ReputationUnavailable">n/a</sys:String>
+    <sys:String x:Key="L.Fw.ReputationChecking">Checking VirusTotal…</sys:String>
+    <sys:String x:Key="L.Fw.ReputationCleanTipFmt">VirusTotal: clean · {0} engines&#x0a;{1}</sys:String>
+    <sys:String x:Key="L.Fw.ReputationFlaggedTipFmt">VirusTotal: {0} of {1} engines flagged this file&#x0a;{2}</sys:String>
+    <sys:String x:Key="L.Fw.ReputationNotFoundTip">Not present in VirusTotal's dataset</sys:String>
+    <sys:String x:Key="L.Fw.ReputationErrorTipFmt">VirusTotal: {0}</sys:String>
+    <sys:String x:Key="L.Fw.QuotaSaveErrorFmt">The quota change could not be saved. Your previous settings are unchanged. Retry?&#x0a;&#x0a;{0}</sys:String>
+    <sys:String x:Key="L.Fw.QuotaRefreshErrorFmt">The quota change was saved, but this view could not refresh. Reopen the Firewall page to verify it.&#x0a;&#x0a;{0}</sys:String>
 
     <!-- alerts -->
     <sys:String x:Key="L.Alerts.Title">Alerts</sys:String>

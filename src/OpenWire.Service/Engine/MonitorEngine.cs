@@ -114,6 +114,10 @@ public sealed class MonitorEngine : IAsyncDisposable
     // tag), kept entirely separate from profile/manual blocks. Persisted for restart reconciliation.
     private const string QuotaBlockedKey = "quota.blocked";
     private Dictionary<string, string> _quotaBlocked = new(StringComparer.OrdinalIgnoreCase);
+    // Empty desired state still has meaning: stale tagged rules may exist even when there are no
+    // persisted owners. Keep retry flags separate from the collections until firewall cleanup converges.
+    private bool _quotaCleanupPending;
+    private bool _blocklistCleanupPending;
 
     // Timed lock-down ("panic"): unix seconds when the block-all auto-lifts (0 = none/indefinite).
     // Persisted so a timed panic survives an engine restart and resumes for its remaining time.
@@ -130,6 +134,8 @@ public sealed class MonitorEngine : IAsyncDisposable
 
     private readonly GeoIpUpdater _geoUpdater;
     private int _geoUpdating; // 0/1 guard so only one download runs at a time
+    private readonly object _backgroundTaskLock = new();
+    private readonly HashSet<Task> _backgroundTasks = new();
 
     private readonly string _dataDir;
 
@@ -208,8 +214,18 @@ public sealed class MonitorEngine : IAsyncDisposable
                 {
                     lock (_blockedLock)
                     {
-                        _firewall.SetBlocklistAddresses(
-                            _settings.BlocklistEnforce ? _blockedAddresses : Array.Empty<string>());
+                        if (_settings.BlocklistEnforce)
+                        {
+                            _firewall.SetBlocklistAddresses(_blockedAddresses);
+                        }
+                        else
+                        {
+                            _blocklistCleanupPending = true;
+                            _firewall.SetBlocklistAddresses(Array.Empty<string>());
+                            _blocklistCleanupPending = false;
+                            _blockedAddresses.Clear();
+                            SaveBlockedAddresses();
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -237,8 +253,8 @@ public sealed class MonitorEngine : IAsyncDisposable
         _engineCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         var token = _engineCts.Token;
         _tickLoop = Task.Run(() => TickLoopAsync(token), token);
-        _ = Task.Run(() => InitialScanAsync(token), token);
-        if (_settings.GeoIpAutoUpdate) _ = Task.Run(() => AutoUpdateGeoIpAsync(token), token);
+        TrackBackgroundTask(Task.Run(() => InitialScanAsync(token), token));
+        if (_settings.GeoIpAutoUpdate) TrackBackgroundTask(Task.Run(() => AutoUpdateGeoIpAsync(token), token));
         await Task.CompletedTask;
     }
 
@@ -344,7 +360,7 @@ public sealed class MonitorEngine : IAsyncDisposable
 
         // 6) scheduled device rescan (only when auto-scan is enabled)
         if (_settings.AutoScanDevices && now - _lastDeviceScan > TimeSpan.FromMinutes(30))
-            _ = RescanDevicesAsync(CancellationToken.None);
+            _ = RescanDevicesAsync(_engineCts?.Token ?? CancellationToken.None);
 
         // 7) rebuild status + broadcast tick
         _status = BuildStatus(now, dOut, dIn);
@@ -734,13 +750,30 @@ public sealed class MonitorEngine : IAsyncDisposable
     {
         lock (_blockedLock)
         {
-            if (_blockedAddresses.Count == 0 && !CanEnforceFirewall) return;
+            _blocklistCleanupPending = true;
+            if (!CanEnforceFirewall) return;
+            try { _firewall.SetBlocklistAddresses(Array.Empty<string>()); }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"[Engine] blocklist clear failed (will retry): {ex.Message}");
+                return;
+            }
+            _blocklistCleanupPending = false;
             _blockedAddresses.Clear();
             SaveBlockedAddresses();
-            if (CanEnforceFirewall)
-                try { _firewall.SetBlocklistAddresses(Array.Empty<string>()); }
-                catch (Exception ex) { Console.Error.WriteLine($"[Engine] blocklist clear: {ex.Message}"); }
         }
+    }
+
+    private void RetryQuotaCleanup()
+    {
+        if (!_quotaCleanupPending) return;
+        ReapplyQuotaFirewall();
+    }
+
+    private void RetryBlocklistCleanup()
+    {
+        if (_settings.BlocklistEnforce || !_blocklistCleanupPending) return;
+        ClearBlocklistEnforcement();
     }
 
     private void SaveBlockedAddresses()
@@ -911,23 +944,34 @@ public sealed class MonitorEngine : IAsyncDisposable
 
     private void LiftQuotaBlock(string appId)
     {
-        if (!_quotaBlocked.Remove(appId)) return;
-        ReapplyQuotaFirewall();
-        SaveQuotaBlocked();
+        if (!_quotaBlocked.TryGetValue(appId, out var path)) return;
+        _quotaBlocked.Remove(appId);
+        if (ReapplyQuotaFirewall())
+        {
+            SaveQuotaBlocked();
+            return;
+        }
+        _quotaBlocked[appId] = path; // preserve retryable desired state until removal converges
     }
 
     /// <summary>Reconcile the QUOTA-tagged firewall rules to exactly the current _quotaBlocked set.
     /// Returns false (and logs) if the firewall rejected the change.</summary>
     private bool ReapplyQuotaFirewall()
     {
-        if (!CanEnforceFirewall) return false;
+        if (!CanEnforceFirewall)
+        {
+            _quotaCleanupPending = true;
+            return false;
+        }
         try
         {
             _firewall.SetQuotaBlockedApps(_quotaBlocked.Values.ToList());
+            _quotaCleanupPending = false;
             return true;
         }
         catch (Exception ex)
         {
+            _quotaCleanupPending = true;
             Console.Error.WriteLine($"[Engine] quota firewall reconcile failed: {ex.Message}");
             return false;
         }
@@ -961,6 +1005,7 @@ public sealed class MonitorEngine : IAsyncDisposable
         lock (_settingsLock) quotas = _settings.AppQuotas.ToList();
         var byId = quotas.ToDictionary(q => q.AppId, StringComparer.OrdinalIgnoreCase);
 
+        var previous = new Dictionary<string, string>(_quotaBlocked, StringComparer.OrdinalIgnoreCase);
         foreach (string appId in _quotaBlocked.Keys.ToList())
         {
             if (!byId.TryGetValue(appId, out var quota) || !quota.AutoBlock || quota.LimitBytes <= 0)
@@ -972,8 +1017,16 @@ public sealed class MonitorEngine : IAsyncDisposable
             if (used < quota.LimitBytes) _quotaBlocked.Remove(appId); // period reset while off
         }
 
-        SaveQuotaBlocked();
-        ReapplyQuotaFirewall();
+        if (ReapplyQuotaFirewall())
+        {
+            SaveQuotaBlocked();
+            return;
+        }
+
+        // The old rules may still be installed. Keep their state durable so the periodic quota
+        // reconciliation can retry removal instead of forgetting ownership after a COM failure.
+        _quotaBlocked.Clear();
+        foreach (var (appId, path) in previous) _quotaBlocked[appId] = path;
     }
 
     private void SaveQuotaBlocked()
@@ -1063,6 +1116,9 @@ public sealed class MonitorEngine : IAsyncDisposable
         }
 
         CheckAppQuotas();
+        ReconcileQuotaBlocks(); // retries cleanup state retained after a transient firewall failure
+        RetryQuotaCleanup();
+        RetryBlocklistCleanup();
 
         RefreshNetwork();
         RefreshFirewallCache();
@@ -1184,7 +1240,19 @@ public sealed class MonitorEngine : IAsyncDisposable
     private AppUsage GetOrCreateApp(AppInfo app, DateTimeOffset now)
         => _appStore.GetOrAdd(app.Id, _ =>
         {
-            _store.UpsertAppMeta(app);
+            var baseline = _store.GetAppMeta(app.Id);
+            if (baseline is not null && _settings.IsAlertEnabled(AlertKind.AppInfoChanged))
+            {
+                var changed = _alerts.CheckAppInfo(
+                    app, baseline.Value.Publisher, baseline.Value.Version, baseline.Value.IsSigned);
+                if (changed is not null) Persist(changed);
+            }
+            _store.UpsertAppMeta(app); // advance only after comparing the persisted pre-start baseline
+            if (!string.IsNullOrEmpty(app.ExecutablePath))
+            {
+                try { _appFileMtime[app.ExecutablePath] = File.GetLastWriteTimeUtc(app.ExecutablePath).Ticks; }
+                catch { }
+            }
             RaiseNewApp(app);
             return new AppUsage { App = app, FirstSeen = now };
         });
@@ -1203,7 +1271,18 @@ public sealed class MonitorEngine : IAsyncDisposable
                 _firewall.SetAppBlocked(app.ExecutablePath, app.Id, app.Name, blockIn: true, blockOut: true);
                 _pendingApps[app.Id] = app;
                 RefreshFirewallCache();
-                Events?.Invoke(new FirewallPromptEvent { App = app });
+                var trigger = _connectionsSnapshot
+                    .Where(c => c.AppId.Equals(app.Id, StringComparison.OrdinalIgnoreCase)
+                        && ConnectionEnumerator.HasRemotePeer(c))
+                    .OrderBy(c => c.RemoteAddress, StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(c => c.RemotePort)
+                    .FirstOrDefault();
+                Events?.Invoke(new FirewallPromptEvent
+                {
+                    App = app,
+                    RemoteAddress = trigger?.RemoteAddress ?? string.Empty,
+                    RemotePort = trigger?.RemotePort ?? 0,
+                });
             }
             catch (Exception ex) { Console.Error.WriteLine($"[Engine] ask-to-connect block failed: {ex.Message}"); }
         }
@@ -1629,6 +1708,23 @@ public sealed class MonitorEngine : IAsyncDisposable
         return _geo.Available ? (string.IsNullOrEmpty(type) ? "GeoIP" : type) : "";
     }
 
+    public Task<GeoIpStatusResponse> UpdateGeoIpTrackedAsync(CancellationToken ct)
+    {
+        var task = UpdateGeoIpAsync(ct);
+        TrackBackgroundTask(task);
+        return task;
+    }
+
+    private void TrackBackgroundTask(Task task)
+    {
+        lock (_backgroundTaskLock) _backgroundTasks.Add(task);
+        _ = task.ContinueWith(
+            completed => { lock (_backgroundTaskLock) _backgroundTasks.Remove(completed); },
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
+    }
+
     /// <summary>Download + install the latest free country database on demand, then return the new
     /// status. Serialized so concurrent requests don't collide; the active database survives failures.</summary>
     public async Task<GeoIpStatusResponse> UpdateGeoIpAsync(CancellationToken ct)
@@ -1803,9 +1899,64 @@ public sealed class MonitorEngine : IAsyncDisposable
         AutoActivateOnNetwork = p.AutoActivateOnNetwork,
         NetworkLabel = p.NetworkLabel,
         Mode = p.Mode,
-        BlockedAppIds = new List<string>(p.BlockedAppIds),
+        // Keep the legacy projection populated for older IPC clients. Modern clients use
+        // BlockedApps for directionality; if an old client saves this profile back, the
+        // legacy ids intentionally become bidirectional rules rather than disappearing.
+        BlockedAppIds = p.BlockedApps.Select(r => r.AppId).ToList(),
+        BlockedApps = p.BlockedApps.Select(r => new FirewallProfileRule
+        {
+            AppId = r.AppId,
+            BlockIncoming = r.BlockIncoming,
+            BlockOutgoing = r.BlockOutgoing,
+        }).ToList(),
         IsActive = p.Name.Equals(activeName, StringComparison.OrdinalIgnoreCase),
     };
+
+    private static bool NormalizeProfileRules(FirewallProfile profile)
+    {
+        bool changed = false;
+        profile.BlockedAppIds ??= new List<string>();
+        profile.BlockedApps ??= new List<FirewallProfileRule>();
+
+        // Directional entries are authoritative when both wire formats contain an app.
+        var normalized = new Dictionary<string, FirewallProfileRule>(StringComparer.OrdinalIgnoreCase);
+        foreach (var rule in profile.BlockedApps)
+        {
+            if (rule is null || string.IsNullOrWhiteSpace(rule.AppId)
+                || (!rule.BlockIncoming && !rule.BlockOutgoing))
+            {
+                changed = true;
+                continue;
+            }
+            if (!normalized.TryAdd(rule.AppId, new FirewallProfileRule
+                {
+                    AppId = rule.AppId,
+                    BlockIncoming = rule.BlockIncoming,
+                    BlockOutgoing = rule.BlockOutgoing,
+                }))
+                changed = true;
+        }
+        foreach (string appId in profile.BlockedAppIds)
+        {
+            if (string.IsNullOrWhiteSpace(appId) || normalized.ContainsKey(appId)) continue;
+            normalized[appId] = new FirewallProfileRule
+            {
+                AppId = appId,
+                BlockIncoming = true,
+                BlockOutgoing = true,
+            };
+            changed = true;
+        }
+
+        if (profile.BlockedAppIds.Count > 0) changed = true;
+        profile.BlockedAppIds.Clear();
+        if (profile.BlockedApps.Count != normalized.Count
+            || profile.BlockedApps.Where(r => r is not null).Any(r => !normalized.TryGetValue(r.AppId, out var n)
+                || n.BlockIncoming != r.BlockIncoming || n.BlockOutgoing != r.BlockOutgoing))
+            changed = true;
+        profile.BlockedApps = normalized.Values.ToList();
+        return changed;
+    }
 
     // ---------------- firewall profiles ----------------
 
@@ -1820,6 +1971,8 @@ public sealed class MonitorEngine : IAsyncDisposable
             _settings.FirewallProfiles.Add(new FirewallProfile { Name = "Default", Mode = _settings.FirewallMode });
             changed = true;
         }
+        foreach (var profile in _settings.FirewallProfiles)
+            changed |= NormalizeProfileRules(profile);
         if (string.IsNullOrEmpty(_settings.ActiveProfile) ||
             !_settings.FirewallProfiles.Any(p => p.Name.Equals(_settings.ActiveProfile, StringComparison.OrdinalIgnoreCase)))
         {
@@ -1844,6 +1997,7 @@ public sealed class MonitorEngine : IAsyncDisposable
     public void SaveProfile(FirewallProfile profile)
     {
         if (string.IsNullOrWhiteSpace(profile.Name)) return;
+        NormalizeProfileRules(profile);
         lock (_settingsLock)
         {
             var list = _settings.FirewallProfiles;
@@ -1892,29 +2046,30 @@ public sealed class MonitorEngine : IAsyncDisposable
     private void ApplyProfileBlocks(FirewallProfile prof)
     {
         if (!CanEnforceFirewall) return;
-        var desired = new HashSet<string>(prof.BlockedAppIds, StringComparer.OrdinalIgnoreCase);
+        var desired = prof.BlockedApps.ToDictionary(r => r.AppId, StringComparer.OrdinalIgnoreCase);
         var current = _firewall.GetAppRules()
             .ToDictionary(rule => rule.AppId, StringComparer.OrdinalIgnoreCase);
 
         foreach (var appId in current.Keys)
-            if (!desired.Contains(appId)) _firewall.UnblockApp(appId);
+            if (!desired.ContainsKey(appId)) _firewall.UnblockApp(appId);
 
-        foreach (var appId in desired)
+        foreach (var (appId, wanted) in desired)
         {
             if (current.TryGetValue(appId, out var existing)
-                && existing.BlockIncoming
-                && existing.BlockOutgoing) continue;
+                && existing.BlockIncoming == wanted.BlockIncoming
+                && existing.BlockOutgoing == wanted.BlockOutgoing) continue;
             string exe = _appStore.TryGetValue(appId, out var u) ? u.App.ExecutablePath : appId;
             string nm = _appStore.TryGetValue(appId, out var au) ? au.App.Name : Path.GetFileNameWithoutExtension(exe);
             if (string.IsNullOrWhiteSpace(exe) || !Path.IsPathFullyQualified(exe))
                 throw new InvalidOperationException($"Cannot enforce profile rule for unresolved app '{appId}'.");
-            _firewall.SetAppBlocked(exe, appId, nm, blockIn: true, blockOut: true);
+            _firewall.SetAppBlocked(exe, appId, nm, wanted.BlockIncoming, wanted.BlockOutgoing);
         }
 
         var verified = _firewall.GetAppRules();
-        var verifiedIds = verified.Select(rule => rule.AppId).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        if (!verifiedIds.SetEquals(desired)
-            || verified.Any(rule => !rule.BlockIncoming || !rule.BlockOutgoing))
+        if (verified.Count != desired.Count
+            || verified.Any(rule => !desired.TryGetValue(rule.AppId, out var wanted)
+                || rule.BlockIncoming != wanted.BlockIncoming
+                || rule.BlockOutgoing != wanted.BlockOutgoing))
         {
             throw new InvalidOperationException("Windows Firewall did not converge to the selected profile.");
         }
@@ -1958,7 +2113,19 @@ public sealed class MonitorEngine : IAsyncDisposable
             if (profile is not null) profile.Mode = mode;
         }
 
-        EnforceFirewallMode(mode, profile);
+        if (mode == FirewallMode.Off && CanEnforceFirewall)
+        {
+            _firewall.SetBlockAll(false);
+            _lockdownActive = false;
+            _panicUntil = 0;
+            SavePanicUntil();
+            _firewall.ClearAppRules();
+            ReplaceFirewallCache(Array.Empty<AppFirewallRule>());
+        }
+        else
+        {
+            EnforceFirewallMode(mode, profile);
+        }
         lock (_settingsLock)
         {
             _settings.FirewallMode = mode;
@@ -2047,6 +2214,14 @@ public sealed class MonitorEngine : IAsyncDisposable
     {
         long until = LoadPanicUntil();
         long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        // Persisted Off is authoritative. A failed timer-clear write must never turn a later
+        // restart back into panic mode after the user explicitly disabled the firewall.
+        if (_settings.FirewallMode == FirewallMode.Off)
+        {
+            _panicUntil = 0;
+            _lockdownActive = false;
+            return;
+        }
         if (until > now)
         {
             try
@@ -2120,18 +2295,61 @@ public sealed class MonitorEngine : IAsyncDisposable
             var prof = ActiveProfileObj();
             if (prof is not null)
             {
-                prof.BlockedAppIds.RemoveAll(a => a.Equals(appId, StringComparison.OrdinalIgnoreCase));
-                if (blockIn || blockOut) prof.BlockedAppIds.Add(appId);
+                prof.BlockedApps.RemoveAll(a => a.AppId.Equals(appId, StringComparison.OrdinalIgnoreCase));
+                if (blockIn || blockOut)
+                    prof.BlockedApps.Add(new FirewallProfileRule
+                    {
+                        AppId = appId,
+                        BlockIncoming = blockIn,
+                        BlockOutgoing = blockOut,
+                    });
                 _store.SaveSettings(_settings);
             }
         }
     }
 
-    public void ResolveAppDecision(string appId, bool allow)
+    public void ResolveAppDecision(string appId, bool allow, bool remember)
     {
-        if (!_pendingApps.TryRemove(appId, out var app)) return;
+        if (!_pendingApps.ContainsKey(appId)) return;
+
+        // Persist first. If either settings storage or firewall programming fails, the app remains
+        // pending so the UI can retry the same decision instead of receiving an error after the
+        // only retry handle has already been discarded.
+        if (remember)
+        {
+            lock (_settingsLock)
+            {
+                var prof = ActiveProfileObj();
+                if (prof is not null)
+                {
+                    var previous = prof.BlockedApps.Select(r => new FirewallProfileRule
+                    {
+                        AppId = r.AppId,
+                        BlockIncoming = r.BlockIncoming,
+                        BlockOutgoing = r.BlockOutgoing,
+                    }).ToList();
+                    prof.BlockedApps.RemoveAll(r => r.AppId.Equals(appId, StringComparison.OrdinalIgnoreCase));
+                    if (!allow)
+                        prof.BlockedApps.Add(new FirewallProfileRule
+                        {
+                            AppId = appId,
+                            BlockIncoming = true,
+                            BlockOutgoing = true,
+                        });
+                    try { _store.SaveSettings(_settings); }
+                    catch
+                    {
+                        prof.BlockedApps = previous;
+                        throw;
+                    }
+                }
+            }
+        }
+
         if (allow) _firewall.UnblockApp(appId);
-        // if !allow the block rules stay in place
+        // A one-time Block deliberately leaves the temporary rule installed for this service
+        // session. Profile activation/reconciliation removes it because it was not persisted.
+        _pendingApps.TryRemove(appId, out _);
         RefreshFirewallCache();
     }
 
@@ -2191,6 +2409,8 @@ public sealed class MonitorEngine : IAsyncDisposable
     public void SetSettings(AppSettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
+        foreach (var profile in settings.FirewallProfiles)
+            NormalizeProfileRules(profile);
         lock (_settingsLock)
         {
             _store.SaveSettings(settings);
@@ -2325,9 +2545,30 @@ public sealed class MonitorEngine : IAsyncDisposable
             try { await _tickLoop.ConfigureAwait(false); } catch { /* cancelled */ }
         }
 
-        // Never leave a user without the UI/control channel that can reverse lockdown.
-        if (CanEnforceFirewall)
-            try { _firewall.SetBlockAll(false); } catch { }
+        Task[] backgroundTasks;
+        lock (_backgroundTaskLock) backgroundTasks = _backgroundTasks.ToArray();
+        if (backgroundTasks.Length > 0)
+        {
+            try { await Task.WhenAll(backgroundTasks).WaitAsync(TimeSpan.FromSeconds(20)).ConfigureAwait(false); }
+            catch (TimeoutException) { Console.Error.WriteLine("[Engine] background tasks did not stop within 20 seconds."); }
+            catch { /* cancellation/update failure already reported */ }
+        }
+
+        // Never gate cleanup on the capability probe: startup can fail after rules are created.
+        Exception? last = null;
+        for (int attempt = 1; attempt <= 4; attempt++)
+        {
+            try
+            {
+                _firewall.SetBlockAll(false);
+                if (!_firewall.IsBlockAllActive()) { last = null; break; }
+                last = new InvalidOperationException("Lockdown rules remain active after removal.");
+            }
+            catch (Exception ex) { last = ex; }
+            if (attempt < 4) await Task.Delay(TimeSpan.FromMilliseconds(150 * attempt)).ConfigureAwait(false);
+        }
+        if (last is not null)
+            Console.Error.WriteLine($"[Firewall] CRITICAL: shutdown could not remove lockdown rules after 4 attempts: {last.Message}");
         try
         {
             SealMinute(_currentBucket);

@@ -36,6 +36,7 @@ public sealed class IpcServer : IAsyncDisposable
 
     private readonly MonitorEngine _engine;
     private readonly ConcurrentDictionary<Guid, Client> _clients = new();
+    private readonly ConcurrentDictionary<Guid, Task> _clientHandlers = new();
     private readonly SemaphoreSlim _clientSlots = new(initialCount: 4, maxCount: 4);
     private readonly int _expectedClientPid;
     private readonly string _authorizedUserSid;
@@ -93,7 +94,11 @@ public sealed class IpcServer : IAsyncDisposable
                 server = IpcTransport.CreateServerStream(_authorizedUserSid);
                 await server.WaitForConnectionAsync(ct).ConfigureAwait(false);
                 var accepted = server; server = null; // ownership transfers to the handler
-                _ = HandleClientAsync(accepted, ct);
+                var handlerId = Guid.NewGuid();
+                var completion = new TaskCompletionSource(
+                    TaskCreationOptions.RunContinuationsAsynchronously);
+                _clientHandlers[handlerId] = completion.Task;
+                _ = RunClientHandlerAsync(handlerId, accepted, ct, completion);
             }
             catch (OperationCanceledException) { server?.Dispose(); break; }
             catch (Exception ex)
@@ -102,6 +107,22 @@ public sealed class IpcServer : IAsyncDisposable
                 Console.Error.WriteLine($"[IPC] accept error: {ex.Message}");
                 await Task.Delay(200, ct).ConfigureAwait(false);
             }
+        }
+    }
+
+    private async Task RunClientHandlerAsync(
+        Guid handlerId,
+        System.IO.Pipes.NamedPipeServerStream server,
+        CancellationToken ct,
+        TaskCompletionSource completion)
+    {
+        try { await HandleClientAsync(server, ct).ConfigureAwait(false); }
+        finally
+        {
+            // Complete while the entry is still visible: teardown snapshots can never miss a
+            // handler in the gap between accepting its pipe and registering its task.
+            completion.TrySetResult();
+            _clientHandlers.TryRemove(handlerId, out _);
         }
     }
 
@@ -337,7 +358,7 @@ public sealed class IpcServer : IAsyncDisposable
                     return new OkResponse();
 
                 case ResolveAppDecisionRequest rd:
-                    _engine.ResolveAppDecision(rd.AppId, rd.Allow);
+                    _engine.ResolveAppDecision(rd.AppId, rd.Allow, rd.Remember);
                     return new OkResponse();
 
                 case SaveFirewallProfileRequest sp:
@@ -434,7 +455,7 @@ public sealed class IpcServer : IAsyncDisposable
             IpcMessage resp;
             try
             {
-                resp = await _engine.UpdateGeoIpAsync(ct).ConfigureAwait(false);
+                resp = await _engine.UpdateGeoIpTrackedAsync(ct).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -475,7 +496,20 @@ public sealed class IpcServer : IAsyncDisposable
         _idleTimer?.Dispose();
         _startupTimer?.Dispose();
 
-        foreach (var kv in _clients) kv.Value.Channel.Dispose();
+        foreach (var client in _clients.Values)
+        {
+            try { client.Cts?.Cancel(); } catch { }
+            client.Channel.Dispose();
+        }
+        var handlers = _clientHandlers.Values.ToArray();
+        if (handlers.Length > 0)
+        {
+            try { await Task.WhenAll(handlers).WaitAsync(TimeSpan.FromSeconds(20)).ConfigureAwait(false); }
+            catch (TimeoutException) { Console.Error.WriteLine("[IPC] client handlers did not stop within 20 seconds."); }
+            catch { }
+        }
         _clients.Clear();
+        _clientHandlers.Clear();
+        _cts?.Dispose();
     }
 }

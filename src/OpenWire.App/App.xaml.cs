@@ -281,6 +281,9 @@ public partial class App : Application
         Resources.MergedDictionaries.Clear();
         LangManager.Apply(this, LangManager.Read());
         ThemeManager.Apply(this, ThemeManager.Read());
+        _tray?.RefreshLanguage();
+        if (vm is MainViewModel mainVm)
+            mainVm.Firewall.RefreshLocalizedProperties();
 
         var w = new MainWindow
         {
@@ -327,13 +330,24 @@ public partial class App : Application
 
         try
         {
-            var dlg = new FirewallPromptWindow(ev.App.Name, ev.App.ExecutablePath);
+            var dlg = new FirewallPromptWindow(
+                ev.App.Name, ev.App.ExecutablePath, ev.RemoteAddress, ev.RemotePort);
             if (_window is { IsVisible: true }) dlg.Owner = _window;
             dlg.ShowDialog();
             if (dlg.Allowed is bool allow)
-                _ = Client.ResolveAppDecisionAsync(ev.App.Id, allow);
+                ObservePromptDecisionAsync(Client.ResolveAppDecisionAsync(ev.App.Id, allow, dlg.Remember));
         }
         finally { _promptOpen.Remove(ev.App.Id); }
+    }
+
+    private static async void ObservePromptDecisionAsync(Task decision)
+    {
+        try { await decision; }
+        catch (Exception ex)
+        {
+            try { UiCrashLog.Write(ex); }
+            catch { /* logging is best-effort */ }
+        }
     }
 
     private void OnDispatcherException(object sender, DispatcherUnhandledExceptionEventArgs e)

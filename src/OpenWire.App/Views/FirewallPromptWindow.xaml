@@ -20,6 +20,9 @@
             <TextBlock x:Name="DetailText" Foreground="{StaticResource TextSecondary}" FontSize="12.5"
                        TextWrapping="Wrap" Margin="0,16,0,20" />
 
+            <CheckBox x:Name="RememberCheck" Content="{StaticResource L.Fw.RememberDecision}"
+                      IsChecked="True" Margin="0,0,0,18" />
+
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                 <Button Content="{StaticResource L.Fw.Block}" Style="{StaticResource BtnGhost}" Click="OnBlock" Margin="0,0,10,0" MinWidth="96" />
                 <Button Content="{StaticResource L.Fw.Allow}" Style="{StaticResource Btn}" Click="OnAllow" MinWidth="96" />

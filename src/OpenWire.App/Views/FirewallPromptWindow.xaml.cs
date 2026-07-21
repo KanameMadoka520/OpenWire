@@ -1,3 +1,4 @@
+using OpenWire.App.Util;
 using System.Windows;
 
 namespace OpenWire.App.Views;
@@ -8,13 +9,17 @@ public partial class FirewallPromptWindow : Window
     /// <summary>True = Allow, false = Block; null while undecided.</summary>
     public bool? Allowed { get; private set; }
 
-    public FirewallPromptWindow(string appName, string path)
+    /// <summary>Whether the decision should be persisted in the active profile.</summary>
+    public bool Remember => RememberCheck.IsChecked == true;
+
+    public FirewallPromptWindow(string appName, string path, string remoteAddress, int remotePort)
     {
         InitializeComponent();
-        NameText.Text = string.IsNullOrWhiteSpace(appName) ? "An application" : appName;
-        DetailText.Text = string.IsNullOrWhiteSpace(path)
-            ? "This app reached the network for the first time. Allow it, or block it until you decide."
-            : $"{path}\n\nThis app reached the network for the first time. Allow it, or block it until you decide.";
+        NameText.Text = string.IsNullOrWhiteSpace(appName) ? Loc.S("L.Fw.PromptAppFallback") : appName;
+        string peer = string.IsNullOrWhiteSpace(remoteAddress) ? string.Empty
+            : string.Format(Loc.S("L.Fw.PromptRemoteFmt"), remoteAddress, remotePort);
+        string detail = Loc.S("L.Fw.PromptDetail");
+        DetailText.Text = string.Join("\n\n", new[] { path, peer, detail }.Where(s => !string.IsNullOrWhiteSpace(s)));
     }
 
     private void OnAllow(object sender, RoutedEventArgs e) { Allowed = true; Close(); }
